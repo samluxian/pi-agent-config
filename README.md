@@ -52,9 +52,8 @@ AGENTS.md 套用安全與工作邊界
 幫我確認 qa 的 Pod 為什麼一直重啟，先不要修改任何東西
 ```
 
-Agent 會先做 read-only diagnosis，不會直接 restart Pod、同步 Argo CD 或展開整個
-cluster。若最後需要改 GitOps desired state，它會先列出檔案、行為差異、驗證方式與
-風險，再等你批准。
+Agent 會先從最小範圍的狀態摘要判斷問題。若最後需要改 GitOps desired state，它會
+列出檔案、行為差異、驗證方式與風險，再等你批准。
 
 ## 核心能力
 
@@ -186,8 +185,8 @@ prompt 中直接說明環境、限制與你希望 agent 停在哪一步。
 Git change → MR → merge → Argo CD reconcile
 ```
 
-Agent 不會自行執行 `kubectl apply`、`helm upgrade`、`argocd app sync`、Terraform
-`apply`，也不會 stage、commit、push、merge、rebase 或修改 Git remote。
+Kubernetes、Argo CD、GitLab、GCP 與 Git remotes 對 agent 永遠是唯讀。所有行為變更
+都必須先寫入 repo 的 desired state，再走既有的 review 與 GitOps 交付流程。
 
 ### 改檔前要有人批准
 
