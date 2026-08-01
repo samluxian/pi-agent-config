@@ -1,0 +1,6 @@
+interface:
+  display_name: "Flex App Version Upgrade"
+  short_description: "Upgrade k8s-deploy service wrappers between flex-app versions"
+  default_prompt: "Use $flex-app-version-upgrade to assess and upgrade an existing k8s-deploy service wrapper from one flex-app chart version to another, including chart behavior, app-of-apps globals, live-vs-render selectors, Service/PDB selectors, ServiceAccount ownership, autoscaling readability, and migration risk."
+policy:
+  allow_implicit_invocation: true

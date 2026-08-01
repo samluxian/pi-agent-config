@@ -1,0 +1,15 @@
+workspace-repos/
+node_modules/
+
+# Local temporary files. Contents may include secret plaintext and must stay
+# outside git history.
+tmp/*
+!tmp/.gitkeep
+
+# teach skill learning artifacts
+MISSION.md
+RESOURCES.md
+NOTES.md
+lessons/
+reference/
+learning-records/

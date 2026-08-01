@@ -1,0 +1,4 @@
+interface:
+  display_name: "Stop Slop"
+  short_description: "Tighten prose without losing technical precision"
+  default_prompt: "Use $stop-slop to make this prose direct, specific, and concise."

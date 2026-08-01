@@ -1,0 +1,4 @@
+interface:
+  display_name: "GCP Monitoring Dashboard"
+  short_description: "Design and manage Cloud Monitoring dashboards"
+  default_prompt: "Use $gcp-monitoring-dashboard to inspect and improve a Cloud Monitoring dashboard."

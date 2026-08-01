@@ -1,0 +1,4 @@
+interface:
+  display_name: "GitOps Implementation"
+  short_description: "Implement approved GitOps repo-file changes with fixed checks"
+  default_prompt: "Use $gitops-implementation-workflow to make an approved GitOps desired-state, deployment config, CI, or workspace-skill change, run fixed preflight/values/render/post-patch scripts, and report validation gaps."

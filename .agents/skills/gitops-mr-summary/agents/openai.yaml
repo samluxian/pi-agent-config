@@ -1,0 +1,4 @@
+interface:
+  display_name: "GitOps MR Summary"
+  short_description: "Draft concise MR summaries from repo evidence"
+  default_prompt: "Use $gitops-mr-summary to draft a concise MR description from the current branch diff."

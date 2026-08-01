@@ -1,0 +1,4 @@
+interface:
+  display_name: "Orchestrator"
+  short_description: "Bounded subagent routing and evidence handoff"
+  default_prompt: "Use $orchestrator to delegate explicitly requested independent subtasks and reconcile their evidence before implementation."

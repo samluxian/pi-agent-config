@@ -1,0 +1,40 @@
+services:
+  aile-service-gateway:
+    status: seed_example
+    product_area: newaile
+    app_repo: springcloud-aile
+    desired_state_repo: k8s-deploy
+    desired_state_path: /home/samlu/devops-repos/k8s-deploy/newaile/aile-service-gateway
+    chart:
+      source_repo: helm-chart
+      name: flex-app
+      wrapper_alias: stable
+      wrapper_dependency_version_observed: 3.3.0
+      source_version_observed: 3.4.0
+    environments:
+      - dev
+      - qa
+      - uat
+      - prod
+    desired_state_files:
+      - Chart.yaml
+      - values.yaml
+      - values.dev.yaml
+      - values.qa.yaml
+      - values.uat.yaml
+      - values.prod.yaml
+      - values.cm-gateway.yaml
+      - values.cm-otel-collector-config.yaml
+    known_runtime_dependency_categories:
+      - workload_identity
+      - secret_manager
+      - load_balancer
+      - opentelemetry_sidecar
+      - nacos
+    docs:
+      - ../repos/k8s-deploy.md
+      - ../charts/flex-app.md
+      - ../workflows/deployment-flow.md
+    cautions:
+      - this_is_a_seed_index_entry_not_a_full_service_page
+      - refresh_branch_status_and_values_before_using_for_current_rollout_claims

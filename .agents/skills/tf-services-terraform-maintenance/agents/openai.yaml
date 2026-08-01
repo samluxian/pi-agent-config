@@ -1,0 +1,4 @@
+interface:
+  display_name: "tf-services Terraform Maintenance"
+  short_description: "Beginner-safe Terraform maintenance for tf-services GCP IAM, firewall, VM, backend/state, and plan review"
+  default_prompt: "Use $tf-services-terraform-maintenance to teach and safely maintain a user-identified tf-services repository. Explain Terraform concepts, inspect repo state read-only, scope plan commands to one service/env, flag IAM/firewall/state risks, and stop before apply/destroy/state mutation."

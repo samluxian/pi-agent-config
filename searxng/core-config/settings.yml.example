@@ -1,0 +1,12 @@
+use_default_settings: true
+
+server:
+  # scripts/init.sh replaces this placeholder in the untracked settings.yml.
+  secret_key: "CHANGE_ME"
+  image_proxy: true
+
+# Pi's web-search extension needs SearXNG JSON output.
+search:
+  formats:
+    - html
+    - json

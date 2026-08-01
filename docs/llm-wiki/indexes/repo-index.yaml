@@ -1,0 +1,43 @@
+repos:
+  k8s-deploy:
+    local_path: /home/samlu/devops-repos/k8s-deploy
+    role: gitops_desired_state
+    authority:
+      - wrapper_chart_dependencies
+      - base_values
+      - environment_values
+      - bootstrap_application_discovery
+      - infra_desired_state
+    docs:
+      - ../repos/k8s-deploy.md
+      - ../evidence-layers.md
+    high_value_paths:
+      - bootstrap/values.yaml
+      - bootstrap/values.dev.yaml
+      - bootstrap/values.qa.yaml
+      - bootstrap/values.uat.yaml
+      - bootstrap/values.prod.yaml
+      - newaile
+      - infra
+      - aileai
+    cautions:
+      - current_branch_and_dirty_state_are_drift_prone
+      - desired_state_does_not_prove_live_cluster_status
+
+  helm-chart:
+    local_path: /home/samlu/devops-repos/helm-chart
+    role: shared_helm_chart_source
+    authority:
+      - shared_chart_defaults
+      - shared_chart_templates
+      - chart_schema
+    docs:
+      - ../repos/helm-chart.md
+      - ../charts/flex-app.md
+    high_value_paths:
+      - charts/flex-app/Chart.yaml
+      - charts/flex-app/values.yaml
+      - charts/flex-app/values.schema.json
+      - charts/flex-app/templates
+    cautions:
+      - chart_source_version_does_not_prove_service_wrapper_dependency_version
