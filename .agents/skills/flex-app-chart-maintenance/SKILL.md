@@ -1,6 +1,6 @@
 ---
 name: flex-app-chart-maintenance
-description: "Maintain the shared `flex-app` deployment API: chart values, defaults, schemas, templates, KEDA profiles, app-of-apps globals, compatibility, and release guidance. Pair with gitops-implementation-workflow for approved edits or gitops-repo-audit for static audits."
+description: "Maintain the shared `flex-app` chart contract: values, defaults, schemas, templates, KEDA profiles, app-of-apps globals, compatibility, and releases. Use when shared chart behavior or its public API changes. Do not use for a service-only values change or an existing wrapper version upgrade."
 ---
 
 # Flex App Chart Maintenance

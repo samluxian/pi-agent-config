@@ -1,6 +1,6 @@
 ---
 name: orchestrator
-description: Delegate bounded independent subtasks and reconcile evidence. Use when the user explicitly requests parallel or subagent work, or another selected skill requires independent validation.
+description: Delegate bounded independent subtasks and reconcile evidence. Use only when the user explicitly requests parallel/subagent work or a selected skill requires independent validation. Do not use merely because work is multi-step, spans multiple files, or needs a handoff.
 ---
 
 # Orchestrator

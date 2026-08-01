@@ -32,9 +32,10 @@ symlink；重複執行時保留已存在的 extension source，但會重新執�
 ### Pi extensions
 
 Pi 從 workspace root 啟動時，會在 project trust 後載入
-`<workspace-root>/.pi/extensions/` 的 `bash-guard`、`subagents`、`web-fetch` 與
-`web-search`。這只影響該 workspace；不會改變 `~/.pi/agent/extensions` 或其他 Pi
-workspace。
+`<workspace-root>/.pi/extensions/` 的 `bash-guard`、`lean-context`、
+`subagents`、`web-fetch` 與 `web-search`。這只影響該
+workspace；不會改變
+`~/.pi/agent/extensions` 或其他 Pi workspace。
 
 若只要建立 AGENTS/skills symlink 而不安裝 Pi extensions：
 
@@ -49,6 +50,31 @@ symlink、Pi executable、每個 extension 與 dependencies，不改任何檔案
 初始化會複製當下 `skills/extensions/` 下的所有 extension 目錄；新增 extension 後，
 重新執行 initializer 即可安裝到 workspace-local Pi scope。
 
+### Context、loop 與 session baseline
+
+- `lean-context` 將單次純文字 tool result 限制在最多 80 行 head、40 行 tail 與
+  24 KiB，完整輸出寫入權限受限的 OS temp path；較舊的大型結果只在送入模型前壓成
+  summary，不改寫 session truth。
+- `lean-context` 以 non-context session entry 記錄 turn latency、tool calls/results、
+  context usage 與可用的 response usage，供相同 prompt/model/settings benchmark。
+- `bash-guard` 阻擋無 selector 的 all-namespace Kubernetes YAML/JSON dump，也避免同一
+  agent run 重複執行剛成功的相同 command；失敗 command 與 repo edit 後的 validation
+  仍可重試。
+- `config/pi-settings-baseline.json` 是選用範例，不由 initializer 自動套用或覆寫既有
+  project/personal settings。採用前應先對照目前 Pi 版本並手動 merge 所需欄位。
+
+預設 thinking tier 是 `low`；跨 repo 衝突、陌生 chart/API 或非平凡 incident analysis
+才升到 `medium`，`high` 只留給無法在 medium 收斂的高風險或高度模糊設計。Session
+維持單一主要目標；舊 tool result 主導 context 或接近約 90k tokens 時先 compact，換成
+無關目標、repo 或 evidence path 時開新 session 並用短 handoff note 接續。
+
+Model 與 thinking 由使用者在 session 層級選擇，skills 不會自動切換 model。Subagent
+只在使用者明確要求，或 selected workflow 要求 independent validation 時執行 bounded
+read-only evidence task；parent 保留 planning、decisions、approval、reconciliation 與
+implementation。`scout` 使用 Luna/low，`researcher` 使用 Terra/low，兩者都不繼承
+parent context。Parallel mode 最多四個 tasks，每個 child 最長五分鐘，且不存在 editing
+`worker`。
+
 `skills/AGENTS.md` 是唯一 source of truth；不要在 symlink 位置維護另一份副本。
 如果 checkout 使用其他目錄名稱，調整 symlink target 即可。移動整個 workspace
 時，相對 symlink 仍然有效。
@@ -58,6 +84,7 @@ symlink、Pi executable、每個 extension 與 dependencies，不改任何檔案
 | 路徑 | 用途 |
 | --- | --- |
 | `AGENTS.md` | Workspace 層級的安全與路由契約。只保留高優先規則，詳細流程交給 skills。 |
+| `.agents/skills/devops-pi-agent-maintenance/` | 維護此 repo 的 skills、Pi extensions、AGENTS/README agent contract、settings policy 與 regression gates；避免 trigger、context、loop 與文件行為漂移。 |
 | `.agents/skills/gitops-implementation-workflow/` | 已批准的 repo-file 實作路徑，用於 desired state、Helm values、CI handoff、workspace AGENTS/README/skill/docs 改檔。 |
 | `.agents/skills/gitops-mr-summary/` | 依 repo diff、branch/MR evidence 與 validation 結果產生精簡中文 MR 說明。 |
 | `.agents/skills/gitops-diagnostics-workflow/` | Delivery-state mismatch 診斷：desired state、Helm render、Argo CD、Kubernetes、GitLab handoff 與 GCP prerequisites。 |
@@ -67,14 +94,12 @@ symlink、Pi executable、每個 extension 與 dependencies，不改任何檔案
 | `.agents/skills/gitops-repo-audit/` | 不進入 live inspection 的 static desired-state、discovery、values overlays、chart metadata、CI handoff 與 MR readiness audit。 |
 | `.agents/skills/flex-app-version-upgrade/` | Existing `k8s-deploy` service wrapper 從目前 `flex-app` 版本升到目標版本前的差異評估：current-vs-target chart behavior、live-vs-render selectors、app-of-apps globals、migration risk。 |
 | `.agents/skills/flex-app-chart-maintenance/` | Shared `flex-app` deployment API 維護；核心流程留在 `SKILL.md`，values/KEDA/compatibility 細節按 branch 放在 references。 |
-| `.agents/skills/caveman/` | 超精簡溝通模式；只在使用者明確要求 caveman mode、最小 token 用量或 `/caveman` 時啟用。 |
+| `.agents/skills/gcp-monitoring-dashboard/` | GCP Cloud Monitoring dashboard、JSON/Terraform、metric query/filter、metrics scope 與 dashboard cost 維護。 |
 | `.agents/skills/service-delivery-topology/` | 跨 repo delivery topology 與抽離影響：producer、contract、consumer、artifact handoff、route、config/state ownership。 |
 | `.agents/skills/tf-services-terraform-maintenance/` | 面向新手的 `tf-services` Terraform 維護、概念教學、單一 service/env plan review、IAM/firewall/state 風險檢查。 |
 | `.agents/skills/runtime-dependency-ops/` | Runtime dependency wiring：workload、identity、secret references、database、queue、cache、storage 與 worker health。 |
-| `.agents/skills/writing-great-skills/` | 撰寫與編修 skill 的 user-invoked reference，涵蓋 invocation、information hierarchy、progressive disclosure、pruning 與 failure modes。 |
 | `.agents/skills/orchestrator/` | 僅用於明確要求的 parallel/subagent work，或其他 selected skill 要求的 independent validation；不因一般 multi-step task 自動啟用。 |
-| `.agents/skills/stop-slop/` | User-invoked prose cleanup；移除 filler 與 vague claims，但保留技術精準度與安全 caveats。 |
-| `extensions/` | Pi extensions：hard-block safety guard、read-only scout/researcher subagents、self-hosted SearXNG web search 與 HTTPS web fetch。 |
+| `extensions/` | Pi extensions：hard-block/output-loop guard、context truncation/metrics、read-only scout/researcher subagents、self-hosted SearXNG web search 與 HTTPS web fetch。 |
 | `searxng/` | Loopback-only SearXNG Docker Compose templates, config generator, and deterministic JSON API verifier for `web-search`. |
 | `.agents/archive/gitops-router/` | 已 deprecated 的舊 router 與 legacy references，保留作歷史查詢，不作為新工作入口。 |
 | `docs/llm-wiki/` | 給 LLM/RAG 使用的 DevOps wiki：整理 evidence layers、repo ownership、`flex-app` chart contract、`k8s-deploy` desired-state 結構與機器可讀 indexes。 |
@@ -105,6 +130,21 @@ symlink、Pi executable、每個 extension 與 dependencies，不改任何檔案
 當 `AGENTS.md` 或 `.agents/skills/**` 變更 human-facing workflow、skill inventory、
 trigger boundary 或 maintenance rule 時，除非 README 已經準確，否則同一個
 workspace-root change 也要同步更新 README。
+
+### 回覆呈現原則
+
+回覆風格直接由 `AGENTS.md` 管理，不再用額外 communication skill 觸發：
+
+1. 先給答案、推薦動作或已完成結果，再補原因。
+2. 教學與分析使用短標題，依序區分已驗證事實、判讀與建議；陌生名詞第一次出現時說明用途。
+3. 多步驟工作使用編號，每步只有一個可完成動作；超過五項時拆成「現在做」與「稍後做」。
+4. 跨回合工作重述目前步驟和可見進度；尚未完成時只留一個明確下一步。
+5. 移除寒暄、filler、模糊主張、岔題、制式 recap 與結尾邀請，但不犧牲技術精度、不確定性或安全警告。
+
+這些規則吸收原有 `caveman` 與 `stop-slop` 的有效部分，並參考
+[`ayghri/i-have-adhd`](https://github.com/ayghri/i-have-adhd)（MIT）的
+action-first、低工作記憶負擔與可見進度理念。它們是預設輸出契約，不假設使用者有
+任何診斷，也不需要額外 skill invocation。
 
 ## Project-Scoped Skills
 
@@ -137,21 +177,18 @@ skill。
 
 | 工作意圖 | Skill |
 | --- | --- |
+| 修改此 `devops-pi-agent` repo 的 skill、Pi extension、AGENTS/README agent contract、settings baseline 或 maintenance regression | `devops-pi-agent-maintenance`；改檔時搭配 `gitops-implementation-workflow` |
 | 已批准的 delivery 或 workspace guidance 改檔 | `gitops-implementation-workflow` |
 | MR descriptions、MR summaries、merge request copy、branch-ready notes，或一邊/兩邊 MR handoff text | `gitops-mr-summary` |
 | Existing `k8s-deploy` service wrapper 從目前 `flex-app` chart version 升到目標 version 前的差異評估 | `flex-app-version-upgrade`，並依是否改檔搭配 implementation/diagnostics |
 | Shared `flex-app` chart API/default/KEDA profile/app-of-apps contract 維護或 chart release guidance | `flex-app-chart-maintenance`，並依是否改檔搭配 implementation/audit |
+| GCP Cloud Monitoring dashboard、dashboard JSON/Terraform、metric query/filter、metrics scope 或 dashboard cost | `gcp-monitoring-dashboard` |
 | Read-only 檢查、排錯、驗證或解釋現況 | `gitops-diagnostics-workflow` |
 | Static desired-state 或 MR readiness audit | `gitops-repo-audit` |
 | 跨 repo service delivery topology、frontend/BFF/backend 依賴圖、hosting vs Kubernetes 部署分流、CI/CD handoff、或服務抽離/monorepo split 影響評估 | `service-delivery-topology` |
 | 使用者明確要求 parallel/subagent work，或 selected skill 要求 independent validation | `orchestrator` |
 | `tf-services` Terraform 學習、read-only inspection、plan review 或已批准的小維護 | `tf-services-terraform-maintenance` |
 | 跨環境 runtime dependency 維運或 desired-state dependency inventory：Pod/Deployment/HPA/Event、Lease/worker、ServiceAccount/IAM/WI、Secret Manager、database、Pub/Sub/queue filter/deadletter、Redis/Valkey/cache、bucket/object storage | `runtime-dependency-ops` |
-| 使用者明確要求參考 skill-writing 原則來撰寫、編修或檢查 skill | `writing-great-skills` |
-
-| 溝通意圖 | Skill |
-| --- | --- |
-| 使用者明確要求 caveman mode、最小 token 用量或 `/caveman` 的持續超精簡回覆模式 | `caveman` |
 
 Broad GitOps request 要先判斷是 implementation、diagnostics 還是 audit；不要再選
 `gitops-router`。
@@ -168,11 +205,28 @@ missing field、error，或使用者要求 readiness proof，不要自動展開 
 manifest、`describe`、logs、diff 或 trace。若使用者提供 diagnostic packet，先只分析
 該 packet，並明確指出缺少哪個 fact 後再查 repo 或 live state。
 
-### `caveman`
+### `devops-pi-agent-maintenance`
 
-只在使用者明確要求 caveman mode、最小 token 用量或 `/caveman` 時啟用。單次要求
-`brief` 或 `concise` 不會切換持續溝通模式。這是溝通風格 skill，不是 DevOps 工作
-流程；技術名詞、錯誤訊息與 code block 必須保持精準。
+只在維護此 meta repo 的 agent behavior 時使用。它先決定行為應由 `AGENTS.md`、skill、
+extension、config、README 或 regression test 哪一層擁有，再要求 invocation 正反例、
+hook allow/failure/reset tests、安裝接線與文件同步，避免同一規則出現多個 source of
+truth。固定檢查：
+
+```bash
+python3 .agents/skills/devops-pi-agent-maintenance/scripts/validate_repo_contract.py
+```
+
+這個 helper 證明 metadata、fixture coverage、extension registration、README inventory、
+JSON 與 extension unit tests；trigger boundary 有實質變更時，使用實際 Pi model trial：
+
+```bash
+python3 .agents/skills/devops-pi-agent-maintenance/scripts/run_invocation_benchmark.py \
+  --provider <provider> --model <model> --thinking low
+```
+
+Benchmark 使用 `--no-session`、停用 extensions、只允許 `read`，並以模型是否實際讀取
+目標 `SKILL.md` 判定；raw JSONL 與 summary 寫入 git-ignored `tmp/`。這會產生 provider
+用量與費用，不屬於日常 unit test。
 
 ### `gitops-implementation-workflow`
 

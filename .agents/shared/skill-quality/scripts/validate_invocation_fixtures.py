@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import re
 import sys
 from collections import defaultdict
 from pathlib import Path
@@ -72,8 +73,30 @@ def main() -> None:
         seen_prompts.add(prompt)
         coverage[skill].add(expected)
 
-    for skill, outcomes in sorted(coverage.items()):
-        if outcomes != EXPECTED_VALUES:
+    model_invoked_skills: set[str] = set()
+    for skill_file in sorted(skills_root.glob("*/SKILL.md")):
+        text = skill_file.read_text(encoding="utf-8")
+        frontmatter = re.match(r"\A---\n(.*?)\n---(?:\n|\Z)", text, flags=re.DOTALL)
+        if not frontmatter:
+            fail(f"skill has invalid frontmatter: {skill_file}")
+        disabled = re.search(
+            r"^disable-model-invocation:\s*true\s*$",
+            frontmatter.group(1),
+            flags=re.MULTILINE | re.IGNORECASE,
+        )
+        if not disabled:
+            model_invoked_skills.add(skill_file.parent.name)
+
+    unexpected = set(coverage) - model_invoked_skills
+    if unexpected:
+        fail(f"fixtures reference non-model-invoked skills: {sorted(unexpected)}")
+
+    missing = model_invoked_skills - set(coverage)
+    if missing:
+        fail(f"model-invoked skills lack invocation fixtures: {sorted(missing)}")
+
+    for skill in sorted(model_invoked_skills):
+        if coverage[skill] != EXPECTED_VALUES:
             fail(f"skill {skill} must have both invoke and skip cases")
 
     print(

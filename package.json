@@ -1,10 +1,17 @@
 {
   "name": "sam-personal-workflow",
   "private": true,
+  "type": "module",
+  "scripts": {
+    "test:extensions": "node --import ./extensions/subagents/test-loader.mjs --test extensions/bash-guard/test.mjs extensions/lean-context/test.mjs extensions/subagents/test.mjs",
+    "test:contract": "python3 .agents/skills/devops-pi-agent-maintenance/scripts/validate_repo_contract.py",
+    "benchmark:invocation": "python3 .agents/skills/devops-pi-agent-maintenance/scripts/run_invocation_benchmark.py"
+  },
   "keywords": ["pi-package"],
   "pi": {
     "extensions": [
       "./extensions/bash-guard",
+      "./extensions/lean-context",
       "./extensions/web-fetch",
       "./extensions/web-search",
       "./extensions/subagents"

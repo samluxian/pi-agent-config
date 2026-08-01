@@ -1,6 +1,6 @@
 ---
 name: gitops-diagnostics-workflow
-description: "Diagnose delivery-state mismatches across desired state, Helm render, Argo CD, Kubernetes, GitLab handoff, and GCP prerequisites. Use runtime-dependency-ops for application dependency wiring."
+description: "Diagnose an existing GitOps delivery mismatch across desired state, Helm render, Argo CD, Kubernetes, GitLab handoff, or GCP prerequisites. Use for read-only expected-versus-actual troubleshooting. Do not use for repo edits, static-only audits, MR prose, or application dependency wiring."
 ---
 
 # GitOps Diagnostics Workflow
@@ -85,6 +85,10 @@ resource adjustment, CPU or memory request minimums, or pod anti-affinity, read
 recommending a patch.
 
 ## Output
+
+Lead with the supported conclusion or next narrow check. Keep verified evidence
+separate from interpretation; when explaining an unfamiliar concept, define it
+on first use and use numbered, bounded steps. Do not expand tangential findings.
 
 ```text
 結論:

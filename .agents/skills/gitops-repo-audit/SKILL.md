@@ -1,6 +1,6 @@
 ---
 name: gitops-repo-audit
-description: "Audit static GitOps desired state, discovery, values overlays, chart metadata, CI handoff, and review readiness without live inspection or implementation."
+description: "Audit static GitOps desired state, discovery, values overlays, chart metadata, CI handoff, or review readiness. Use for repo-only inventory and consistency checks before editing. Do not use for live troubleshooting, implementation, runtime dependency health, or MR prose."
 ---
 
 # GitOps Repo Audit

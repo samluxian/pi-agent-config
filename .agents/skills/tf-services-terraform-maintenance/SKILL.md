@@ -1,6 +1,6 @@
 ---
 name: tf-services-terraform-maintenance
-description: "Maintain or review tf-services Terraform for GCP IAM, Workload Identity, firewalls, VMs, Secret Manager resources, and backend/state with beginner-safe plan guidance."
+description: "Inspect, explain, plan, review, or maintain Terraform only in a user-identified `tf-services` repository, including GCP IAM, Workload Identity, firewalls, VMs, Secret Manager, and state. Use when that repo and target service/environment are in scope. Do not use for generic Terraform elsewhere or runtime GCP diagnosis."
 ---
 
 # tf-services Terraform Maintenance
@@ -57,6 +57,12 @@ For a compact baseline, use:
    agent action.
 
 ## Output
+
+For learning questions, answer or recommend one action first, then explain with
+short headings. Define each unfamiliar Terraform term on first use and connect
+it to the exact resource, evidence, and risk in scope. Number user-operated
+steps, keep one action per step, and leave one immediate next step before any
+mutation boundary.
 
 ```text
 結論:

@@ -40,16 +40,30 @@ Do not make risky assumptions about deployment, CI/CD, IAM, or runtime behavior.
 
 ## Communication Rules
 
-- Be concise by default. Answer the user's actual question first; do not expand
-  into long background unless the user asks for teaching, runbooks, or deeper
-  analysis.
+- Lead with the answer, recommended action, or completed result. Remove
+  greetings, throat-clearing, repetition, vague claims, empty transitions,
+  formulaic recaps, and closing pleasantries. Every retained sentence must add
+  meaning, evidence, instruction, risk, or a necessary transition.
+- Be concise by default, but do not simplify away technical identifiers,
+  commands, uncertainty, safety warnings, or details the user needs to learn or
+  act correctly. Task correctness and safety override brevity.
+- When the user is learning an unfamiliar topic or the response explains an
+  analysis, use short headings and put verified facts, interpretation, and the
+  recommendation in a clear order. Define unfamiliar terms on first use.
+- Number work with more than one action. Keep each step bounded, cap an action
+  list at five items before splitting it into `Do now` and `Later`, and do not
+  bury required actions in prose.
+- For work spanning turns, state the current step and visible completed result.
+  If work remains, end with one concrete next action rather than several
+  unranked options. Suppress tangents until the current question is resolved.
+- State errors matter-of-factly as evidence or symptom, likely cause, and next
+  check or fix. Keep real uncertainty; do not use hedging that adds no meaning.
 - When the user has doubts about Git, Kubernetes, Argo CD, GitLab, GCP, or other
-  DevOps operations, give one recommended action and the reason. Keep it short:
-  what to do, why it is safer, and what risk it avoids.
+  DevOps operations, give one recommended action and the reason: what to do,
+  why it is safer, and what risk it avoids.
 - For risky or ambiguous operations, prefer a user-operated command over agent
-  mutation, and state the expected effect before the command.
-- Do not over-explain familiar workflow details. If the next safe step is clear,
-  provide the command or MR text directly.
+  mutation, and state the expected effect before the command. Give concrete
+  time ranges only when useful and supported by named assumptions.
 
 ## Operating Boundary
 
@@ -176,21 +190,18 @@ Pick the narrowest applicable skill and load deeper references only when needed.
 
 | Work intent | Skill |
 | --- | --- |
+| Change this `devops-pi-agent` repo's skills, Pi extensions, AGENTS/README agent contract, settings baseline, or maintenance regressions | `devops-pi-agent-maintenance` plus `gitops-implementation-workflow` for approved edits |
 | Approved desired-state, Helm values, CI handoff, or workspace AGENTS/README/skill/docs edit | `gitops-implementation-workflow` |
 | MR descriptions, MR summaries, merge request copy, branch-ready notes, or one/two-sided MR handoff text from repo evidence | `gitops-mr-summary` |
 | Existing `k8s-deploy` service wrapper upgrade from one `flex-app` chart version to another, including current-vs-target chart behavior, live-vs-render selector compatibility, and app-of-apps globals | `flex-app-version-upgrade` plus implementation/diagnostics skill as appropriate |
 | Shared `flex-app` chart API/default/KEDA profile/app-of-apps contract maintenance or chart release guidance | `flex-app-chart-maintenance` plus implementation/audit skill as appropriate |
+| GCP Cloud Monitoring dashboard design, dashboard JSON/Terraform, metric query/filter, metrics scope, or dashboard cost | `gcp-monitoring-dashboard` |
 | Read-only check, review, troubleshooting, verification, live health, Workload Identity/GCP prerequisite check, or CI handoff diagnosis | `gitops-diagnostics-workflow` |
 | Static desired-state inventory, bootstrap discovery, values consistency, chart metadata, or MR readiness audit without editing | `gitops-repo-audit` |
 | Cross-repo service delivery topology, frontend/BFF/backend dependency mapping, hosting vs Kubernetes deployment split, CI/CD handoff, or extraction/monorepo split impact analysis | `service-delivery-topology` |
 | Bounded subagent delegation, context hygiene, or evidence-to-implementation handoff | `orchestrator` |
 | Beginner-safe Terraform learning, inspection, plan review, or approved small maintenance in a user-identified `tf-services` repository | `tf-services-terraform-maintenance` |
 | Runtime dependency operations across Kubernetes services and environments: Pod/Deployment/HPA/Event, Lease/worker, ServiceAccount/IAM/WI, Secret Manager references, database, Pub/Sub or queue filter/deadletter, Redis/Valkey/cache, bucket/object storage, or desired-state dependency inventory | `runtime-dependency-ops` |
-
-| Communication intent | Skill |
-| --- | --- |
-| Ultra-compressed communication mode when the user asks for caveman mode, less tokens, be brief, or `/caveman` | `caveman` |
-| Final user-invoked prose cleanup for filler, vague claims, or formulaic AI phrasing | `stop-slop` |
 
 For broad GitOps requests, classify the intent first and then choose
 implementation, diagnostics, or repo-audit. Do not select `gitops-router` for

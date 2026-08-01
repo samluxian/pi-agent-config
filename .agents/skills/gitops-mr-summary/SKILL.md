@@ -1,6 +1,6 @@
 ---
 name: gitops-mr-summary
-description: "Write evidence-based MR descriptions for DevOps and GitOps repo changes. Use for MR summaries or multi-repo handoff text."
+description: "Write evidence-based MR descriptions, MR summaries, branch-ready notes, or multi-repo handoff text for DevOps/GitOps changes. Use only when the requested output is MR copy. Do not use to implement, audit, review, or troubleshoot the change itself."
 ---
 
 # GitOps MR Summary
@@ -45,6 +45,7 @@ description: "Write evidence-based MR descriptions for DevOps and GitOps repo ch
 - Prefer plain wording such as `將 <setting> 移至 <path>，使其不再受 <switch> 控制` over an implementation-heavy chain of generated resources.
 - Use specialized terms only when they are needed to identify the changed field or resource. If a term is not self-explanatory, add its purpose in the same sentence; do not stack terms such as `remoteRef`、`ExternalSecret`、`secretRef` without explaining the resulting behavior.
 - Keep paths and identifiers verbatim, but pair them with the immediate behavior they control. Do not add motivation, benefits, broad background, implementation narrative, or next steps.
+- Remove greetings, filler, vague intensifiers, empty transitions, canned contrasts, recaps, and closing offers. Keep a caveat only when it communicates real evidence limits or risk.
 - Add validation, risk, or other sections only when the user explicitly requests them.
 - For multiple repos, label each repo and apply the same one-to-three-bullet limit per repo.
 - Never claim live-system changes without evidence.

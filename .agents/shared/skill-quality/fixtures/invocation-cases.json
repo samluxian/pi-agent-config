@@ -1,31 +1,115 @@
 [
   {
-    "id": "caveman-explicit-mode",
-    "skill": "caveman",
+    "id": "devops-agent-maintenance-extension",
+    "skill": "devops-pi-agent-maintenance",
     "expected": "invoke",
-    "prompt": "Use caveman mode for the rest of this conversation.",
-    "reason": "Explicit mode request."
+    "prompt": "In devops-pi-agent, add a Pi extension that truncates large tool results and update its maintenance contract.",
+    "reason": "The target is this repository's agent harness and extension contract."
   },
   {
-    "id": "caveman-minimize-tokens",
-    "skill": "caveman",
+    "id": "devops-agent-maintenance-target-repo",
+    "skill": "devops-pi-agent-maintenance",
+    "expected": "skip",
+    "prompt": "Update the payment service Helm values in k8s-deploy after I approve the patch.",
+    "reason": "A product desired-state edit does not maintain the devops-pi-agent contract."
+  },
+  {
+    "id": "flex-chart-shared-schema",
+    "skill": "flex-app-chart-maintenance",
     "expected": "invoke",
-    "prompt": "Use fewer tokens and remove all filler from every response.",
-    "reason": "Explicit persistent token-minimization request."
+    "prompt": "Add a new public value to the shared flex-app schema and render it in the Deployment template.",
+    "reason": "The requested change owns shared chart API behavior."
   },
   {
-    "id": "caveman-one-short-answer",
-    "skill": "caveman",
+    "id": "flex-chart-service-values",
+    "skill": "flex-app-chart-maintenance",
     "expected": "skip",
-    "prompt": "Briefly explain what this error means.",
-    "reason": "A one-answer brevity request is not a persistent communication mode."
+    "prompt": "Change replicas only for order-api in the qa values file without touching the shared chart.",
+    "reason": "A service-owned values change is outside shared chart maintenance."
   },
   {
-    "id": "caveman-concise-mr",
-    "skill": "caveman",
+    "id": "flex-upgrade-version-compare",
+    "skill": "flex-app-version-upgrade",
+    "expected": "invoke",
+    "prompt": "Assess upgrading this k8s-deploy wrapper from flex-app 1.8.0 to 1.10.0 and compare rendered selectors.",
+    "reason": "The task compares current and target flex-app wrapper behavior."
+  },
+  {
+    "id": "flex-upgrade-shared-authoring",
+    "skill": "flex-app-version-upgrade",
     "expected": "skip",
-    "prompt": "Write a concise three-bullet MR description.",
-    "reason": "The output contract is concise without requesting caveman mode."
+    "prompt": "Design a new KEDA profile directly in the shared flex-app chart defaults and schema.",
+    "reason": "Shared chart authoring is not an existing wrapper version assessment."
+  },
+  {
+    "id": "gcp-dashboard-query",
+    "skill": "gcp-monitoring-dashboard",
+    "expected": "invoke",
+    "prompt": "Fix this Cloud Monitoring dashboard widget filter and verify which project its metric scope reads.",
+    "reason": "The requested artifact is a GCP Cloud Monitoring dashboard."
+  },
+  {
+    "id": "gcp-dashboard-service-health",
+    "skill": "gcp-monitoring-dashboard",
+    "expected": "skip",
+    "prompt": "Diagnose why a GKE Pod cannot publish to Pub/Sub through Workload Identity.",
+    "reason": "Runtime identity health is not a dashboard artifact or query problem."
+  },
+  {
+    "id": "gitops-diagnostics-existing-mismatch",
+    "skill": "gitops-diagnostics-workflow",
+    "expected": "invoke",
+    "prompt": "Read-only diagnose why the existing Argo CD application is OutOfSync with its Helm render.",
+    "reason": "The task is expected-versus-actual GitOps troubleshooting."
+  },
+  {
+    "id": "gitops-diagnostics-approved-edit",
+    "skill": "gitops-diagnostics-workflow",
+    "expected": "skip",
+    "prompt": "Apply the approved change to the dev values file and validate the resulting Helm render.",
+    "reason": "An approved repo-file implementation is not a read-only diagnosis."
+  },
+  {
+    "id": "gitops-implementation-approved-values",
+    "skill": "gitops-implementation-workflow",
+    "expected": "invoke",
+    "prompt": "I approve the exact proposed patch; update the uat Helm values and run the narrow render validation.",
+    "reason": "Explicit approval covers a repo-file desired-state implementation."
+  },
+  {
+    "id": "gitops-implementation-read-only",
+    "skill": "gitops-implementation-workflow",
+    "expected": "skip",
+    "prompt": "Do not edit anything; explain whether the current desired state matches the live Deployment.",
+    "reason": "A read-only comparison does not enter implementation."
+  },
+  {
+    "id": "gitops-mr-summary-copy",
+    "skill": "gitops-mr-summary",
+    "expected": "invoke",
+    "prompt": "Write a concise Traditional Chinese MR description from this branch diff and validation evidence.",
+    "reason": "The requested output is MR copy."
+  },
+  {
+    "id": "gitops-mr-summary-review",
+    "skill": "gitops-mr-summary",
+    "expected": "skip",
+    "prompt": "Review this branch for Helm rendering defects and tell me whether it is safe to merge.",
+    "reason": "Technical review and readiness analysis are not MR prose writing."
+  },
+  {
+    "id": "gitops-audit-static-tree",
+    "skill": "gitops-repo-audit",
+    "expected": "invoke",
+    "prompt": "Audit this GitOps repository's static app discovery, values overlays, and chart metadata without live access.",
+    "reason": "The task is a repo-only desired-state inventory and consistency audit."
+  },
+  {
+    "id": "gitops-audit-live-incident",
+    "skill": "gitops-repo-audit",
+    "expected": "skip",
+    "prompt": "Inspect the live namespace events and explain why the Deployment rollout is stuck.",
+    "reason": "A live incident is outside static repository audit scope."
   },
   {
     "id": "orchestrator-explicit-parallel",
@@ -54,5 +138,47 @@
     "expected": "skip",
     "prompt": "Summarize the implementation handoff clearly.",
     "reason": "A handoff alone is not a reason to delegate."
+  },
+  {
+    "id": "runtime-dependency-pubsub",
+    "skill": "runtime-dependency-ops",
+    "expected": "invoke",
+    "prompt": "Trace why this Kubernetes worker can start but cannot consume its Pub/Sub subscription.",
+    "reason": "The failure crosses a workload and its runtime queue dependency."
+  },
+  {
+    "id": "runtime-dependency-gitops-diff",
+    "skill": "runtime-dependency-ops",
+    "expected": "skip",
+    "prompt": "Explain why Argo CD renders a different image tag than the k8s-deploy values file.",
+    "reason": "A generic delivery-state mismatch is not runtime dependency wiring."
+  },
+  {
+    "id": "service-topology-cross-repo",
+    "skill": "service-delivery-topology",
+    "expected": "invoke",
+    "prompt": "Map how the frontend, BFF, backend repositories, CI artifact handoff, and API routes connect before a repo split.",
+    "reason": "The requested dependency and extraction analysis spans repository boundaries."
+  },
+  {
+    "id": "service-topology-single-live-pod",
+    "skill": "service-delivery-topology",
+    "expected": "skip",
+    "prompt": "Check why one live backend Pod is failing its readiness probe in qa.",
+    "reason": "A single live workload failure does not require cross-repo topology mapping."
+  },
+  {
+    "id": "tf-services-plan-explain",
+    "skill": "tf-services-terraform-maintenance",
+    "expected": "invoke",
+    "prompt": "In the identified tf-services repo, explain the plan for billing-api dev and its IAM replacement risk.",
+    "reason": "The target repository, service, environment, and Terraform plan are explicit."
+  },
+  {
+    "id": "tf-services-generic-module",
+    "skill": "tf-services-terraform-maintenance",
+    "expected": "skip",
+    "prompt": "Write a generic AWS VPC Terraform module in this application repository.",
+    "reason": "Generic Terraform outside the identified tf-services GCP repository is out of scope."
   }
 ]

@@ -1,6 +1,6 @@
 ---
 name: gcp-monitoring-dashboard
-description: "Design, diagnose, or maintain GCP Cloud Monitoring dashboards, dashboard JSON/Terraform, metric queries, filters, metrics scopes, and cost/component requirements."
+description: "Design, diagnose, or maintain GCP Cloud Monitoring dashboards, dashboard JSON/Terraform, metric queries, filters, metrics scopes, and dashboard cost. Use when the requested artifact or failure is a Cloud Monitoring dashboard. Do not use for generic GCP IAM, service health, or observability architecture."
 ---
 
 # GCP Monitoring Dashboard

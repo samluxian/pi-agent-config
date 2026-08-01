@@ -1,6 +1,6 @@
 ---
 name: service-delivery-topology
-description: "Map cross-repo service delivery topology and extraction impact across source dependencies, API contracts, CI handoff, hosting or GitOps, routes, configuration, and runtime state."
+description: "Map cross-repo service delivery topology and service extraction/split impact across source dependencies, APIs, CI handoff, hosting or GitOps, routes, configuration, and state. Use when the question spans repository boundaries. Do not use for one-repo troubleshooting, live health checks, or implementation."
 ---
 
 # Service Delivery Topology

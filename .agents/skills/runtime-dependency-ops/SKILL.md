@@ -1,6 +1,6 @@
 ---
 name: runtime-dependency-ops
-description: "Trace runtime dependency wiring for Kubernetes services across identity, secret references, databases, queues, caches, storage, workers, and desired state. Use gitops-diagnostics-workflow for generic delivery-state mismatches."
+description: "Trace an existing Kubernetes service failure or runtime dependency path across Pods, identity, secret references, databases, queues, caches, storage, and workers. Use for application runtime wiring and health evidence. Do not use for generic GitOps delivery mismatches, repo topology, or implementation."
 ---
 
 # Runtime Dependency Ops

@@ -1,6 +1,6 @@
 ---
 name: flex-app-version-upgrade
-description: "Assess an existing `k8s-deploy` wrapper upgrade between `flex-app` versions: compare current and target chart behavior, effective renders, material differences, and migration risk before implementation."
+description: "Assess an existing `k8s-deploy` wrapper upgrade between two `flex-app` versions. Use when current and target chart versions must be compared for render differences and migration risk. Do not use for shared chart authoring, generic Helm review, or unrelated dependency upgrades."
 ---
 
 # Flex App Version Upgrade

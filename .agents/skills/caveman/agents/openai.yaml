@@ -1,4 +1,0 @@
-interface:
-  display_name: "Caveman"
-  short_description: "Use ultra-compressed technical replies when requested"
-  default_prompt: "Use $caveman when the user explicitly invokes /caveman, says caveman mode, or asks to minimize token usage."

@@ -1,6 +1,6 @@
 ---
 name: gitops-implementation-workflow
-description: "Implement approved GitOps desired-state, Helm values, CI handoff, or workspace guidance changes; use gitops-mr-summary for MR copy."
+description: "Implement an explicitly approved repo-file change to GitOps desired state, Helm values, CI handoff, or workspace guidance. Use only after approval covers the exact patch. Do not use for read-only diagnosis, static audits, architecture mapping, or MR description writing."
 ---
 
 # GitOps Implementation Workflow
@@ -74,6 +74,10 @@ charts, service values, or HPA handoff paths. Treat KEDA as opt-in; do not assum
 it should be installed or enabled for unrelated autoscaling work.
 
 ## Output
+
+Lead with the completed behavior, not the editing narrative. Make successful
+validation visible, keep each remaining action bounded, and name only one
+immediate next step.
 
 ```text
 Summary:

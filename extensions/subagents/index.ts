@@ -1,8 +1,9 @@
 /**
  * Minimal subagents extension.
  *
- * Registers a single `subagent` tool with three agents: scout, researcher, worker.
- * Supports single and parallel execution. Output is verbal only (no file handoff).
+ * Registers a single `subagent` tool with two read-only evidence agents:
+ * scout and researcher. The parent retains planning, decisions, and mutations.
+ * Supports single and bounded parallel execution with verbal output only.
  */
 import { spawn } from "node:child_process";
 import * as fs from "node:fs";
@@ -15,11 +16,14 @@ import { Type } from "typebox";
 
 // ── Types ──────────────────────────────────────────────────────────────
 
+export type ThinkingLevel = "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
+
 export interface AgentConfig {
 	name: string;
 	description: string;
 	tools: string[];
 	model: string;
+	thinking: ThinkingLevel;
 	systemPrompt: string;
 	filePath: string;
 }
@@ -61,22 +65,36 @@ interface Details {
 // ── Config ─────────────────────────────────────────────────────────────
 
 interface ExtensionConfig {
-	maxConcurrency?: number;
+	maxConcurrency: number;
 }
 
 const EXT_DIR = path.dirname(new URL(import.meta.url).pathname);
 const AGENTS_DIR = path.join(EXT_DIR, "agents");
-const TOOLS_DIR = path.join(EXT_DIR, "tools");
 const CONFIG_PATH = path.join(EXT_DIR, "config.json");
-const DEFAULT_MAX_CONCURRENCY = 4;
+export const DEFAULT_MAX_CONCURRENCY = 4;
+export const MAX_SUBAGENT_TASKS = 4;
+export const DEFAULT_SUBAGENT_TIMEOUT_MS = 5 * 60 * 1000;
+const DEFAULT_TERMINATE_GRACE_MS = 3000;
+const ALLOWED_AGENT_NAMES = new Set(["scout", "researcher"]);
+const THINKING_LEVELS = new Set<ThinkingLevel>(["off", "minimal", "low", "medium", "high", "xhigh", "max"]);
+
+export function normalizeConfig(value: unknown): ExtensionConfig {
+	const raw = value && typeof value === "object"
+		? (value as { maxConcurrency?: unknown }).maxConcurrency
+		: undefined;
+	const parsed = typeof raw === "number" && Number.isFinite(raw)
+		? Math.trunc(raw)
+		: DEFAULT_MAX_CONCURRENCY;
+	return { maxConcurrency: Math.max(1, Math.min(MAX_SUBAGENT_TASKS, parsed)) };
+}
 
 function loadConfig(): ExtensionConfig {
 	try {
 		if (fs.existsSync(CONFIG_PATH)) {
-			return JSON.parse(fs.readFileSync(CONFIG_PATH, "utf-8")) as ExtensionConfig;
+			return normalizeConfig(JSON.parse(fs.readFileSync(CONFIG_PATH, "utf-8")));
 		}
 	} catch {}
-	return {};
+	return normalizeConfig(undefined);
 }
 
 // Built-in tools that pi provides natively (no extension needed)
@@ -91,46 +109,42 @@ const CUSTOM_TOOL_EXTENSIONS: Record<string, string> = {
 
 // ── Agent Discovery & Registration ────────────────────────────────────
 
-let agents: AgentConfig[] = [];
-
-export function registerAgent(config: AgentConfig): void {
-	if (agents.find((a) => a.name === config.name)) {
-		throw new Error(`Agent already registered: ${config.name}`);
-	}
-	agents.push(config);
-}
-
-export function unregisterAgent(name: string): void {
-	agents = agents.filter((a) => a.name !== name);
-}
-
-// Expose registration functions globally so other extensions loaded via jiti
-// (which creates separate module instances) can access the shared agents array.
-(globalThis as any).__pi_subagents = { registerAgent, unregisterAgent };
-
-function loadAgents(): AgentConfig[] {
-	const agents: AgentConfig[] = [];
-	if (!fs.existsSync(AGENTS_DIR)) return agents;
-	for (const entry of fs.readdirSync(AGENTS_DIR)) {
+export function loadAgents(agentDir = AGENTS_DIR): AgentConfig[] {
+	const loaded: AgentConfig[] = [];
+	if (!fs.existsSync(agentDir)) return loaded;
+	for (const entry of fs.readdirSync(agentDir)) {
 		if (!entry.endsWith(".md")) continue;
-		const filePath = path.join(AGENTS_DIR, entry);
+		const filePath = path.join(agentDir, entry);
 		const content = fs.readFileSync(filePath, "utf-8");
 		const { frontmatter, body } = parseFrontmatter<Record<string, string>>(content);
-		if (!frontmatter.name) continue;
+		const name = frontmatter.name;
+		const thinking = frontmatter.thinking as ThinkingLevel | undefined;
 		const tools = (frontmatter.tools || "")
 			.split(",")
 			.map((t) => t.trim())
 			.filter(Boolean);
-		agents.push({
-			name: frontmatter.name,
-			description: frontmatter.description || "",
+
+		if (!name || !frontmatter.description || !frontmatter.model || !thinking || !THINKING_LEVELS.has(thinking)) {
+			throw new Error(`Invalid subagent profile: ${filePath}. name, description, model, and thinking are required.`);
+		}
+		if (!ALLOWED_AGENT_NAMES.has(name)) {
+			throw new Error(`Unsupported subagent profile: ${name}. Allowed agents: scout, researcher.`);
+		}
+		if (loaded.some((agent) => agent.name === name)) {
+			throw new Error(`Duplicate subagent profile: ${name}`);
+		}
+
+		loaded.push({
+			name,
+			description: frontmatter.description,
 			tools,
-			model: frontmatter.model || "anthropic/claude-sonnet-4-6",
+			model: frontmatter.model,
+			thinking,
 			systemPrompt: body,
 			filePath,
 		});
 	}
-	return agents;
+	return loaded;
 }
 
 // ── Pi Binary Resolution ──────────────────────────────────────────────
@@ -216,7 +230,7 @@ function truncLine(text: string, maxWidth: number): string {
 
 // ── Subagent Execution ────────────────────────────────────────────────
 
-async function buildPiArgs(
+export async function buildPiArgs(
 	agent: AgentConfig,
 	task: string,
 	cwd: string,
@@ -259,6 +273,7 @@ async function buildPiArgs(
 	}
 
 	args.push("--model", agent.model);
+	args.push("--thinking", agent.thinking);
 	args.push("--append-system-prompt", promptPath);
 
 	// Handle long tasks by writing to file
@@ -298,12 +313,17 @@ function extractToolArgsPreview(args: Record<string, unknown>): string {
 	return s.length > 80 ? s.slice(0, 80) + "…" : s;
 }
 
-async function runSubagent(
+export async function runSubagent(
 	agent: AgentConfig,
 	task: string,
 	cwd: string,
 	signal: AbortSignal | undefined,
 	onUpdate?: (progress: AgentProgress) => void,
+	options: {
+		timeoutMs?: number;
+		terminateGraceMs?: number;
+		spawnProcess?: typeof spawn;
+	} = {},
 ): Promise<AgentResult> {
 	const { args, tempDir } = await buildPiArgs(agent, task, cwd);
 	const command = args[0];
@@ -336,14 +356,49 @@ async function runSubagent(
 		onUpdate?.(progress);
 	}, 150);
 
-	const exitCode = await new Promise<number>((resolve) => {
-		const proc = spawn(command, spawnArgs, {
-			cwd,
-			stdio: ["ignore", "pipe", "pipe"],
-		});
+	const timeoutMs = Math.max(1, options.timeoutMs ?? DEFAULT_SUBAGENT_TIMEOUT_MS);
+	const terminateGraceMs = Math.max(0, options.terminateGraceMs ?? DEFAULT_TERMINATE_GRACE_MS);
+	const spawnProcess = options.spawnProcess ?? spawn;
+	let exitCode = 1;
 
-		let buf = "";
-		let stderrBuf = "";
+	try {
+		exitCode = await new Promise<number>((resolve) => {
+			const proc = spawnProcess(command, spawnArgs, {
+				cwd,
+				stdio: ["ignore", "pipe", "pipe"],
+			});
+
+			let buf = "";
+			let stderrBuf = "";
+			let closed = false;
+			let terminating = false;
+			let timeoutTimer: ReturnType<typeof setTimeout> | undefined;
+			let terminateTimer: ReturnType<typeof setTimeout> | undefined;
+			let abortHandler: (() => void) | undefined;
+
+			const finish = (code: number) => {
+				if (closed) return;
+				closed = true;
+				if (timeoutTimer) clearTimeout(timeoutTimer);
+				if (terminateTimer) clearTimeout(terminateTimer);
+				if (signal && abortHandler) signal.removeEventListener("abort", abortHandler);
+				resolve(code);
+			};
+
+			const terminate = (reason: string) => {
+				if (closed || terminating) return;
+				terminating = true;
+				if (!progress.error) progress.error = reason;
+				try {
+					proc.kill("SIGTERM");
+				} catch {}
+				terminateTimer = setTimeout(() => {
+					if (closed) return;
+					try {
+						proc.kill("SIGKILL");
+					} catch {}
+				}, terminateGraceMs);
+			};
 
 		const processLine = (line: string) => {
 			if (!line.trim()) return;
@@ -432,30 +487,32 @@ async function runSubagent(
 			stderrBuf += d.toString();
 		});
 
-		proc.on("close", (code) => {
-			if (buf.trim()) processLine(buf);
-			if (code !== 0 && stderrBuf.trim() && !progress.error) {
-				progress.error = stderrBuf.trim();
-			}
-			resolve(code ?? 1);
+			proc.on("close", (code) => {
+				if (buf.trim()) processLine(buf);
+				if (code !== 0 && stderrBuf.trim() && !progress.error) {
+					progress.error = stderrBuf.trim();
+				}
+				finish(code ?? 1);
+			});
+
+			proc.on("error", (error) => {
+				if (!progress.error) progress.error = `Failed to start subagent: ${error.message}`;
+				finish(1);
+			});
+
+			timeoutTimer = setTimeout(
+				() => terminate(`Subagent timed out after ${formatDuration(timeoutMs)}`),
+				timeoutMs,
+			);
+			abortHandler = () => terminate("Subagent aborted by parent request");
+			if (signal?.aborted) abortHandler();
+			else if (signal) signal.addEventListener("abort", abortHandler, { once: true });
 		});
-
-		proc.on("error", () => resolve(1));
-
-		if (signal) {
-			const kill = () => {
-				proc.kill("SIGTERM");
-				setTimeout(() => !proc.killed && proc.kill("SIGKILL"), 3000);
-			};
-			if (signal.aborted) kill();
-			else signal.addEventListener("abort", kill, { once: true });
-		}
-	});
-
-	// Cleanup temp dir
-	try {
-		fs.rmSync(tempDir, { recursive: true, force: true });
-	} catch {}
+	} finally {
+		try {
+			fs.rmSync(tempDir, { recursive: true, force: true });
+		} catch {}
+	}
 
 	result.exitCode = exitCode;
 	progress.status = exitCode === 0 && !progress.error ? "completed" : "failed";
@@ -506,15 +563,15 @@ async function mapConcurrent<T, R>(
 	const results: R[] = new Array(items.length);
 	let nextIndex = 0;
 
-	async function worker() {
+	async function runner() {
 		while (nextIndex < items.length) {
 			const i = nextIndex++;
 			results[i] = await fn(items[i], i);
 		}
 	}
 
-	const workers = Array.from({ length: Math.min(concurrency, items.length) }, () => worker());
-	await Promise.all(workers);
+	const runners = Array.from({ length: Math.min(concurrency, items.length) }, () => runner());
+	await Promise.all(runners);
 	return results;
 }
 
@@ -637,34 +694,38 @@ function renderAgentProgress(
 
 export default function (pi: ExtensionAPI) {
 	const config = loadConfig();
-	const maxConcurrency = config.maxConcurrency ?? DEFAULT_MAX_CONCURRENCY;
-	agents = loadAgents();
+	const maxConcurrency = config.maxConcurrency;
+	const agents = loadAgents();
 
 	pi.registerTool({
 		name: "subagent",
 		label: "Subagent",
 		description:
-			"Run a bounded read-only subagent. Subagents have no parent-session context; include paths, constraints, and required evidence in the task.",
-		promptSnippet: "Run subagents for delegated tasks",
+			"Run scout or researcher for a bounded read-only evidence task. The parent retains planning and decisions; include paths, constraints, and required output because children receive no parent-session context.",
+		promptSnippet: "Run bounded read-only scout or researcher evidence tasks",
 		promptGuidelines: [
-			"Parallel tool calls are your primary parallelism mechanism — put multiple independent read/fetch/search calls in one function_calls block. Don't use subagents to parallelize simple I/O.",
-			"Use subagent to delegate *reasoning and decisions*: codebase exploration (scout), web research (researcher), or isolated code changes (worker)",
-			"For multiple independent subagent tasks, use parallel mode with tasks[] array",
-			"Subagents have NO context from the current conversation — include ALL necessary context in the task description",
+			"Use direct parallel read/fetch/search tool calls for simple I/O instead of subagent.",
+			"Use subagent only when the user explicitly requests delegation or the selected workflow requires independent validation.",
+			"The parent must retain planning, decisions, approval context, evidence reconciliation, and implementation; delegate only bounded evidence collection.",
+			"Subagent agents are read-only: scout explores local repositories and researcher checks external documentation. Never request file edits or system mutations.",
+			`Use at most ${MAX_SUBAGENT_TASKS} independent tasks and include all paths, constraints, and required output because subagents receive no parent-session context.`,
 		],
 		parameters: Type.Object({
 			agent: Type.Optional(
-				Type.String({ description: "Name of the agent to invoke (SINGLE mode)" }),
+				Type.String({ description: "Name of the agent to invoke: scout or researcher (SINGLE mode)", minLength: 1 }),
 			),
-			task: Type.Optional(Type.String({ description: "Task description (SINGLE mode)" })),
+			task: Type.Optional(Type.String({ description: "Bounded evidence task (SINGLE mode)", minLength: 1 })),
 			tasks: Type.Optional(
 				Type.Array(
 					Type.Object({
-						agent: Type.String({ description: "Name of the agent to invoke" }),
-						task: Type.String({ description: "Task description" }),
+						agent: Type.String({ description: "Agent name: scout or researcher", minLength: 1 }),
+						task: Type.String({ description: "Independent bounded evidence task", minLength: 1 }),
 						cwd: Type.Optional(Type.String({ description: "Working directory for the agent process" })),
 					}),
-					{ description: "PARALLEL mode: array of {agent, task} objects" },
+					{
+						description: `PARALLEL mode: at most ${MAX_SUBAGENT_TASKS} independent tasks`,
+						maxItems: MAX_SUBAGENT_TASKS,
+					},
 				),
 			),
 			cwd: Type.Optional(Type.String({ description: "Working directory for the agent process (single mode)" })),
@@ -672,11 +733,19 @@ export default function (pi: ExtensionAPI) {
 
 		async execute(toolCallId, params, signal, onUpdate, ctx) {
 			const cwd = ctx.cwd;
+			const hasParallel = (params.tasks?.length ?? 0) > 0;
+			const hasSingle = Boolean(params.agent && params.task);
 
-			// Validate mode
-			if (params.tasks && params.tasks.length > 0) {
+			if (Number(hasParallel) + Number(hasSingle) !== 1) {
+				throw new Error("Provide exactly one mode: (agent + task) for single mode, or tasks[] for parallel mode.");
+			}
+
+			if (hasParallel) {
 				// ── Parallel mode ──
-				const taskList = params.tasks;
+				const taskList = params.tasks!;
+				if (taskList.length > MAX_SUBAGENT_TASKS) {
+					throw new Error(`Too many subagent tasks: ${taskList.length}. Maximum is ${MAX_SUBAGENT_TASKS}.`);
+				}
 
 				// Validate all agents
 				const available = agents.map((a) => a.name).join(", ") || "none";
@@ -736,24 +805,26 @@ export default function (pi: ExtensionAPI) {
 					content: [{ type: "text", text: outputParts.join("\n\n---\n\n") }],
 					details: { mode: "parallel" as const, results },
 				};
-			} else if (params.agent && params.task) {
+			} else if (hasSingle) {
 				// ── Single mode ──
-				const agent = agents.find((a) => a.name === params.agent);
+				const agentName = params.agent!;
+				const task = params.task!;
+				const agent = agents.find((candidate) => candidate.name === agentName);
 				if (!agent) {
-					const available = agents.map((a) => a.name).join(", ") || "none";
-					throw new Error(`Unknown agent: ${params.agent}. Available agents: ${available}`);
+					const available = agents.map((candidate) => candidate.name).join(", ") || "none";
+					throw new Error(`Unknown agent: ${agentName}. Available agents: ${available}`);
 				}
 
 				const liveResult: AgentResult = {
-					agent: params.agent!,
-					task: params.task!,
+					agent: agentName,
+					task,
 					output: "",
 					exitCode: -1,
 					model: agent.model,
 					usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0, turns: 0 },
-					progress: { agent: params.agent!, status: "running" as const, task: params.task!, recentTools: [], toolCount: 0, tokens: 0, durationMs: 0, lastMessage: "" },
+					progress: { agent: agentName, status: "running" as const, task, recentTools: [], toolCount: 0, tokens: 0, durationMs: 0, lastMessage: "" },
 				};
-				const result = await runSubagent(agent, params.task, params.cwd ?? cwd, signal, (progress) => {
+				const result = await runSubagent(agent, task, params.cwd ?? cwd, signal, (progress) => {
 					liveResult.progress = progress;
 					onUpdate?.({
 						content: [{ type: "text", text: "(running...)" }],
@@ -767,9 +838,9 @@ export default function (pi: ExtensionAPI) {
 					details: { mode: "single" as const, results: [result] },
 					...(isError ? { isError: true } : {}),
 				};
-			} else {
-				throw new Error("Provide either (agent + task) for single mode, or tasks[] for parallel mode.");
 			}
+
+			throw new Error("Invalid subagent mode");
 		},
 
 		// ── Render: tool call header ──
