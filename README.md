@@ -268,16 +268,6 @@ Parent model：規劃、判斷、保留 approval context、整合證據、負責
 conversation，固定使用 `--no-session`、`--no-skills`、`--no-extensions` 與 profile
 允許的 read-only tools。這套設計沒有 editing `worker`。
 
-## Model、thinking 與 session
-
-- Model 和 thinking 由使用者在 session 層級選擇；skills 不會偷偷切換 model。
-- 建議日常工作從 `low` 開始；跨 repo 衝突、陌生 chart/API 或非平凡 incident 才升到
-  `medium`。`high` 留給 medium 無法收斂的高風險或高度模糊問題。
-- 一個 session 維持一個主要目標。換 repo、換 evidence path 或換成無關任務時，開新
-  session 並留下簡短 handoff note。
-- [`config/pi-settings-baseline.json`](config/pi-settings-baseline.json) 是選用範例，
-  initializer 不會自動套用，也不會覆寫 personal/project settings。
-
 ## 更新 workspace-local extensions
 
 Initializer 為了保護 local customization，**不會覆寫已存在的 extension source**。
