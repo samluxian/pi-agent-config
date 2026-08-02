@@ -12,10 +12,11 @@ fix is needed, report the smallest patch and hand back to
 ## Diagnostic Loop
 
 1. Frame the requested conclusion, expected versus actual behavior, affected
-   environment, namespace, service/workload, and incident window or
-   last-known-good baseline. Start from the user's diagnostic packet when one is
-   provided. Complete when these fields are evidence-backed or the single fact
-   blocking a reliable probe is named.
+   environment, namespace, service/workload, incident window or last-known-good
+   baseline, and current failure stage. Start from the user's diagnostic packet
+   when one is provided. Record image tag/digest and source revision only when
+   artifact identity is relevant. Complete when these fields are evidence-backed
+   or the single fact blocking a reliable probe is named.
 2. State one working hypothesis and the result that would reject it. For
    symptom-driven debugging, select one branch from
    `references/troubleshooting-matrix.md` before running tools. Complete when
@@ -75,6 +76,19 @@ GitLab pipeline completion criterion:
 - Complete when the first failing delivery layer and its supporting job evidence
   are identified, or the exact missing trace/auth fact is reported.
 
+## Application / Source Handoff Gate
+
+- If the first pipeline failure is pre-check, build, test, or packaging, stop
+  the GitOps chain and hand off the job, source revision, compact error evidence,
+  and named source, Dockerfile, or CI path. Do not inspect desired or live state
+  to explain a stage that never produced or handed off an artifact.
+- If a container started and Pod/log evidence classifies the failure as
+  application-level, route to `$runtime-dependency-ops`. Source inspection is
+  allowed only after mapping the running image to its deployed revision and
+  satisfying that skill's `references/source-runtime-contract.md` entry gate.
+- Do not infer a source defect from the current default branch, configuration
+  names, a successful render, or Pod phase alone.
+
 Use direct targeted commands only when the wrapper cannot answer the question.
 Report any missing tool, auth, cluster context, or sandbox escalation as a
 validation gap.
@@ -93,6 +107,8 @@ on first use and use numbered, bounded steps. Do not expand tangential findings.
 ```text
 結論:
 Scope / incident window:
+失敗階段:
+Artifact / source revision: (when relevant)
 工作假設:
 Probe:
 判讀: supported | rejected | inconclusive | no coverage

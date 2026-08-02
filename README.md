@@ -226,8 +226,13 @@ logs、diff 或 trace。
 | [`flex-app-version-upgrade`](.agents/skills/flex-app-version-upgrade/) | 比較 service wrapper 升級前後的 chart behavior、selectors、globals 與 migration risk。 |
 | [`flex-app-chart-maintenance`](.agents/skills/flex-app-chart-maintenance/) | 維護 shared `flex-app` chart 的 public values、defaults、schema、templates、KEDA 與 compatibility。 |
 | [`gcp-monitoring-dashboard`](.agents/skills/gcp-monitoring-dashboard/) | 設計或維護 Cloud Monitoring dashboard、metric query/filter、metrics scope 與成本。 |
-| [`runtime-dependency-ops`](.agents/skills/runtime-dependency-ops/) | 追查 workload、identity、secret references、database、queue、cache、storage 與 worker 的 runtime wiring。 |
+| [`runtime-dependency-ops`](.agents/skills/runtime-dependency-ops/) | 追查 workload、application startup、deployed source/runtime contract、identity、secret references、database、queue、cache、storage 與 worker。 |
 | [`tf-services-terraform-maintenance`](.agents/skills/tf-services-terraform-maintenance/) | 在指定的 `tf-services` repo 中解釋 Terraform、檢查 plan，或執行已批准的小改動。 |
+
+Runtime 排錯不會預設掃描 application repo。只有容器已啟動且 evidence
+指向 application-level failure 時，才先把 running image 對應到 deployed
+source revision，再比較 source intent、GitOps desired state、render/live
+configuration 與 runtime observation；直接原因與 source design factor 會分開回報。
 
 ### 跨 repo 與 agent 維護
 

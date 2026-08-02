@@ -201,7 +201,7 @@ Pick the narrowest applicable skill and load deeper references only when needed.
 | Cross-repo service delivery topology, frontend/BFF/backend dependency mapping, hosting vs Kubernetes deployment split, CI/CD handoff, or extraction/monorepo split impact analysis | `service-delivery-topology` |
 | Bounded subagent delegation, context hygiene, or evidence-to-implementation handoff | `orchestrator` |
 | Beginner-safe Terraform learning, inspection, plan review, or approved small maintenance in a user-identified `tf-services` repository | `tf-services-terraform-maintenance` |
-| Runtime dependency operations across Kubernetes services and environments: Pod/Deployment/HPA/Event, Lease/worker, ServiceAccount/IAM/WI, Secret Manager references, database, Pub/Sub or queue filter/deadletter, Redis/Valkey/cache, bucket/object storage, or desired-state dependency inventory | `runtime-dependency-ops` |
+| Runtime dependency operations across Kubernetes services and environments: Pod/Deployment/HPA/Event, application startup or deployed source/runtime contract, Lease/worker, ServiceAccount/IAM/WI, Secret Manager references, database, Pub/Sub or queue filter/deadletter, Redis/Valkey/cache, bucket/object storage, or desired-state dependency inventory | `runtime-dependency-ops` |
 
 For broad GitOps requests, classify the intent first and then choose
 implementation, diagnostics, or repo-audit. Do not select `gitops-router` for
@@ -216,7 +216,10 @@ Argo CD -> Kubernetes live state -> runtime/GCP evidence
 
 Application source code is intent evidence, not deployment truth. When it
 conflicts with GitOps desired state, chart behavior, render output, or live
-state, surface the conflict before editing.
+state, surface the conflict before editing. Inspect source for a live incident
+only after application-level evidence maps the running image to its deployed
+revision; do not substitute the default branch. Report the immediate trigger,
+any contributing source-design factor, and the supported fix surface separately.
 
 ## Token-Efficient Operation
 

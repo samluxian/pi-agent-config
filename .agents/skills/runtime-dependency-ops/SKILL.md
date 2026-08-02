@@ -1,6 +1,6 @@
 ---
 name: runtime-dependency-ops
-description: "Trace an existing Kubernetes service failure or runtime dependency path across Pods, identity, secret references, databases, queues, caches, storage, and workers. Use for application runtime wiring and health evidence. Do not use for generic GitOps delivery mismatches, repo topology, or implementation."
+description: "Trace an existing Kubernetes service failure or runtime dependency path across Pods, application startup/source-runtime contracts, identity, secret references, databases, queues, caches, storage, and workers. Use for application runtime wiring and health evidence. Do not use for generic GitOps delivery mismatches, static source review, repo topology, or implementation."
 ---
 
 # Runtime Dependency Ops
@@ -23,28 +23,37 @@ and desired-state configuration.
   describe/events explain Kubernetes lifecycle failures; logs explain
   application stdout/stderr failures. Do not dump full describe output or broad
   logs before a pod summary identifies the failing path.
+- Treat application source as design and intent evidence, not proof of the
+  deployed artifact or live configuration. Never analyze the default branch as
+  a substitute for the source revision mapped from the running image.
 
 ## Quick Flow
 
 1. Resolve environment, namespace, project/account, and target service. Complete
    only when all four identities are supported by evidence.
-2. Identify pod, Deployment, HPA, current image tag, and recent events. Complete
-   when workload health and rollout identity are known or an unavailable field
-   is reported.
+2. Identify pod, Deployment, HPA, current image tag or digest, and recent events.
+   Complete when workload health and rollout identity are known or an unavailable
+   field is reported.
 3. When a pod is `Pending`, `ImagePullBackOff`, `ErrImagePull`,
    `CreateContainerConfigError`, `CrashLoopBackOff`, `OOMKilled`, probe-failing,
    or `Ready=False`, run the pod failure summary before raw `describe` or log
    expansion. Use status/events for Kubernetes lifecycle causes, then use
    current or `--previous` logs only when the container has started or restarted.
    Complete when the failure is classified as lifecycle or application-level.
-4. If a worker is involved, check the Lease holder and recent holder logs.
+4. For an application-level failure, state one code/runtime contract question
+   and read `references/source-runtime-contract.md`. Enter source inspection only
+   through its evidence gate, first map the running image to the deployed source
+   revision, and report the immediate trigger separately from any contributing
+   design factor. Complete when the contract classification and fix surface are
+   supported or the single provenance/evidence gap is named.
+5. If a worker is involved, check the Lease holder and recent holder logs.
    Complete when leadership and actual processing health are reported separately.
-5. Check dependency wiring in the narrowest order needed:
+6. Check dependency wiring in the narrowest order needed:
    ServiceAccount/IAM, secret references, database, queue/Pub/Sub,
    Redis/Valkey/cache, and bucket/object storage. Complete when each dependency
    examined has its reference, target resource, environment, and health evidence
    accounted for.
-6. Stop when the first supported cause is found. Report the next narrow check
+7. Stop when the first supported cause is found. Report the next narrow check
    only if the cause is still ambiguous.
 
 ## Helper Routing
@@ -62,6 +71,8 @@ evidence layer, or the response names why direct targeted commands are smaller.
 ## References
 
 - For dependency-specific checks, read `references/dependency-checks.md`.
+- For application-level failures that meet the source evidence gate, read
+  `references/source-runtime-contract.md`.
 - For incident interpretation patterns, read `references/runtime-incident-patterns.md`.
 
 ## Output
@@ -69,8 +80,13 @@ evidence layer, or the response names why direct targeted commands are smaller.
 ```text
 結論:
 環境/Scope:
+失敗階段:
+Artifact / source revision: (source gate only)
 證據:
-可能原因:
+直接原因:
+設計因素: (when supported)
+Contract classification:
+Fix surface:
 Next narrow check:
 維運建議:
 ```

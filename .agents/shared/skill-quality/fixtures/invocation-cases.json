@@ -63,6 +63,13 @@
     "reason": "The task is expected-versus-actual GitOps troubleshooting."
   },
   {
+    "id": "gitops-diagnostics-pipeline-stage-gate",
+    "skill": "gitops-diagnostics-workflow",
+    "expected": "invoke",
+    "prompt": "Read-only identify whether this failed GitLab deployment pipeline stopped in application build, artifact handoff, or the GitOps update before deciding which layer owns the fix.",
+    "reason": "The task first needs bounded delivery-stage diagnosis rather than immediate source or live-state inspection."
+  },
+  {
     "id": "gitops-diagnostics-approved-edit",
     "skill": "gitops-diagnostics-workflow",
     "expected": "skip",
@@ -147,11 +154,25 @@
     "reason": "The failure crosses a workload and its runtime queue dependency."
   },
   {
+    "id": "runtime-dependency-source-contract",
+    "skill": "runtime-dependency-ops",
+    "expected": "invoke",
+    "prompt": "A qa Pod starts and then fails readiness even though Helm render and live probes match. Map the running image to its source revision and check the application's implemented health path and startup behavior.",
+    "reason": "Application-level runtime evidence requires a bounded deployed source/runtime contract check."
+  },
+  {
     "id": "runtime-dependency-gitops-diff",
     "skill": "runtime-dependency-ops",
     "expected": "skip",
     "prompt": "Explain why Argo CD renders a different image tag than the k8s-deploy values file.",
     "reason": "A generic delivery-state mismatch is not runtime dependency wiring."
+  },
+  {
+    "id": "runtime-dependency-static-source-review",
+    "skill": "runtime-dependency-ops",
+    "expected": "skip",
+    "prompt": "Review this service's source architecture and propose a general retry refactor; there is no current Kubernetes incident or deployed artifact.",
+    "reason": "Static source design review without runtime evidence is outside this incident workflow."
   },
   {
     "id": "service-topology-cross-repo",

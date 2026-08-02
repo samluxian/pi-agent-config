@@ -1,4 +1,4 @@
 interface:
   display_name: "Runtime Dependency Ops"
-  short_description: "Inspect runtime dependency wiring across Kubernetes, cloud resources, queues, databases, caches, and buckets"
-  default_prompt: "Use $runtime-dependency-ops to perform read-only runtime dependency checks across environments, including Kubernetes pods/deployments/HPA/events, leader leases, service accounts/IAM, Secret Manager references, databases, Pub/Sub or queues, Redis/Valkey, object storage buckets, and desired-state dependency inventory."
+  short_description: "Inspect runtime dependencies and deployed source/runtime contracts"
+  default_prompt: "Use $runtime-dependency-ops to perform read-only runtime checks across Kubernetes workloads, deployed application startup/source-runtime contracts, identity, secret references, databases, queues, caches, storage, and workers. Inspect source only after application-level evidence maps the running image to its deployed revision."
