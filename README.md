@@ -157,7 +157,11 @@ extensions。
 ```
 
 ```text
-比較 flex-app 目前版本和目標版本的 selector 與 render 差異
+讀取 flex-app 升級區間的 Release notes，核對 chart/render 後提出 wrapper 更版計畫
+```
+
+```text
+根據 flex-app release tag diff 與驗證結果，撰寫中文產品化 GitLab Release note
 ```
 
 ```text
@@ -223,10 +227,16 @@ logs、diff 或 trace。
 
 | Skill | 白話說明 |
 | --- | --- |
-| [`flex-app-version-upgrade`](.agents/skills/flex-app-version-upgrade/) | 比較 service wrapper 升級前後的 chart behavior、selectors、globals 與 migration risk。 |
-| [`flex-app-chart-maintenance`](.agents/skills/flex-app-chart-maintenance/) | 維護 shared `flex-app` chart 的 public values、defaults、schema、templates、KEDA 與 compatibility。 |
+| [`flex-app-version-upgrade`](.agents/skills/flex-app-version-upgrade/) | 讀取升級區間內的 Release notes，核對 chart source/render，再整理 service wrapper 的 values、selectors、globals 與 migration plan。 |
+| [`flex-app-chart-maintenance`](.agents/skills/flex-app-chart-maintenance/) | 維護 shared `flex-app` chart contract，並依 tag diff、驗證與相容性證據撰寫產品化 GitLab Release note。 |
 | [`runtime-dependency-ops`](.agents/skills/runtime-dependency-ops/) | 追查 transient request failure、LB/NEG、workload/node autoscaling、application startup、deployed source/runtime contract、identity、secret references、database、queue、cache、storage 與 worker。 |
 | [`tf-services-terraform-maintenance`](.agents/skills/tf-services-terraform-maintenance/) | 在指定的 `tf-services` repo 中解釋 Terraform、檢查 plan，或執行已批准的小改動。 |
+
+`flex-app-chart-maintenance` 是 Release note 生產者；它把專案需求、shared
+chart capability、breaking change、設計取捨與遷移方式對回 tag diff 和驗證證據。
+`flex-app-version-upgrade` 是消費者；它讀取升級區間內每一份 Release note，
+再用 chart source、effective render 與 wrapper/live compatibility 逐條驗證後產生
+更版計畫。Release note 是 intent evidence，不會取代部署真相。
 
 Runtime 排錯不會預設掃描 application repo。只有容器已啟動且 evidence
 指向 application-level failure 時，才先把 running image 對應到 deployed

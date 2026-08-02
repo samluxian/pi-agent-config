@@ -1,6 +1,6 @@
 ---
 name: flex-app-chart-maintenance
-description: "Maintain the shared `flex-app` chart contract: values, defaults, schemas, templates, KEDA profiles, app-of-apps globals, compatibility, and releases. Use when shared chart behavior or its public API changes. Do not use for a service-only values change or an existing wrapper version upgrade."
+description: "Maintain the shared `flex-app` chart contract and productized GitLab release notes: values, defaults, schemas, templates, KEDA profiles, app-of-apps globals, and compatibility. Use when shared chart behavior or its public API changes, or when a chart release note is requested. Do not use for a service-only values change or an existing wrapper version upgrade."
 ---
 
 # Flex App Chart Maintenance
@@ -34,6 +34,8 @@ Read the relevant reference before proposing the contract:
   `references/keda-autoscaling-contract.md`.
 - For compatibility, validation details, and reviewer-comment interpretation,
   read `references/compatibility-and-review.md`.
+- For evidence-based, productized GitLab release-note authoring and publication
+  handoff, read `references/release-notes.md` after contract proof.
 
 ## Core Flow
 
@@ -64,6 +66,15 @@ Read the relevant reference before proposing the contract:
      the change. Use compact summaries before raw manifests.
    - Complete when each intended difference is observed, each compatibility
      claim has render evidence, and validation gaps are reported.
+6. Write the release note when requested or when preparing a chart release.
+   - Read `references/release-notes.md`; compare the exact previous and target
+     release tags and reconcile the note with schema, templates, and validation.
+   - Explain the evidence-backed project driver, reusable capability, breaking
+     changes, design tradeoffs, migration path, compatibility, and known limits.
+   - Produce Markdown and a user-operated GitLab publication command; never
+     create or update a GitLab release as the agent.
+   - Complete when every material claim maps to chart evidence and consumers can
+     use the note as an input without treating it as deployment truth.
 
 ## Output
 
@@ -73,5 +84,6 @@ Contract change:
 Affected callers:
 Validation:
 Compatibility risk:
+Release note or publication handoff:
 Next step:
 ```

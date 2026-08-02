@@ -21,6 +21,13 @@
     "reason": "The requested change owns shared chart API behavior."
   },
   {
+    "id": "flex-chart-productized-release-note",
+    "skill": "flex-app-chart-maintenance",
+    "expected": "invoke",
+    "prompt": "Compare flex-app-3.5.0 with flex-app-3.6.0 and write a productized Traditional Chinese GitLab Release note from chart evidence, including the VoiceHub project driver and PDB migration rationale.",
+    "reason": "Evidence-based shared chart release-note authoring belongs to chart maintenance."
+  },
+  {
     "id": "flex-chart-service-values",
     "skill": "flex-app-chart-maintenance",
     "expected": "skip",
@@ -33,6 +40,13 @@
     "expected": "invoke",
     "prompt": "Assess upgrading this k8s-deploy wrapper from flex-app 1.8.0 to 1.10.0 and compare rendered selectors.",
     "reason": "The task compares current and target flex-app wrapper behavior."
+  },
+  {
+    "id": "flex-upgrade-release-note-plan",
+    "skill": "flex-app-version-upgrade",
+    "expected": "invoke",
+    "prompt": "Plan upgrading this order-api wrapper from flex-app 3.4.2 to 3.6.0: read every published GitLab Release note in the range, verify each breaking/default claim against the exact chart sources and renders, then list required values and migration actions.",
+    "reason": "Release-note consumption reconciled with wrapper render evidence is part of version-upgrade planning."
   },
   {
     "id": "flex-upgrade-shared-authoring",
