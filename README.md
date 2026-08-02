@@ -225,7 +225,6 @@ logs、diff 或 trace。
 | --- | --- |
 | [`flex-app-version-upgrade`](.agents/skills/flex-app-version-upgrade/) | 比較 service wrapper 升級前後的 chart behavior、selectors、globals 與 migration risk。 |
 | [`flex-app-chart-maintenance`](.agents/skills/flex-app-chart-maintenance/) | 維護 shared `flex-app` chart 的 public values、defaults、schema、templates、KEDA 與 compatibility。 |
-| [`gcp-monitoring-dashboard`](.agents/skills/gcp-monitoring-dashboard/) | 設計或維護 Cloud Monitoring dashboard、metric query/filter、metrics scope 與成本。 |
 | [`runtime-dependency-ops`](.agents/skills/runtime-dependency-ops/) | 追查 workload、application startup、deployed source/runtime contract、identity、secret references、database、queue、cache、storage 與 worker。 |
 | [`tf-services-terraform-maintenance`](.agents/skills/tf-services-terraform-maintenance/) | 在指定的 `tf-services` repo 中解釋 Terraform、檢查 plan，或執行已批准的小改動。 |
 

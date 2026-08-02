@@ -42,20 +42,6 @@
     "reason": "Shared chart authoring is not an existing wrapper version assessment."
   },
   {
-    "id": "gcp-dashboard-query",
-    "skill": "gcp-monitoring-dashboard",
-    "expected": "invoke",
-    "prompt": "Fix this Cloud Monitoring dashboard widget filter and verify which project its metric scope reads.",
-    "reason": "The requested artifact is a GCP Cloud Monitoring dashboard."
-  },
-  {
-    "id": "gcp-dashboard-service-health",
-    "skill": "gcp-monitoring-dashboard",
-    "expected": "skip",
-    "prompt": "Diagnose why a GKE Pod cannot publish to Pub/Sub through Workload Identity.",
-    "reason": "Runtime identity health is not a dashboard artifact or query problem."
-  },
-  {
     "id": "gitops-diagnostics-existing-mismatch",
     "skill": "gitops-diagnostics-workflow",
     "expected": "invoke",
