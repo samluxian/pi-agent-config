@@ -1,4 +1,4 @@
 interface:
   display_name: "Runtime Dependency Ops"
-  short_description: "Inspect runtime dependencies and deployed source/runtime contracts"
-  default_prompt: "Use $runtime-dependency-ops to perform read-only runtime checks across Kubernetes workloads, deployed application startup/source-runtime contracts, identity, secret references, databases, queues, caches, storage, and workers. Inspect source only after application-level evidence maps the running image to its deployed revision."
+  short_description: "Inspect transient requests, runtime dependencies, and deployed contracts"
+  default_prompt: "Use $runtime-dependency-ops to perform read-only, time-bounded checks across request entrances, load balancers/NEGs, Kubernetes workloads, nodes/autoscaling, deployed application startup/source-runtime contracts, identity, secret references, databases, queues, caches, storage, and workers. Inspect source only after application-level evidence maps the running image to its deployed revision."

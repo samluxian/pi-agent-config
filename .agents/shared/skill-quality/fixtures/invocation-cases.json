@@ -147,6 +147,20 @@
     "reason": "Application-level runtime evidence requires a bounded deployed source/runtime contract check."
   },
   {
+    "id": "runtime-dependency-transient-request",
+    "skill": "runtime-dependency-ops",
+    "expected": "invoke",
+    "prompt": "A production Kubernetes service returned intermittent 5XX for two minutes but all Pods are healthy now. Read-only correlate the exact incident window across the request entrance, LB/NEG metrics, node autoscaler events, Pod/endpoint history, and explicit HTTP status evidence.",
+    "reason": "A time-bounded live request failure requires runtime request-path and infrastructure correlation."
+  },
+  {
+    "id": "runtime-dependency-topology-design",
+    "skill": "runtime-dependency-ops",
+    "expected": "skip",
+    "prompt": "Design how the frontend, BFF, backend repositories, and CI deployment should be split next quarter; there is no live incident or deployed-runtime evidence.",
+    "reason": "Cross-repository construction planning without a live incident is not runtime diagnosis."
+  },
+  {
     "id": "runtime-dependency-gitops-diff",
     "skill": "runtime-dependency-ops",
     "expected": "skip",
