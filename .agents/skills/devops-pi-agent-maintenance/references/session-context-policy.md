@@ -7,6 +7,15 @@ while new evidence advances that objective. Start a new session when the user
 switches to an unrelated objective, repo, or evidence path; carry forward a
 short handoff note instead of raw tool output.
 
+For an intentional Pi session switch, run `/handoff <new-session goal>`. Review
+the generated prompt before the extension creates a parent-linked session, then
+submit it explicitly in the replacement session. The handoff must preserve
+scope, approval boundaries, verified evidence, changed files, decisions,
+validation gaps, risks, and exactly one next action. Parent tracking does not
+implicitly expose the old conversation to the new model. Revalidate branch,
+dirty state, remote freshness, deployment state, and runtime state after the
+switch.
+
 Compact when old tool results dominate the context or token use approaches the
 working threshold (about 90k tokens for the current workspace policy). Do not
 wait for the provider limit. Preserve decisions, changed files, validation,

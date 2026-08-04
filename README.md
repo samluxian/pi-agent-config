@@ -261,12 +261,28 @@ configuration 與 runtime observation；直接原因與 source design factor 會
 | --- | --- |
 | `bash-guard` | 阻擋部分高風險、無界限輸出與同一輪中的重複成功 command。 |
 | `lean-context` | 將大型純文字結果限制為 80 行 head、40 行 tail 與 24 KiB，並記錄非 context 的 turn metrics。 |
+| `session-handoff` | 產生可審閱的結構化交接 prompt，並帶到 parent-linked 新 session。 |
 | `subagents` | 提供 bounded、read-only 的 `scout` 與 `researcher` child agents。 |
 | `web-search` | 透過 workspace 管理的 self-hosted SearXNG 做 web search。 |
 | `web-fetch` | 讀取 HTTPS 頁面、PDF 與可轉成文字的文件內容。 |
 
 SearXNG 的安裝與驗證方式見 [`searxng/README.md`](searxng/README.md)；web search
 extension 的設定見 [`extensions/web-search/README.md`](extensions/web-search/README.md)。
+
+### 換 session 時保留工作脈絡
+
+同一個 objective 只是 context 變大時使用 Pi 內建 compaction。準備換成全新 session
+時，先執行：
+
+```text
+/handoff <新 session 要完成的目標>
+```
+
+`session-handoff` 會從目前有效 conversation branch 產生包含 scope、approval、已驗證
+狀態、完成項目、決策、驗證、未確認事項與單一下一步的 prompt。你必須先在 editor
+審閱；確認後 extension 才建立 parent-linked 新 session，並把相同內容預填到新 editor。
+它不會自動送出，也不會讓新 model 隱式取得舊 session 的完整對話。Branch、dirty state、
+remote、deployment 與 runtime 狀態仍要由新 session 重新驗證。
 
 ### Subagent 的責任邊界
 
