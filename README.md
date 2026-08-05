@@ -72,7 +72,7 @@ Agent 會先從最小範圍的狀態摘要判斷問題。若最後需要改 GitO
 這套工具特別適合：
 
 - GitOps desired state、Helm values、Argo CD 與 Kubernetes troubleshooting；
-- GitLab CI handoff、MR summary 與 branch readiness；
+- GitLab CI handoff、MR summary、個人工作回顧與 branch readiness；
 - shared `flex-app` chart 維護與 service wrapper version upgrade；
 - GCP Monitoring dashboard、Workload Identity 與 runtime dependencies；
 - 跨 repo service delivery topology 與服務拆分影響分析；
@@ -169,6 +169,10 @@ extensions。
 ```
 
 ```text
+用台灣時間整理我 7/27 到 7/31 的 GitLab 活動，每天用第一人稱寫一句；不足時再參考指定的 GitHub 日期
+```
+
+```text
 先列出要改的檔案、驗證方式和風險，等我批准後再修改 qa values
 ```
 
@@ -222,6 +226,7 @@ logs、diff 或 trace。
 | [`gitops-repo-audit`](.agents/skills/gitops-repo-audit/) | 在改檔前盤點 repo 結構、values、chart metadata、discovery 與 CI handoff 是否一致。 |
 | [`gitops-implementation-workflow`](.agents/skills/gitops-implementation-workflow/) | 使用者批准精確 patch 後，負責最小改檔與驗證。 |
 | [`gitops-mr-summary`](.agents/skills/gitops-mr-summary/) | 根據 branch、diff、MR evidence 與 validation 結果撰寫精簡 MR 說明。 |
+| [`developer-activity-summary`](.agents/skills/developer-activity-summary/) | 以唯讀 `glab`／`gh` 活動證據，按日期整理成精簡的第一人稱工作回顧。 |
 
 ### Helm、GCP 與 runtime
 

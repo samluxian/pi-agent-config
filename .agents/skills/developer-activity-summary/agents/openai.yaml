@@ -1,0 +1,4 @@
+interface:
+  display_name: "Developer Activity Summary"
+  short_description: "Summarize dated Git activity as first-person updates"
+  default_prompt: "Use $developer-activity-summary to turn my authenticated GitLab or GitHub activity into concise first-person daily work updates."

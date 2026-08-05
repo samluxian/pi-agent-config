@@ -193,6 +193,7 @@ Pick the narrowest applicable skill and load deeper references only when needed.
 | Change this `devops-pi-agent` repo's skills, Pi extensions, AGENTS/README agent contract, settings baseline, or maintenance regressions | `devops-pi-agent-maintenance` plus `gitops-implementation-workflow` for approved edits |
 | Approved desired-state, Helm values, CI handoff, or workspace AGENTS/README/skill/docs edit | `gitops-implementation-workflow` |
 | MR descriptions, MR summaries, merge request copy, branch-ready notes, or one/two-sided MR handoff text from repo evidence | `gitops-mr-summary` |
+| Authenticated GitLab/GitHub activity summarized by date as concise first-person work updates, including an explicit fallback evidence window | `developer-activity-summary` |
 | Existing `k8s-deploy` service wrapper upgrade from one `flex-app` chart version to another, including release-note inputs, current-vs-target chart behavior, live-vs-render selector compatibility, and app-of-apps globals | `flex-app-version-upgrade` plus implementation/diagnostics skill as appropriate |
 | Shared `flex-app` chart API/default/KEDA profile/app-of-apps contract maintenance or evidence-based, productized GitLab release-note authoring | `flex-app-chart-maintenance` plus implementation/audit skill as appropriate |
 | Read-only check, review, troubleshooting, verification, live health, Workload Identity/GCP prerequisite check, or CI handoff diagnosis | `gitops-diagnostics-workflow` |

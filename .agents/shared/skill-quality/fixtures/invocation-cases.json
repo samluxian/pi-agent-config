@@ -215,5 +215,33 @@
     "expected": "skip",
     "prompt": "Write a generic AWS VPC Terraform module in this application repository.",
     "reason": "Generic Terraform outside the identified tf-services GCP repository is out of scope."
+  },
+  {
+    "id": "developer-activity-daily-summary",
+    "skill": "developer-activity-summary",
+    "expected": "invoke",
+    "prompt": "Use my authenticated glab activity to explain what I worked on from 2026-07-27 through 2026-07-31. Write one short first-person paragraph per day, and only use GitHub 2026-08-01 through 2026-08-02 if the GitLab evidence is insufficient.",
+    "reason": "The request asks for a dated first-person work summary from authenticated GitLab activity with an explicit GitHub fallback window."
+  },
+  {
+    "id": "developer-activity-github-primary",
+    "skill": "developer-activity-summary",
+    "expected": "invoke",
+    "prompt": "Summarize my authenticated GitHub activity for August 1 and August 2 as two concise first-person daily updates in Taiwan time.",
+    "reason": "A GitHub-only dated personal activity recap belongs to developer-activity-summary even without GitLab evidence."
+  },
+  {
+    "id": "developer-activity-mr-copy",
+    "skill": "developer-activity-summary",
+    "expected": "skip",
+    "prompt": "Use the current branch diff and validation results to write a GitLab merge request description.",
+    "reason": "MR copy belongs to gitops-mr-summary rather than a cross-day personal activity recap."
+  },
+  {
+    "id": "developer-activity-performance-rating",
+    "skill": "developer-activity-summary",
+    "expected": "skip",
+    "prompt": "Rank the engineering team by productivity from their GitLab event counts and recommend who should be promoted.",
+    "reason": "Activity evidence must not be converted into performance or promotion judgments."
   }
 ]
