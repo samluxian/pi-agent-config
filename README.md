@@ -200,7 +200,10 @@ Kubernetes、Argo CD、GitLab、GCP 與 Git remotes 對 agent 永遠是唯讀。
 
 對 delivery files 的修改，agent 會先確認 target repo、branch、dirty changes、預期行為、
 驗證方式與風險。如果 branch 是 `main`、`master`、`release` 或 protected/shared branch，
-會停下來請你先切換 branch。
+會停下來請你先切換 branch。同一交付主題的前一個 MR 已合併或 remote source branch 已刪除
+時，若你明確要求沿用原 branch，agent 會在確認 target ref 最新、原 branch tip 已包含於 target、
+working tree 可控且 follow-up diff 有限後繼續，而不會只因 branch 曾合併就要求另開 branch；
+下一次 push 仍會重新建立 remote branch，並需要新的 MR。
 
 ### Secret 不進 context
 
@@ -224,7 +227,7 @@ logs、diff 或 trace。
 | --- | --- |
 | [`gitops-diagnostics-workflow`](.agents/skills/gitops-diagnostics-workflow/) | 查「為什麼現在不符合預期」，只讀 desired state、render、Argo CD、Kubernetes、GitLab 或 GCP evidence。 |
 | [`gitops-repo-audit`](.agents/skills/gitops-repo-audit/) | 在改檔前盤點 repo 結構、values、chart metadata、discovery 與 CI handoff 是否一致。 |
-| [`gitops-implementation-workflow`](.agents/skills/gitops-implementation-workflow/) | 使用者批准精確 patch 後，負責最小改檔與驗證。 |
+| [`gitops-implementation-workflow`](.agents/skills/gitops-implementation-workflow/) | 使用者批准精確 patch 後，負責最小改檔；預設只做格式／語法、單一行為證據與bounded diff三組驗證。 |
 | [`gitops-mr-summary`](.agents/skills/gitops-mr-summary/) | 根據 branch、diff、MR evidence 與 validation 結果撰寫精簡 MR 說明。 |
 | [`developer-activity-summary`](.agents/skills/developer-activity-summary/) | 以唯讀 `glab`／`gh` 活動證據，按日期整理成精簡的第一人稱工作回顧。 |
 
@@ -235,7 +238,7 @@ logs、diff 或 trace。
 | [`flex-app-version-upgrade`](.agents/skills/flex-app-version-upgrade/) | 讀取升級區間內的 Release notes，核對 chart source/render，再整理 service wrapper 的 values、selectors、globals 與 migration plan。 |
 | [`flex-app-chart-maintenance`](.agents/skills/flex-app-chart-maintenance/) | 維護 shared `flex-app` chart contract，並依 tag diff、驗證與相容性證據撰寫產品化 GitLab Release note。 |
 | [`runtime-dependency-ops`](.agents/skills/runtime-dependency-ops/) | 追查 transient request failure、LB/NEG、workload/node autoscaling、application startup、deployed source/runtime contract、identity、secret references、database、queue、cache、storage 與 worker。 |
-| [`tf-services-terraform-maintenance`](.agents/skills/tf-services-terraform-maintenance/) | 在指定的 `tf-services` repo 中解釋 Terraform、檢查 plan，或執行已批准的小改動。 |
+| [`tf-services-terraform-maintenance`](.agents/skills/tf-services-terraform-maintenance/) | 在指定的 `tf-services` repo 中解釋 Terraform、檢查 plan，或執行已批准的小改動；resource README只保留長期ownership與resource contract。 |
 
 `flex-app-chart-maintenance` 是 Release note 生產者；它把專案需求、shared
 chart capability、breaking change、設計取捨與遷移方式對回 tag diff 和驗證證據。

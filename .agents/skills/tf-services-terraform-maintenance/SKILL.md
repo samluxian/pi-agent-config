@@ -15,6 +15,15 @@ risk. Explain the blast radius before proposing edits. Default checks are
 `terraform fmt -check`, `terraform validate -backend=false` when safe, and a
 plan only after the target service and environment are explicit.
 
+## Resource Documentation
+
+Keep a Terraform root's adjacent `README.md` limited to durable resource facts:
+ownership, managed resources, inputs, outputs, dependencies, and safety
+boundaries. Do not put one-time rollout order, apply sequencing, DNS cutover
+steps, or delivery handoff prose in a resource README. Put those procedures in
+the response, MR handoff, session note, or an explicitly requested runbook.
+Complete when the README remains accurate after the current delivery finishes.
+
 ## Start
 
 Run repo preflight in the user-identified target repo:

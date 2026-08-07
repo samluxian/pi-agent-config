@@ -33,14 +33,28 @@ For static inventory before deciding whether to patch, use `$gitops-repo-audit`.
 3. Apply the smallest approved patch. Do not reformat, rename, reorder, or clean
    adjacent content. Complete when the working diff contains only approved
    behavior and unavoidable documentation synchronization.
-4. Prove each changed branch. Use the deterministic helper below, then add only
-   the narrow checks needed for changed Helm, CI, documentation, or workspace
-   guidance behavior. Complete when every affected environment or branch has
-   fresh evidence, or an exact validation gap is reported.
+4. Prove each changed branch with the validation budget below. Use either the
+   deterministic helper or the narrow direct checks that prove the changed
+   behavior; do not run both when they produce equivalent evidence. Complete
+   when the budget proves the patch or an exact validation gap is reported.
 5. Review and hand off. Account for every changed file, run `git diff --check`,
    and report deployment, IAM, CI, runtime, or documentation risk. Complete
    when the user can review the patch and run any remaining user-operated
    delivery step without reconstructing missing context.
+
+## Validation Budget
+
+Default to at most three post-edit evidence groups:
+
+1. one format or syntax check;
+2. one behavior proof such as a Helm render, Terraform validate/plan, or focused
+   test;
+3. one bounded diff review including `git diff --check`.
+
+Do not repeat a successful check, add live-state inspection without a concrete
+post-edit question, or invoke a review subagent unless the selected workflow
+requires independent validation. Expand beyond the budget only after a failed
+check identifies a specific unresolved mismatch, and report why it expanded.
 
 ## Deterministic Helper
 

@@ -86,6 +86,13 @@ files. Before editing delivery files:
 - Confirm the branch is separate and non-shared.
 - Stop if the branch is `main`, `master`, `release`, or a protected/shared
   branch, and tell the user what branch command to run.
+- Do not require a replacement branch solely because an earlier MR for the same
+  delivery topic was merged or its remote source branch was deleted. When the
+  user explicitly approves reusing that branch, confirm before follow-up edits
+  that it remains non-protected and non-shared, its working tree is understood,
+  the target ref is current, the prior branch tip is contained in the target,
+  and the planned diff is bounded. State that the user's next push will recreate
+  the remote branch and require a new MR.
 - Present intended files, behavior change, validation commands, and
   deployment/IAM/CI/runtime risk.
 - Wait for explicit approval such as `同意修改`, `apply`, or `照你說的改`.
