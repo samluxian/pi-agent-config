@@ -1,123 +1,66 @@
 ---
 name: gitops-diagnostics-workflow
-description: "Diagnose an existing GitOps delivery mismatch across desired state, Helm render, Argo CD, Kubernetes, GitLab handoff, or GCP prerequisites. Use for read-only expected-versus-actual troubleshooting. Do not use for repo edits, static-only audits, MR prose, or application dependency wiring."
+description: Diagnose mismatches across GitOps desired state, Helm render, Argo CD, Kubernetes, GitLab handoff, or GCP prerequisites. Use for read-only expected-versus-actual checks. Do not use for edits, static audits, MR prose, or dependency wiring.
 ---
 
 # GitOps Diagnostics Workflow
 
-Use this skill for inspection and troubleshooting. Do not edit files here; if a
-fix is needed, report the smallest patch and hand back to
-`$gitops-implementation-workflow` after user approval.
+Find the first evidence-backed divergence without mutating delivery or runtime
+systems. Keep application, desired-state, render, control-plane, live, and
+runtime evidence separate.
 
 ## Diagnostic Loop
 
-1. Frame the requested conclusion, expected versus actual behavior, affected
-   environment, namespace, service/workload, incident window or last-known-good
-   baseline, and current failure stage. Start from the user's diagnostic packet
-   when one is provided. Record image tag/digest and source revision only when
-   artifact identity is relevant. Complete when these fields are evidence-backed
-   or the single fact blocking a reliable probe is named.
-2. State one working hypothesis and the result that would reject it. For
-   symptom-driven debugging, select one branch from
-   `references/troubleshooting-matrix.md` before running tools. Complete when
-   one evidence layer and one falsifying result are explicit.
-3. Run the smallest read-only probe that separates the current hypothesis from
-   its alternative. Complete when the probe returns bounded evidence or an
-   exact tool, auth, context, or data-coverage gap.
-4. Classify a completed probe as `supported`, `rejected`, `inconclusive`, or
-   `no coverage`. Reserve `no coverage` for evidence that does not span the
-   relevant scope or time; a probe blocked by tooling, auth, or context is an
-   `inconclusive` validation gap. Complete when the result's meaning is explicit
-   rather than inferred from an empty response.
-5. Stop when one supported cause is sufficient for the requested conclusion.
-   Cross to another evidence layer only when the result names that layer or is
-   inconclusive; state the next hypothesis before the next probe. Complete when
-   the conclusion is supported or the single next narrow check is named.
+1. Define expected behavior, actual symptom, target service/environment, time
+   window, and known recent change. Analyze a supplied diagnostic packet first.
+2. Confirm target repository branch/status or record why repository evidence is
+   not needed.
+3. Choose the first relevant evidence layer; do not traverse every layer by
+   default:
+   - application/CI handoff
+   - desired state and chart metadata
+   - effective Helm render
+   - Argo CD status
+   - Kubernetes live state
+   - runtime/GCP prerequisites
+4. Collect a bounded summary. Expand only for a concrete error, missing field,
+   mismatch, or readiness claim.
+5. Compare expected versus actual, identify the first divergence, and state what
+   evidence would falsify the diagnosis.
+6. Stop after the cause or next decisive check is supported. Do not edit files;
+   hand an approved fix to the implementation workflow.
 
-## Fixed Flow
+Use `references/troubleshooting-matrix.md` to select checks and
+`scripts/diagnostics_flow.sh` for fixed repository diagnostics. For Helm, prefer
+`.agents/shared/gitops/scripts/render_helm_values.sh`. Read
+`references/source-runtime-contract.md` only after mapping a running image to its
+deployed revision; read `references/gke-autopilot-resource-requests.md` only for
+a concrete resource-admission or scheduling finding.
 
-Use the wrapper for common diagnostics:
+## Safety and Stop Conditions
 
-```bash
-.agents/skills/gitops-diagnostics-workflow/scripts/diagnostics_flow.sh repo <repo-path>
-.agents/skills/gitops-diagnostics-workflow/scripts/diagnostics_flow.sh helm <release> <chart-path> <namespace> <env> [helm args...]
-.agents/skills/gitops-diagnostics-workflow/scripts/diagnostics_flow.sh helm-json <release> <chart-path> <namespace> <env> [helm args...]
-.agents/skills/gitops-diagnostics-workflow/scripts/diagnostics_flow.sh manifest-json <manifest-path>
-.agents/skills/gitops-diagnostics-workflow/scripts/diagnostics_flow.sh diff-json [kubectl-diff-output-path]
-.agents/skills/gitops-diagnostics-workflow/scripts/diagnostics_flow.sh gitlab-pipeline <project-path> <pipeline-id>
-.agents/skills/gitops-diagnostics-workflow/scripts/diagnostics_flow.sh argocd <app> <namespace> [pod-label-selector]
-.agents/skills/gitops-diagnostics-workflow/scripts/diagnostics_flow.sh wi --project <project> --namespace <ns> --ksa <ksa> --gsa <gsa> [--deploy <deploy>] [--api <api>] [--secret <secret>]
-```
-
-The wrapper delegates to fixed read-only scripts for preflight, Helm readiness,
-compact manifest JSON summaries, compact `kubectl diff` JSON summaries, ArgoCD
-minimal health, compact GitLab pipeline summaries, and GCP/Workload Identity
-prerequisites.
-
-Use `.agents/shared/gitops/scripts/render_helm_values.sh` for new Helm render
-checks. The adjacent `render_flex_app.sh` remains a compatibility shim. Use
-`check_flex_app_defaults.py` only when the shared chart under review is actually
-`flex-app` or compatible with its conventions.
-
-JSON summary rule:
-
-- Prefer `helm-json`, `manifest-json`, or `diff-json` before reading raw YAML or
-  raw diff.
-- Read raw artifacts only by targeted path and only for a specific finding that
-  the JSON summary cannot explain.
-- Quote only the minimal safe snippet needed for the user-facing answer.
-
-GitLab pipeline completion criterion:
-
-- Start from pipeline metadata and job status. Identify the failing layer before
-  reading traces: pre-check, build, GitOps update, legacy deploy, or downstream.
-- Use `gitlab-pipeline` to summarize failed job traces; do not load full traces
-  unless the compact key lines are insufficient.
-- Complete when the first failing delivery layer and its supporting job evidence
-  are identified, or the exact missing trace/auth fact is reported.
-
-## Application / Source Handoff Gate
-
-- If the first pipeline failure is pre-check, build, test, or packaging, stop
-  the GitOps chain and hand off the job, source revision, compact error evidence,
-  and named source, Dockerfile, or CI path. Do not inspect desired or live state
-  to explain a stage that never produced or handed off an artifact.
-- If a container started and Pod/log evidence classifies the failure as
-  application-level, route to `$runtime-dependency-ops`. Source inspection is
-  allowed only after mapping the running image to its deployed revision and
-  satisfying that skill's `references/source-runtime-contract.md` entry gate.
-- Do not infer a source defect from the current default branch, configuration
-  names, a successful render, or Pod phase alone.
-
-Use direct targeted commands only when the wrapper cannot answer the question.
-Report any missing tool, auth, cluster context, or sandbox escalation as a
-validation gap.
-
-For Argo CD `SyncFailed` or OutOfSync cases that mention GKE Warden, Autopilot
-resource adjustment, CPU or memory request minimums, or pod anti-affinity, read
-`.agents/shared/gitops/references/gke-autopilot-resource-requests.md` before
-recommending a patch.
+- Kubernetes, Argo CD, GitLab, GCP, and Git remotes remain read-only.
+- Never print Secrets or broad manifest/log dumps.
+- Stop on unresolved target identity, missing authentication, stale refs that
+  affect the conclusion, or a required mutation.
+- Do not infer dependency usage, rollout causality, or source behavior from names
+  alone.
 
 ## Output
 
-Lead with the supported conclusion or next narrow check. Keep verified evidence
-separate from interpretation; when explaining an unfamiliar concept, define it
-on first use and use numbered, bounded steps. Do not expand tangential findings.
-
 ```text
-結論:
-Scope / incident window:
-失敗階段:
-Artifact / source revision: (when relevant)
-工作假設:
-Probe:
-判讀: supported | rejected | inconclusive | no coverage
-Evidence budget:
-證據:
-風險:
-Next narrow check:
-Skill follow-up:
-```
+Finding:
+- Expected versus actual and first divergence
 
-For recurring lessons, recommend exactly one: update an existing skill, create a
-new skill, write session memory only, or no skill change.
+Evidence:
+- Layer, bounded command/source, and minimal result
+
+Cause:
+- Supported immediate cause; contributing factor separately
+
+Uncertainty:
+- Missing evidence or falsifying check
+
+Recommended action:
+- One safe next step; identify implementation handoff if needed
+```

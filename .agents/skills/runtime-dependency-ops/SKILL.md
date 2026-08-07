@@ -1,113 +1,61 @@
 ---
 name: runtime-dependency-ops
-description: "Trace an existing Kubernetes service failure, transient request failure, or runtime dependency path across Pods, nodes/autoscaling, load balancers/NEGs, application startup/source-runtime contracts, identity, secret references, databases, queues, caches, storage, and workers. Use for time-bounded runtime request-path, wiring, and health evidence. Do not use for generic GitOps delivery mismatches, static source review, repo topology, or implementation."
+description: Trace Kubernetes request or service failures across workloads, autoscaling, load balancing, identity, secret references, databases, queues, caches, storage, and workers. Use for time-bounded runtime incidents. Do not use for generic GitOps mismatch, static review, topology mapping, or edits.
 ---
 
 # Runtime Dependency Ops
 
-Use this skill for read-only runtime diagnostics and dependency wiring checks
-when a service spans Kubernetes, cloud resources, external data stores, queues,
-and desired-state configuration.
-
-## Rules
-
-- Always identify environment, namespace, project/account, and service before
-  drawing conclusions. If the user only provides a pod, resource, or screenshot,
-  derive those fields first.
-- For queues and Pub/Sub, checking only existence is insufficient. Also check
-  topic binding, subscription/consumer binding, filter/routing attributes,
-  deadletter policy, ack/visibility timeout, and project/account.
-- A Kubernetes Lease only proves leader election. It does not prove downstream
-  Pub/Sub, database, Redis, bucket, or internal service dependencies are healthy.
-- Treat `kubectl describe pod` and `kubectl logs` as different evidence:
-  describe/events explain Kubernetes lifecycle failures; logs explain
-  application stdout/stderr failures. Do not dump full describe output or broad
-  logs before a pod summary identifies the failing path.
-- Treat application source as design and intent evidence, not proof of the
-  deployed artifact or live configuration. Never analyze the default branch as
-  a substitute for the source revision mapped from the running image.
-- For transient request incidents, separate event-time evidence from current
-  health. A currently Ready Pod does not prove incident-window health, and a
-  node deletion proves correlation only until target workload, endpoint, and
-  request evidence align.
-- Treat only explicit transport or application status fields as status evidence.
-  Keyword matches inside free-form request or response payloads are hints, and
-  missing or disabled observability is `no coverage`, not proof of health.
+Identify the failing runtime edge with bounded, read-only evidence. Never expose
+secret values or mutate Kubernetes, GCP, GitLab, Argo CD, or Git.
 
 ## Quick Flow
 
-1. Resolve environment, namespace, project/account, and target service. Complete
-   only when all four identities are supported by evidence.
-2. Identify pod, Deployment, HPA, current image tag or digest, and recent events.
-   Complete when workload health and rollout identity are known or an unavailable
-   field is reported.
-3. For a transient request failure while the workload may now be healthy, read
-   `references/transient-request-incidents.md`. Resolve the exact time window,
-   request entrance and owner, explicit status semantics, observability coverage,
-   and any infrastructure correlation before source inspection. Complete when
-   the correlation is classified as direct, indirect candidate, coincidental,
-   inconclusive, or `no coverage`.
-4. When a pod is `Pending`, `ImagePullBackOff`, `ErrImagePull`,
-   `CreateContainerConfigError`, `CrashLoopBackOff`, `OOMKilled`, probe-failing,
-   or `Ready=False`, run the pod failure summary before raw `describe` or log
-   expansion. Use status/events for Kubernetes lifecycle causes, then use
-   current or `--previous` logs only when the container has started or restarted.
-   Complete when the failure is classified as lifecycle or application-level.
-5. For an application-level failure, state one code/runtime contract question
-   and read `references/source-runtime-contract.md`. Enter source inspection only
-   through its evidence gate, first map the running image to the deployed source
-   revision, and report the immediate trigger separately from any contributing
-   design factor. Complete when the contract classification and fix surface are
-   supported or the single provenance/evidence gap is named.
-6. If a worker is involved, check the Lease holder and recent holder logs.
-   Complete when leadership and actual processing health are reported separately.
-7. Check dependency wiring in the narrowest order needed:
-   ServiceAccount/IAM, secret references, database, queue/Pub/Sub,
-   Redis/Valkey/cache, and bucket/object storage. Complete when each dependency
-   examined has its reference, target resource, environment, and health evidence
-   accounted for.
-8. Stop when the first supported cause is found. Report the next narrow check
-   only if the cause is still ambiguous.
+1. Fix service, environment, symptom, time window, request/correlation evidence,
+   and expected dependency path. Analyze supplied evidence first.
+2. Build only the relevant path:
+   client/LB -> Service/NEG -> Pod -> identity/config reference -> dependency ->
+   worker/response.
+3. Start at the symptom and inspect adjacent edges. Expand only when evidence
+   identifies a concrete error, timing gap, missing reference, or health claim.
+4. Compare desired wiring, live reference/identity, control-plane status, and
+   bounded runtime evidence without printing secret data.
+5. Separate immediate trigger, contributing source/design factor, and supported
+   fix surface. Map the running image to its deployed revision before source
+   inspection.
+6. Stop at the first supported failing edge or next decisive check. Hand repository
+   changes to the implementation workflow after approval.
 
-## Helper Routing
+Use `references/helper-routing.md` to select helpers. Load only the relevant deep
+reference:
 
-Read `references/helper-routing.md` before selecting a helper:
+- `references/transient-request-incidents.md` for 5XX, timeout, LB/NEG, Pod, HPA,
+  events, or node-autoscaling paths.
+- `references/source-runtime-contract.md` for startup and deployed source mapping.
+- `references/dependency-checks.md` for identity, Secret Manager references,
+  database, Pub/Sub/queue, Redis/Valkey, or storage checks.
+- `references/runtime-incident-patterns.md` for recurring incident signatures.
 
-- Use the runtime snapshot for an explicit context/namespace and optional GCP
-  dependency scope.
-- Use the pod failure summary for one unhealthy pod.
-- Use the desired-state inventory for local Helm-style service directories.
+## Stop Conditions
 
-Helper selection is complete when one primary helper matches the requested
-evidence layer, or the response names why direct targeted commands are smaller.
-
-## References
-
-- For dependency-specific checks, read `references/dependency-checks.md`.
-- For transient request failures, read
-  `references/transient-request-incidents.md`.
-- For application-level failures that meet the source evidence gate, read
-  `references/source-runtime-contract.md`.
-- For incident interpretation patterns, read `references/runtime-incident-patterns.md`.
+Stop on unresolved target identity, absent authorization, evidence outside the
+window, a required secret value, a required mutation, or source that cannot be
+mapped to the deployed image. Naming alone is never dependency evidence.
 
 ## Output
 
 ```text
-結論:
-環境/Scope:
-失敗階段:
-Request entrance / owner: (transient request only)
-Observability coverage:
-Correlation classification:
-Artifact / source revision: (source gate only)
-證據:
-直接原因:
-設計因素: (when supported)
-Contract classification:
-Fix surface:
-Next narrow check:
-維運建議:
-```
+Finding:
+- First failing edge and immediate trigger
 
-For a generic delivery mismatch, use `$gitops-diagnostics-workflow`; for an
-unknown repo-to-repo topology, use `$service-delivery-topology`.
+Evidence:
+- Time-bounded layer summaries
+
+Contributing factor:
+- Supported design/source factor, if any
+
+Uncertainty:
+- Missing or falsifying evidence
+
+Recommended action:
+- One safe next step and correct fix surface
+```

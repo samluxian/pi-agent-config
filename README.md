@@ -59,7 +59,7 @@ Agent 會先從最小範圍的狀態摘要判斷問題。若最後需要改 GitO
 
 | 能力 | 實際效果 |
 | --- | --- |
-| 精準的 skill routing | 每個 skill 都有清楚的「適合／不適合」邊界，降低相似流程互相誤觸發。 |
+| 精準的 skill routing | Pi 直接使用精簡且互斥的 skill descriptions；`AGENTS.md` 不重複維護 routing table。 |
 | Human-in-the-Loop 實作 | Delivery 變更採用「分析 → 提案 → 使用者批准 → 改檔 → 驗證」。 |
 | 分層查證 | 分開 application、CI、GitOps desired state、Helm render、Argo CD、Kubernetes 與 runtime/GCP evidence。 |
 | 精簡 context | 大型 tool output 保留有用的開頭與結尾，完整內容放在受限 temp file，不讓舊輸出持續佔滿 context。 |
@@ -219,49 +219,40 @@ logs、diff 或 trace。
 
 完整且具約束力的安全規則以 [`AGENTS.md`](AGENTS.md) 為準。
 
-## Skills：依工作選擇專用流程
+## Skills：依工作載入專用流程
 
-### 日常 GitOps 工作
+Pi 啟動時只看自動 skills 的 `name + description`；命中後才讀取完整
+`SKILL.md`。`AGENTS.md` 不保存重複的 routing table。
 
-| Skill | 白話說明 |
+### 自動 skills
+
+| Skill | 用途 |
 | --- | --- |
-| [`gitops-diagnostics-workflow`](.agents/skills/gitops-diagnostics-workflow/) | 查「為什麼現在不符合預期」，只讀 desired state、render、Argo CD、Kubernetes、GitLab 或 GCP evidence。 |
-| [`gitops-repo-audit`](.agents/skills/gitops-repo-audit/) | 在改檔前盤點 repo 結構、values、chart metadata、discovery 與 CI handoff 是否一致。 |
-| [`gitops-implementation-workflow`](.agents/skills/gitops-implementation-workflow/) | 使用者批准精確 patch 後，負責最小改檔；預設只做格式／語法、單一行為證據與bounded diff三組驗證。 |
-| [`gitops-mr-summary`](.agents/skills/gitops-mr-summary/) | 根據 branch、diff、MR evidence 與 validation 結果撰寫精簡 MR 說明。 |
-| [`developer-activity-summary`](.agents/skills/developer-activity-summary/) | 以唯讀 `glab`／`gh` 活動證據，按日期整理成精簡的第一人稱工作回顧。 |
+| [`gitops-diagnostics-workflow`](.agents/skills/gitops-diagnostics-workflow/) | 唯讀診斷 desired state、render、Argo CD、Kubernetes、GitLab 或 GCP mismatch。 |
+| [`gitops-repo-audit`](.agents/skills/gitops-repo-audit/) | 靜態盤點 discovery、values、chart metadata、CI handoff 與 review readiness。 |
+| [`gitops-implementation-workflow`](.agents/skills/gitops-implementation-workflow/) | 在精確批准後執行最小 repo-file 修改與行為驗證。 |
+| [`gitops-mr-summary`](.agents/skills/gitops-mr-summary/) | 依 branch、diff 與 validation evidence 撰寫 MR copy。 |
+| [`developer-activity-summary`](.agents/skills/developer-activity-summary/) | 以唯讀 `glab`／`gh` evidence 整理指定日期的工作回顧。 |
+| [`flex-app-version-upgrade`](.agents/skills/flex-app-version-upgrade/) | 核對 release notes、chart source/render 與 wrapper migration。 |
+| [`flex-app-chart-maintenance`](.agents/skills/flex-app-chart-maintenance/) | 維護 shared chart contract、KEDA、globals、compatibility 與 release notes。 |
+| [`runtime-dependency-ops`](.agents/skills/runtime-dependency-ops/) | 追查 request path、workload、identity、database、queue、cache、storage 與 worker failure。 |
+| [`tf-services-terraform-maintenance`](.agents/skills/tf-services-terraform-maintenance/) | 在指定 `tf-services` repo 解釋、plan-review 或維護 Terraform。 |
 
-### Helm、GCP 與 runtime
+兩個 Flex App skills 都維持自動：chart maintenance 生產 shared contract 與
+release evidence；version upgrade 消費這些 evidence 並驗證 wrapper compatibility。
 
-| Skill | 白話說明 |
+### 手動 skills
+
+低頻或昂貴的跨領域流程不放進自動 skill list：
+
+| Skill | 手動入口 |
 | --- | --- |
-| [`flex-app-version-upgrade`](.agents/skills/flex-app-version-upgrade/) | 讀取升級區間內的 Release notes，核對 chart source/render，再整理 service wrapper 的 values、selectors、globals 與 migration plan。 |
-| [`flex-app-chart-maintenance`](.agents/skills/flex-app-chart-maintenance/) | 維護 shared `flex-app` chart contract，並依 tag diff、驗證與相容性證據撰寫產品化 GitLab Release note。 |
-| [`runtime-dependency-ops`](.agents/skills/runtime-dependency-ops/) | 追查 transient request failure、LB/NEG、workload/node autoscaling、application startup、deployed source/runtime contract、identity、secret references、database、queue、cache、storage 與 worker。 |
-| [`tf-services-terraform-maintenance`](.agents/skills/tf-services-terraform-maintenance/) | 在指定的 `tf-services` repo 中解釋 Terraform、檢查 plan，或執行已批准的小改動；resource README只保留長期ownership與resource contract。 |
+| [`service-delivery-topology`](.agents/skills/service-delivery-topology/) | `/skill:service-delivery-topology` |
+| [`orchestrator`](.agents/skills/orchestrator/) | `/skill:orchestrator` |
+| [`devops-pi-agent-maintenance`](.agents/skills/devops-pi-agent-maintenance/) | `/skill:devops-pi-agent-maintenance` |
 
-`flex-app-chart-maintenance` 是 Release note 生產者；它把專案需求、shared
-chart capability、breaking change、設計取捨與遷移方式對回 tag diff 和驗證證據。
-`flex-app-version-upgrade` 是消費者；它讀取升級區間內每一份 Release note，
-再用 chart source、effective render 與 wrapper/live compatibility 逐條驗證後產生
-更版計畫。Release note 是 intent evidence，不會取代部署真相。
-
-Runtime 排錯不會預設掃描 application repo。只有容器已啟動且 evidence
-指向 application-level failure 時，才先把 running image 對應到 deployed
-source revision，再比較 source intent、GitOps desired state、render/live
-configuration 與 runtime observation；直接原因與 source design factor 會分開回報。
-
-### 跨 repo 與 agent 維護
-
-| Skill | 白話說明 |
-| --- | --- |
-| [`service-delivery-topology`](.agents/skills/service-delivery-topology/) | 整理 frontend、BFF、backend、CI、hosting/GitOps、routes、config 與 state 的跨 repo 關係。 |
-| [`orchestrator`](.agents/skills/orchestrator/) | 只有在你明確要求 subagent/parallel work，或 selected workflow 真的需要 independent validation 時才使用。 |
-| [`devops-pi-agent-maintenance`](.agents/skills/devops-pi-agent-maintenance/) | 維護這個 repo 的 skills、extensions、`AGENTS.md`、README、settings 與 regression contracts。 |
-
-每個 skill 的 `SKILL.md` 只保留 routing 與核心流程；較長的操作方式放在
-`references/`，可重複檢查放在 `scripts/`。已封存的 `gitops-router` 位於
-`.agents/archive/`，不再是可選工作入口。
+每個 `SKILL.md` 只保留 task boundary、核心流程、停止條件與 output contract；
+深層程序放在 `references/`，可重複檢查放在 `scripts/`。
 
 ## Pi Extensions：把重要限制做成程式
 
@@ -332,7 +323,7 @@ cd <workspace-root>/devops-pi-agent
 
 | 路徑 | 用途 |
 | --- | --- |
-| `AGENTS.md` | 每一輪都要遵守的安全、approval、workspace 與 routing contract。 |
+| `AGENTS.md` | 每一輪都要遵守的安全、approval、workspace 與 evidence invariants；不包含領域 workflow 或 routing table。 |
 | `.agents/skills/` | 依工作類型載入的專用 workflows。 |
 | `.agents/shared/` | 多個 skills 共用的 deterministic scripts、references 與 invocation fixtures。 |
 | `extensions/` | Workspace-local Pi safety、context、search、fetch 與 subagent extensions。 |
@@ -346,8 +337,8 @@ cd <workspace-root>/devops-pi-agent
 
 ## 維護與驗證
 
-修改 skills、extensions、`AGENTS.md`、README 或 settings policy 時，先使用
-`devops-pi-agent-maintenance` 確認規則應該由哪一層負責，避免同一功能出現多個
+修改 skills、extensions、`AGENTS.md`、README 或 settings policy 時，手動執行
+`/skill:devops-pi-agent-maintenance`，確認規則應由哪一層負責，避免重複的
 source of truth。
 
 固定檢查：

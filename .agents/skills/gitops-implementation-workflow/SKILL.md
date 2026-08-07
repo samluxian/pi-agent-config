@@ -1,107 +1,64 @@
 ---
 name: gitops-implementation-workflow
-description: "Implement an explicitly approved repo-file change to GitOps desired state, Helm values, CI handoff, or workspace guidance. Use only after approval covers the exact patch. Do not use for read-only diagnosis, static audits, architecture mapping, or MR description writing."
+description: Implement an approved repo-file change to GitOps state, Helm values, CI handoff, or workspace guidance. Use only after approval covers the exact patch. Do not use for diagnosis, audits, architecture mapping, or MR prose.
 ---
 
 # GitOps Implementation Workflow
 
-Use this skill only when the task includes repo-file implementation. For
-read-only checking, troubleshooting, or review, use `$gitops-diagnostics-workflow`.
-For static inventory before deciding whether to patch, use `$gitops-repo-audit`.
+Apply the smallest approved repository change and prove the intended behavior.
+Approval never covers adjacent cleanup or a newly discovered wider scope.
 
-## Rules
+## Preconditions
 
-- Prefer service-owned values over shared chart or discovery changes unless the
-  approved scope explicitly requires the shared surface.
-- Read `references/helm-alias-overlays.md` when values use `common`, `stable`,
-  `beta`, or another dependency-alias split.
-- Read `.agents/shared/gitops/references/gke-autopilot-resource-requests.md`
-  before changing GKE Autopilot CPU or memory requests.
-- Use `$gitops-mr-summary` when the user asks for MR copy.
+- Identify the actual target repository, branch, working tree, staged state, and
+  user-owned changes.
+- For delivery files, stop on `main`, `master`, `release`, protected, or shared
+  branches. The documented workspace-guidance exception still requires explicit
+  approval and bounded scope.
+- Restate approved files, behavior, validation, and deployment/IAM/CI/runtime
+  risk. Ask again if evidence changes the patch.
 
 ## Implementation Flow
 
-1. Prove approval and scope. Run the workspace approval and branch/status gate
-   from `AGENTS.md`; identify the target repo, requested behavior, intended
-   files, affected environments, and pre-existing dirty changes. Complete when
-   explicit approval covers the exact patch and every existing change is
-   preserved or named as a blocker.
-2. Inspect ownership and callers. Read the current values, templates, schemas,
-   CI handoff, discovery rules, and adopting services that can change the
-   result. Complete when every intended behavior change has one owning file and
-   every affected caller is accounted for.
-3. Apply the smallest approved patch. Do not reformat, rename, reorder, or clean
-   adjacent content. Complete when the working diff contains only approved
-   behavior and unavoidable documentation synchronization.
-4. Prove each changed branch with the validation budget below. Use either the
-   deterministic helper or the narrow direct checks that prove the changed
-   behavior; do not run both when they produce equivalent evidence. Complete
-   when the budget proves the patch or an exact validation gap is reported.
-5. Review and hand off. Account for every changed file, run `git diff --check`,
-   and report deployment, IAM, CI, runtime, or documentation risk. Complete
-   when the user can review the patch and run any remaining user-operated
-   delivery step without reconstructing missing context.
+1. Read target files, callers, defaults, templates, schemas, CI rules, and one
+   relevant repository pattern.
+2. Check desired-state ownership and effective values. For Helm aliases/overlays,
+   use `references/helm-alias-overlays.md`; for Autopilot resource findings, use
+   `references/gke-autopilot-resource-requests.md`.
+3. Apply surgical edits only. Do not stage, commit, push, deploy, or overwrite
+   unrelated user changes.
+4. Validate in three bounded groups:
+   - format or syntax
+   - one behavior-proving render/test/check
+   - final bounded diff and status
+5. Stop and report if validation exposes a different required change.
 
-## Validation Budget
+Use `scripts/implementation_flow.sh` for fixed preflight/final checks. For Helm
+rendering, prefer `.agents/shared/gitops/scripts/render_helm_values.sh`. Read
+`references/keda-implementation.md` only when approved scope includes KEDA.
 
-Default to at most three post-edit evidence groups:
+## Safety
 
-1. one format or syntax check;
-2. one behavior proof such as a Helm render, Terraform validate/plan, or focused
-   test;
-3. one bounded diff review including `git diff --check`.
-
-Do not repeat a successful check, add live-state inspection without a concrete
-post-edit question, or invoke a review subagent unless the selected workflow
-requires independent validation. Expand beyond the budget only after a failed
-check identifies a specific unresolved mismatch, and report why it expanded.
-
-## Deterministic Helper
-
-Use the wrapper first when the target repo and optional Helm chart inputs are
-known:
-
-```bash
-.agents/skills/gitops-implementation-workflow/scripts/implementation_flow.sh [--allow-main] [--chart <chart-path> --release <release> --namespace <namespace> --env <env>] [--changed-path <path>] <repo-path>
-```
-
-What the wrapper does:
-
-1. Run repo preflight.
-2. Check Helm dependency artifacts when `--chart` is provided.
-3. Check values overlay risks when base and environment values files exist.
-4. Render the chart to a temp file and output a compact JSON manifest summary
-   when Helm inputs are complete.
-5. Run post-patch review when `--changed-path` is provided.
-
-If the wrapper lacks a needed input, run the narrow existing script directly
-from this skill's `scripts/` directory and report the gap.
-
-Use `.agents/shared/gitops/scripts/render_helm_values.sh` for new Helm render
-checks. The adjacent `render_flex_app.sh` remains a compatibility shim.
-
-## Optional KEDA Work
-
-When the user explicitly chooses KEDA/event-driven autoscaling, read
-`references/keda-implementation.md` before editing infra charts, shared app
-charts, service values, or HPA handoff paths. Treat KEDA as opt-in; do not assume
-it should be installed or enabled for unrelated autoscaling work.
+Never modify secrets, credentials, kubeconfigs, `.env` files, remote Git,
+clusters, Argo CD, GitLab, or GCP. Do not run direct deployment operations.
+Do not invent environment names, versions, namespaces, identities, endpoints,
+or branch refs.
 
 ## Output
 
-Lead with the completed behavior, not the editing narrative. Make successful
-validation visible, keep each remaining action bounded, and name only one
-immediate next step.
-
 ```text
 Summary:
-Changed files:
+- Files and intended behavior changed
+
 Validation:
+- Commands, results, and skipped checks
+
 Risk:
+- Deployment, IAM, CI, runtime, or documentation risk
+
 Next step:
+- One concrete user action
 ```
 
-For branch-ready delivery work, also include a suggested commit message,
-validation gaps, and any render-to-live diff command needed for reviewer
-verification. Use `$gitops-mr-summary` when the user wants the MR description
-itself.
+For branch-ready delivery work, also provide a concise commit message and note
+that the user remains responsible for commit, push, MR, and GitOps reconciliation.

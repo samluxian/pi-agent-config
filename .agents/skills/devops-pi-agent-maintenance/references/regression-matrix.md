@@ -5,10 +5,11 @@ first; add real prompt trials when routing behavior changes.
 
 | Changed surface | Required evidence |
 | --- | --- |
-| Model-invoked skill description | Unique invoke and skip fixtures; fixture validator; representative same-model prompt trials |
-| Skill body/reference | Frontmatter and UI metadata valid; every context pointer resolves; completion criteria remain checkable; no duplicated owner |
-| Skill add/remove/rename | AGENTS routing, README inventory, UI metadata, fixtures, cross-skill pointers, and active references all accounted for |
-| `AGENTS.md` | README synchronized; shared rule is truly always-on; domain runbook not duplicated; `git diff --check` |
+| Model-invoked skill description | Concise positive/negative boundary; unique invoke and skip fixtures; fixture validator; representative same-model prompt trials |
+| Manual skill | `disable-model-invocation: true`; README `/skill:<name>` entry; no automatic invocation fixtures |
+| Skill body/reference | Frontmatter and UI metadata valid; body within context budget; every pointer resolves; completion criteria remain checkable; no duplicated owner |
+| Skill add/remove/rename | README inventory, UI metadata, fixtures, cross-skill pointers, and active references all accounted for |
+| `AGENTS.md` | Within context budget; README synchronized; shared rule is always-on; no skill routing table or domain workflow; `git diff --check` |
 | Pi extension | Hook allow/transform-or-block/failure/reset tests; package registration; initializer/install docs; bounded output review |
 | Subagent extension | Parent/child authority boundary; profile/tool allowlist; model/thinking CLI; single/parallel limits; timeout/abort/process failure; no paid provider call in unit tests |
 | Settings/session/model policy | JSON parse; installed-version documentation check; no automatic overwrite path; README adoption instructions |

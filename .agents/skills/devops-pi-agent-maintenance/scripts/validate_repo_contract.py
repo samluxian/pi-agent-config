@@ -63,15 +63,24 @@ def main() -> None:
     errors: list[str] = []
 
     skills_root = repo / ".agents" / "skills"
+    agents_path = repo / "AGENTS.md"
     readme_path = repo / "README.md"
     package_path = repo / "package.json"
-    if not skills_root.is_dir() or not readme_path.is_file() or not package_path.is_file():
+    if not all((skills_root.is_dir(), agents_path.is_file(), readme_path.is_file(), package_path.is_file())):
         print(f"ERROR: not a devops-pi-agent repository: {repo}", file=sys.stderr)
         raise SystemExit(1)
+
+    agents_text = agents_path.read_text(encoding="utf-8")
+    agents_lines = len(agents_text.splitlines())
+    if agents_lines > 230:
+        errors.append(f"AGENTS.md context budget exceeded: {agents_lines} > 230 lines")
+    if re.search(r"^## Skill Routing\s*$", agents_text, flags=re.MULTILINE):
+        errors.append("AGENTS.md must not contain a skill routing table")
 
     readme = readme_path.read_text(encoding="utf-8")
     skill_names: set[str] = set()
     model_invoked: set[str] = set()
+    model_description_chars = 0
     for skill_dir in sorted(path for path in skills_root.iterdir() if path.is_dir()):
         skill_file = skill_dir / "SKILL.md"
         if not skill_file.is_file():
@@ -84,6 +93,11 @@ def main() -> None:
             continue
         name, description, disabled = parsed
         skill_names.add(skill_dir.name)
+        skill_lines = len(skill_file.read_text(encoding="utf-8").splitlines())
+        if skill_lines > 85:
+            errors.append(f"SKILL.md context budget exceeded: {skill_dir.name} has {skill_lines} lines")
+        if len(description) > 320:
+            errors.append(f"skill description too long: {skill_dir.name} has {len(description)} characters")
         if name != skill_dir.name:
             errors.append(f"skill name/path mismatch: {name} != {skill_dir.name}")
         if not (skill_dir / "agents" / "openai.yaml").is_file():
@@ -92,10 +106,16 @@ def main() -> None:
             errors.append(f"README inventory missing skill: {skill_dir.name}")
         if not disabled:
             model_invoked.add(skill_dir.name)
+            model_description_chars += len(description)
             if "Use " not in description or "Do not use" not in description:
                 errors.append(
                     f"model-invoked description lacks positive/negative boundary: {skill_dir.name}"
                 )
+
+    if model_description_chars > 2100:
+        errors.append(
+            f"automatic description budget exceeded: {model_description_chars} > 2100 characters"
+        )
 
     package = json.loads(package_path.read_text(encoding="utf-8"))
     configured_extensions = set(package.get("pi", {}).get("extensions", []))

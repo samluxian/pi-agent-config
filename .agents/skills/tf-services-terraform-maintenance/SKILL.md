@@ -1,83 +1,55 @@
 ---
 name: tf-services-terraform-maintenance
-description: "Inspect, explain, plan, review, or maintain Terraform only in a user-identified `tf-services` repository, including GCP IAM, Workload Identity, firewalls, VMs, Secret Manager, and state. Use when that repo and target service/environment are in scope. Do not use for generic Terraform elsewhere or runtime GCP diagnosis."
+description: Inspect, explain, plan-review, or maintain Terraform in a named tf-services repo. Use for its GCP IAM, Workload Identity, network, VM, Secret Manager reference, or state work. Do not use for Terraform elsewhere or runtime diagnosis.
 ---
 
 # tf-services Terraform Maintenance
 
-Use this skill when the user identifies a `tf-services` repository to learn,
-inspect, plan, review, or safely maintain.
+Use beginner-safe, plan-first Terraform practice in a user-identified
+`tf-services` repository. GCP and remote state remain read-only.
 
-## Terraform Boundaries
+## Flow
 
-Treat IAM, firewalls, VMs, backend/state, and provider-version changes as high
-risk. Explain the blast radius before proposing edits. Default checks are
-`terraform fmt -check`, `terraform validate -backend=false` when safe, and a
-plan only after the target service and environment are explicit.
+1. Confirm repository, service/environment, branch/status, task type, backend,
+   and whether the user requests inspection, plan review, or an approved edit.
+2. Run `scripts/tf_services_preflight.sh` or inspect equivalent bounded evidence.
+   Read `references/repo-map.md` when layout or ownership is unclear.
+3. Trace variables -> locals -> modules/resources -> outputs and state address.
+   Explain unknown values and replacement risk without guessing provider behavior.
+4. For edits, propose exact files, plan expectation, IAM/network/runtime risk, and
+   validation; wait for explicit approval and require a non-protected branch.
+5. Apply the smallest approved change. Never run `apply`, import, state mutation,
+   workspace mutation, or remote Git operations.
+6. Validate with formatting, affected-root validation, and a user-operated plan.
+   Use `scripts/run-terraform.sh` only for its documented safe modes.
 
-## Resource Documentation
+Load deeper guidance only when needed:
 
-Keep a Terraform root's adjacent `README.md` limited to durable resource facts:
-ownership, managed resources, inputs, outputs, dependencies, and safety
-boundaries. Do not put one-time rollout order, apply sequencing, DNS cutover
-steps, or delivery handoff prose in a resource README. Put those procedures in
-the response, MR handoff, session note, or an explicitly requested runbook.
-Complete when the README remains accurate after the current delivery finishes.
+- `references/beginner-runbook.md` for command meaning and plan review.
+- `references/iam-review-checklist.md` for least-privilege IAM/WI.
+- `references/firewall-review-checklist.md` for network exposure and rules.
 
-## Start
+## Stop Conditions
 
-Run repo preflight in the user-identified target repo:
-
-```bash
-cd <tf-services-repo>
-git branch --show-current
-git status --short --untracked-files=all
-git diff --name-status HEAD
-git diff --cached --name-status
-```
-
-If editing is requested on `main`, stop and ask the user to create or switch to
-a working branch. Complete when target repo, service, environment, branch, and
-dirty state are known.
-
-For a compact baseline, use:
-
-```bash
-.agents/skills/tf-services-terraform-maintenance/scripts/tf_services_preflight.sh <tf-services-repo>
-```
-
-## Beginner Flow
-
-1. Identify one target service and environment. Complete when both are explicit.
-2. Read the matching reference: `references/repo-map.md`,
-   `references/beginner-runbook.md`, `references/iam-review-checklist.md`, or
-   `references/firewall-review-checklist.md`. Complete when the selected command
-   and its affected resource are understood.
-3. Explain each suggested command, its evidence, and remaining risk. Prefer:
-
-   ```bash
-   bash scripts/run-terraform.sh plan <service-path> <env>
-   ```
-
-   Complete when the user can distinguish `+` create, `~` update, `-` destroy,
-   and `-/+` replace in the plan.
-4. Stop before apply and summarize risk, validation, and the next user decision.
-   Complete when no mutating Terraform command has been run or proposed as an
-   agent action.
+Stop on unresolved target root/workspace, missing initialization/provider access,
+state lock, credential request, unexpected replacement/destruction, broad IAM,
+or a plan that exceeds approved scope. Never print sensitive state or secrets.
 
 ## Output
 
-For learning questions, answer or recommend one action first, then explain with
-short headings. Define each unfamiliar Terraform term on first use and connect
-it to the exact resource, evidence, and risk in scope. Number user-operated
-steps, keep one action per step, and leave one immediate next step before any
-mutation boundary.
-
 ```text
-結論:
-我檢查了:
-概念說明:
-建議操作:
-風險:
-下一步:
+Summary:
+- Root/service/environment and intended change or finding
+
+Plan evidence:
+- Add/change/destroy/replace summary and important unknowns
+
+Validation:
+- fmt, validate, plan status, and gaps
+
+Risk:
+- IAM, network, state, replacement, and runtime risk
+
+Next step:
+- One user-operated command or review action
 ```

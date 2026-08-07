@@ -1,102 +1,55 @@
 ---
 name: flex-app-version-upgrade
-description: "Assess an existing `k8s-deploy` wrapper upgrade between two `flex-app` versions. Use when published release notes, exact chart sources, renders, and migration risk must be reconciled into a wrapper upgrade plan. Do not use for shared chart authoring, generic Helm review, or unrelated dependency upgrades."
+description: Assess a k8s-deploy wrapper upgrade between flex-app versions using release notes, exact chart sources, renders, selectors, and globals. Use for wrapper upgrades. Do not use for shared chart authoring or unrelated dependencies.
 ---
 
 # Flex App Version Upgrade
 
-Use this skill before changing an existing service wrapper from one `flex-app`
-version to another. Use `$flex-app-chart-maintenance` when changing the shared
-chart; use `$gitops-implementation-workflow` only after this assessment and
-user approval.
-
-Before consuming release notes, read the Consumer Contract in
-`../flex-app-chart-maintenance/references/release-notes.md`. Loading that
-contract does not transfer ownership to chart maintenance: this skill still owns
-the wrapper-specific upgrade decision.
+Reconcile published intent with actual chart behavior before changing a service
+wrapper. Release notes are inputs, not deployment truth.
 
 ## Upgrade Flow
 
-1. Establish the upgrade inputs.
-   - Identify the wrapper path, dependency alias, current and target chart
-     versions, target environments, exact chart sources, and GitLab chart repo.
-   - Complete when each version, environment, and release identity is
-     evidence-backed.
-2. Read the published release-note range.
-   - Read every GitLab release note in `(current version, target version]`, not
-     only the target note. Record a missing release, note, auth, or permission as
-     missing evidence rather than no change.
-   - Extract breaking changes, changed defaults, migration actions, design
-     tradeoffs, known limitations, and explicitly unaffected contracts.
-   - Complete when each note claim has a pending evidence status.
-3. Compare and reconcile chart contracts.
-   - Compare the current and target `values.yaml`, schema, helpers, and templates
-     only for fields the wrapper can render: workload, selectors, ServiceAccount,
-     env/config, probes, Service/PDB, and HPA/KEDA.
-   - Map each release-note claim to chart evidence and classify every material
-     difference as inherited, overridden, irrelevant, or requiring a
-     wrapper-value change. Surface note/source conflicts; source wins.
-   - Complete when required wrapper changes, compatibility risks, and release-note
-     evidence gaps are explicit.
-4. Render both versions with effective inputs.
-   - Render each target environment with the same values files and injected
-     globals that Argo CD receives. Summarize material fields before raw YAML.
-   - Complete when current-versus-target render differences are recorded for
-     every target environment, or a missing input is reported.
-5. Check live compatibility only when an existing immutable or risky resource
-   changes.
-   - Read live Deployment selectors before changing rendered selectors.
-   - Preserve an immutable live selector exactly, or specify a user-operated
-     delete/recreate migration. Check Service and PDB selectors separately.
-   - Complete when every risky difference has one action: preserve, change a
-     values layer, or user-operated recreate.
-6. Produce the upgrade plan and stop at the decision.
-   - Order only the required wrapper changes, validation commands, release-note
-     migration actions, and user-operated runtime steps. Include rollback or
-     stop conditions for risky transitions.
-   - Hand implementation to `$gitops-implementation-workflow` only after user
-     approval.
-   - Complete when no material difference or release-note claim is unclassified.
+1. Confirm the wrapper repository, service/environment scope, current and target
+   chart versions, branch/status, and whether work is assessment or approved edit.
+2. Read every release note in the upgrade interval. Record breaking changes,
+   defaults, migrations, KEDA behavior, globals, selectors, and known limits.
+3. Obtain exact current and target chart sources. Do not substitute `main` or an
+   unverified local checkout for a released version.
+4. Inspect wrapper chart metadata, aliases, values, app-of-apps inputs, CI handoff,
+   and existing selector/resource assumptions.
+5. Render current and target effective values with
+   `scripts/render_flex_app_upgrade_summary.sh`. Use
+   `references/version-ownership-matrix.md` when ownership is unclear.
+6. Compare release-note claims, source, renders, and—when requested—read-only live
+   selector/state evidence. Surface every conflict.
+7. Produce a bounded migration plan. For edits, hand off to the approved
+   implementation workflow and do not change files before approval.
 
-## Render Summary
+## Stop Conditions
 
-Use the generic helper for one effective render when a compact resource summary
-is needed:
-
-```bash
-.agents/skills/flex-app-version-upgrade/scripts/render_flex_app_upgrade_summary.sh \
-  <release> <chart-path> -n <namespace> -f <base-values> -f <env-values> \
-  --set global.envName=<env>
-```
-
-Run it once per current/target version and environment. Add only the values
-files and globals the deployment controller actually supplies.
-
-Read `references/version-ownership-matrix.md` only when it contains either
-version. It is a history aid; chart source and render output remain authoritative.
+Stop when a release note or exact chart source is unavailable, current/target
+versions are ambiguous, rendered ownership cannot be resolved, or live evidence
+would be required but is not authorized. Do not publish, tag, push, or deploy.
 
 ## Output
 
 ```text
-Summary:
-- current -> target flex-app version
-- wrapper and environments
+Scope:
+- Wrapper, service/environment, current -> target
 
-Release-note inputs:
-- release -> claim -> chart/render evidence status
-
-Material differences:
-- chart difference -> rendered effect -> required wrapper change
-
-Upgrade plan:
-- ordered wrapper change -> validation -> migration or stop condition
+Required changes:
+- File/value and evidence-backed reason
 
 Compatibility:
-- resource -> live/render result -> action
+- Defaults, globals, selectors, KEDA, and migration findings
 
 Validation:
-- commands run, required, or missing
+- Source/tag verification, current/target render, and gaps
+
+Risk:
+- Deployment and runtime impact
 
 Next step:
-- implementation handoff or user-operated migration
+- One concrete action
 ```

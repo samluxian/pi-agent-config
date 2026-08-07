@@ -1,45 +1,47 @@
 ---
 name: orchestrator
-description: Delegate bounded independent subtasks and reconcile evidence. Use only when the user explicitly requests parallel/subagent work or a selected skill requires independent validation. Do not use merely because work is multi-step, spans multiple files, or needs a handoff.
+description: Delegate bounded independent reasoning tasks and reconcile their evidence. Invoke manually when independent validation or explicit parallel analysis is required; do not use merely because work is multi-step or spans files.
+disable-model-invocation: true
 ---
 
 # Orchestrator
 
-Use direct narrow checks for known files and a bounded subagent only for
-independent exploration, external research, or isolated read-only analysis.
-Do not delegate work that needs user clarification or cross-agent coordination.
-Do not invoke this skill only because a task is multi-step or needs a handoff.
+Use subagents for bounded reasoning, not simple file reads or shell commands.
+Subagents have no parent-session context.
 
 ## Flow
 
-1. Establish the requested outcome, target repo, and mutation boundary.
-   Complete when unknown requirements that change implementation are named.
-2. Gather the minimum evidence needed. Use a scout for multi-file discovery and
-   a researcher for external documentation only when the local evidence cannot
-   answer the question. Include paths, scope, constraints, and required output
-   in every subagent task.
-   Complete when every conclusion has local or cited evidence.
-3. Reconcile results before implementation. Resolve conflicts with targeted
-   primary evidence; do not treat a subagent summary as deployment truth.
-   Complete when affected files, behavior, validation, and risk are explicit.
-4. Implement only after the workspace approval gate permits it. Keep edits
-   narrow and verify the claimed behavior with the smallest relevant check.
-   Complete when validation evidence or its exact gap is reported.
+1. Define the decision, shared facts, independent tasks, evidence budget, output
+   format, and stop condition.
+2. Delegate only tasks that can be completed independently. Include every needed
+   path, constraint, and safety boundary in each prompt.
+3. Keep mutation with the parent unless the user explicitly approved an isolated
+   worker edit with exact file ownership.
+4. Reconcile results against primary evidence. Surface conflicts, stale evidence,
+   and unsupported claims; do not average conclusions.
+5. Return one recommendation, validation status, risk, and next action.
 
-## Delegation Limits
+## Limits
 
-- Use at most four independent subagents.
-- Default to `scout` and `researcher`; do not use an editing worker.
-- Subagents must not mutate Git, delivery, cloud, or runtime systems.
-- Do not re-scout evidence already established in the active context.
+- Prefer parallel tool calls for independent I/O.
+- Do not delegate secrets, credentials, remote mutations, or unbounded repo scans.
+- Do not have multiple workers edit the same or adjacent files.
+- Do not use a subagent to bypass approval, branch, evidence, or deployment rules.
+- Stop when tasks are coupled tightly enough that delegation would duplicate
+  context or create merge risk.
 
 ## Output
 
 ```text
-Conclusion:
+Decision:
+- Reconciled recommendation
+
 Evidence:
-Affected files:
+- Agreed facts and conflicts
+
 Validation:
-Risk:
+- Independent checks and gaps
+
 Next step:
+- One concrete action
 ```

@@ -1,70 +1,83 @@
 # Skill Design Contract
 
-Read this reference before creating, changing, splitting, merging, or removing a
-skill in `devops-pi-agent`. The target is **predictability**: the agent follows
-the same process on repeated runs even when the answer differs.
+Use this contract when creating or changing project-scoped skills.
 
-## Invocation Contract
+## Placement and Shape
 
-- First decide whether autonomous reach is necessary. A model-invoked skill pays
-  permanent context load because its description is present every turn. A
-  user-invoked skill sets `disable-model-invocation: true` and instead asks the
-  user to remember it.
-- Use model invocation only for a distinct work object the agent must recognize
-  itself or another model-invoked skill must reach. If many user-invoked skills
-  become hard to remember, prefer one user-operated index rather than exposing
-  all of them to the model.
-- A model-invoked description front-loads its concrete action/object, one
-  positive trigger per real branch, and the nearest negative boundary. Do not
-  list broad technology categories or synonyms that restate one branch.
-- Reuse a compact, established leading concept when it sharpens both invocation
-  and execution. Do not coin vocabulary that costs more explanation than it
-  saves.
+Skills live at `.agents/skills/<skill-name>/`:
 
-## Information Hierarchy
+```text
+<skill-name>/
+├── SKILL.md
+├── agents/openai.yaml
+├── references/
+├── scripts/
+└── assets/
+```
 
-1. Keep ordered actions required by every run in `SKILL.md`. End every action
-   with a checkable completion criterion; demand enough evidence to prevent
-   thin investigation or premature completion.
-2. Keep only universally needed rules beside those actions. Co-locate each
-   concept with its constraints and caveats instead of scattering them.
-3. Move branch-only facts, matrices, examples, and long procedures into a named
-   reference. The context pointer must state exactly when to read it; a file
-   hidden behind a vague pointer is a behavior bug.
+Only `SKILL.md` is required. Add support files only when they reduce repeated
+reasoning or provide deterministic behavior.
 
-Review a `SKILL.md` above roughly 120 lines for progressive disclosure. The line
-count is a review trigger, not a reason to delete required behavior. Split a
-skill only when a branch needs independent invocation or when later visible
-steps repeatedly pull the agent into premature completion and a sharper
-completion criterion is insufficient.
+## Context Ownership
 
-## Pruning Contract
+- `AGENTS.md`: universal safety, approval, workspace, evidence, and mutation
+  invariants. Never put a skill routing table or domain workflow there.
+- Skill description: automatic invocation boundary; state positive and negative
+  scope in one concise line.
+- `SKILL.md`: selected task's core flow, stop conditions, reference pointers, and
+  output contract.
+- `references/`: optional deep procedures loaded only for a concrete need.
+- `scripts/`: deterministic checks and repeated data reduction.
+- `README.md`: human-facing inventory and manual invocation instructions.
 
-- Keep each meaning in one source of truth. Point to the owner instead of
-  paraphrasing it in AGENTS, another skill, README, and an extension.
-- Delete duplication, stale sediment, and lines that no longer affect the skill.
-- Apply the no-op test sentence by sentence: if removing a sentence would not
-  change model behavior, remove it rather than polishing it.
-- Keep a rule only while it remains relevant to the skill's actual trigger and
-  output. Do not preserve historical behavior in active routing; session notes
-  can retain truthful history.
+Do not repeat the same rule across surfaces. Prefer moving detail downward over
+copying it.
 
-## Regression Contract
+## Frontmatter
 
-- Every model-invoked skill has unique invoke and skip fixtures. The skip case
-  should represent its nearest competing skill or an explicitly excluded task.
-- Structural fixture validation proves coverage shape only. Run representative
-  prompts with the same model/settings when a description or routing boundary
-  materially changes.
-- UI metadata, README inventory, AGENTS routing, cross-skill pointers, and
-  deterministic scripts must agree with the skill directory and frontmatter.
-  Keep provider/model selection out of skill instructions; skills own process
-  and evidence requirements, while session settings or explicit subagent
-  profiles own model choice.
-- A removal includes the complete skill directory, routing and inventory text,
-  fixtures, metadata references, and active pointers. A rename proves both the
-  new path and absence of the old active name.
+Required:
 
-A skill change is complete only when its owning process is singular, every
-branch has the required context, positive and negative behavior are covered,
-and no active caller points to stale content.
+```yaml
+---
+name: lower-kebab-case
+description: What it does. Use for X. Do not use for Y.
+---
+```
+
+Use `disable-model-invocation: true` for infrequent, expensive, or explicitly
+requested workflows. Manual skills must be documented as `/skill:<name>` in
+README and must not have automatic invocation fixtures.
+
+Keep auto descriptions precise and generally under 260 characters. Preserve the
+positive trigger and closest negative boundary; do not optimize length by making
+routing ambiguous.
+
+## Body Budget
+
+A normal `SKILL.md` should remain below 85 lines and contain only:
+
+1. task contract or invariant
+2. bounded workflow
+3. safety/stop conditions
+4. pointers to deeper references or scripts
+5. concise output contract
+
+Move command catalogs, troubleshooting matrices, examples, and domain background
+to support files. A line limit is a review signal, not permission to compress
+multiple unrelated rules into dense prose.
+
+## Routing and Tests
+
+Automatic skills require positive and negative invocation fixtures. Prefer one
+fixture per meaningful boundary; add more only for a known collision.
+
+Before completion, run:
+
+```bash
+python3 .agents/skills/devops-pi-agent-maintenance/scripts/validate_repo_contract.py
+npm run test:extensions
+git diff --check
+```
+
+Run the paid invocation benchmark only after automatic descriptions change and
+the user confirms provider, model, authentication, and budget.

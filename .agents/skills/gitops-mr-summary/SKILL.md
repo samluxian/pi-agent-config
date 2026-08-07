@@ -1,53 +1,43 @@
 ---
 name: gitops-mr-summary
-description: "Write evidence-based MR descriptions, MR summaries, branch-ready notes, or multi-repo handoff text for DevOps/GitOps changes. Use only when the requested output is MR copy. Do not use to implement, audit, review, or troubleshoot the change itself."
+description: Write evidence-based DevOps/GitOps MR descriptions, summaries, branch notes, or cross-repo handoff text. Use for requested MR copy only. Do not use for implementation, audit, review, or troubleshooting.
 ---
 
 # GitOps MR Summary
 
-## Steps
+Write copy from repository evidence without changing files or claiming unrun
+validation.
 
-1. Inspect every target repo's branch, working tree, staged changes, and recent
-   commits:
+## Flow
 
-   ```bash
-   git branch --show-current
-   git status --short --untracked-files=all
-   git diff --name-status HEAD
-   git diff --cached --name-status
-   git log --oneline --decorate -5
-   ```
+1. Confirm target repository, comparison base, branch freshness, requested format,
+   audience, and whether one or multiple repositories are involved.
+2. Inspect bounded evidence: status, changed-file summary, relevant diff hunks,
+   commit history when needed, and validation supplied or recorded by the repo.
+3. Separate facts from interpretation. Do not infer runtime, deployment, IAM, or
+   compatibility outcomes from filenames or intent alone.
+4. Explain what changed, why, validation, risk, rollout/handoff, and known gaps.
+   Keep application and deployment repository responsibilities distinct.
+5. Return copy-ready text only unless the user asks for analysis.
 
-   Complete when every repo used by the MR copy has a named branch and evidence
-   for its uncommitted and recent committed changes.
-
-2. Compare the branch with its target independently of working-tree state:
-
-   ```bash
-   git diff --name-status origin/main...HEAD
-   git diff --stat origin/main...HEAD
-   ```
-
-   Use this when `origin/main` is current enough; otherwise report the stale or
-   missing ref. If the branch was already merged or pushed and comparison is
-   unavailable, use supplied MR evidence and recent commits, naming the gap.
-   Complete when every material committed, staged, and unstaged change is
-   accounted for, or the exact unavailable evidence is reported.
-
-3. Write only what the evidence shows.
+Do not mutate Git, GitLab/GitHub, or repository files. If refs may be stale,
+state that limitation or ask the user to fetch before making comparison claims.
 
 ## Output Contract
 
-- Default to Traditional Chinese when the user writes in Chinese.
-- Output only `## 修改內容` followed by one to three single-sentence bullets.
-- Order bullets by `新增`、`修改`、`刪除`; omit categories with no changes.
-- Lead with the direct behavior change: say what setting or resource moved, changed, or was removed, and name the control relationship that changed when evidence supports it.
-- Prefer plain wording such as `將 <setting> 移至 <path>，使其不再受 <switch> 控制` over an implementation-heavy chain of generated resources.
-- Use specialized terms only when they are needed to identify the changed field or resource. If a term is not self-explanatory, add its purpose in the same sentence; do not stack terms such as `remoteRef`、`ExternalSecret`、`secretRef` without explaining the resulting behavior.
-- Keep paths and identifiers verbatim, but pair them with the immediate behavior they control. Do not add motivation, benefits, broad background, implementation narrative, or next steps.
-- Remove greetings, filler, vague intensifiers, empty transitions, canned contrasts, recaps, and closing offers. Keep a caveat only when it communicates real evidence limits or risk.
-- Add validation, risk, or other sections only when the user explicitly requests them.
-- For multiple repos, label each repo and apply the same one-to-three-bullet limit per repo.
-- Never claim live-system changes without evidence.
+```text
+## Summary
+- Behavior and scope
 
-Report missing implementation or validation outside the MR copy; do not edit files from this skill.
+## Changes
+- Evidence-backed file/config changes
+
+## Validation
+- Completed checks and explicit gaps
+
+## Risk / Rollout
+- Deployment, IAM, CI, runtime, and cross-repo handoff
+```
+
+Use concise bullets, preserve technical identifiers, and omit empty sections only
+when the requested MR template permits it.
