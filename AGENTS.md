@@ -171,8 +171,8 @@ Next step:
 - One concrete action
 ```
 
-If no files changed, say so. For branch-ready delivery work, include a suggested
-commit message and validation gaps.
+If no files changed, say so. If repository files changed, include a suggested
+commit message. For branch-ready delivery work, also report validation gaps.
 
 ## Continuous Improvement and Handoff
 

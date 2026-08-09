@@ -56,9 +56,12 @@ Validation:
 Risk:
 - Deployment, IAM, CI, runtime, or documentation risk
 
+Commit message:
+- Suggested commit message when files changed
+
 Next step:
 - One concrete user action
 ```
 
-For branch-ready delivery work, also provide a concise commit message and note
-that the user remains responsible for commit, push, MR, and GitOps reconciliation.
+When files changed, always provide a concise commit message. The user remains
+responsible for commit, push, MR, and GitOps reconciliation.

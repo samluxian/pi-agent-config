@@ -58,6 +58,9 @@ Validation:
 Risk:
 - Routing, compatibility, safety, or documentation risk
 
+Commit message:
+- Suggested commit message when files changed
+
 Next step:
 - One concrete user action
 ```

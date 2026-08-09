@@ -330,9 +330,9 @@ cd <workspace-root>/devops-pi-agent
 
 ## 維護與驗證
 
-修改 skills、extensions、`AGENTS.md`、README 或 settings policy 時，手動執行
-`/skill:devops-pi-agent-maintenance`，確認規則應由哪一層負責，避免重複的
-source of truth。
+修改 skills、extensions、`AGENTS.md`、README 或 settings policy 時，Pi 會依語意
+載入 `devops-pi-agent-maintenance`，確認規則應由哪一層負責，避免重複的 source of
+truth。
 
 固定檢查：
 
@@ -344,7 +344,8 @@ git diff --check
 
 目前 deterministic contract 會檢查 skill metadata、README inventory、invocation
 fixtures、extension registration、JSON 與 extension unit tests。Unit tests 不會呼叫
-付費模型。
+付費模型。只要 repository files 有修改，完成報告就會附 suggested commit message；
+沒有修改則會明確說明。
 
 只有 skill routing boundary 有實質變更時，才執行付費 benchmark：
 

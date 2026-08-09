@@ -76,6 +76,16 @@ def main() -> None:
         errors.append(f"AGENTS.md context budget exceeded: {agents_lines} > 230 lines")
     if re.search(r"^## Skill Routing\s*$", agents_text, flags=re.MULTILINE):
         errors.append("AGENTS.md must not contain a skill routing table")
+    normalized_agents = re.sub(r"\s+", " ", agents_text)
+    commit_rule = "If repository files changed, include a suggested commit message."
+    if commit_rule not in normalized_agents:
+        errors.append("AGENTS.md must require a suggested commit message after file changes")
+    for relative in (
+        ".agents/skills/gitops-implementation-workflow/SKILL.md",
+        ".agents/skills/devops-pi-agent-maintenance/SKILL.md",
+    ):
+        if "Commit message:" not in (repo / relative).read_text(encoding="utf-8"):
+            errors.append(f"skill output contract missing commit message: {relative}")
 
     readme = readme_path.read_text(encoding="utf-8")
     skill_names: set[str] = set()
