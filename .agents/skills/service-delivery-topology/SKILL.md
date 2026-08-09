@@ -1,7 +1,6 @@
 ---
 name: service-delivery-topology
-description: Map cross-repository service delivery and extraction impact across source dependencies, APIs, CI handoff, hosting or GitOps, routes, configuration, and state. Invoke manually for architecture-spanning analysis; do not use for one-repo troubleshooting, live health, or edits.
-disable-model-invocation: true
+description: Map cross-repo service delivery or extraction impact across source dependencies, APIs, CI, hosting/GitOps, routes, configuration, and state. Use for architecture questions spanning repositories. Do not use for one-repo troubleshooting, live health, or implementation.
 ---
 
 # Service Delivery Topology

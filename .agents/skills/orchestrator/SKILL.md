@@ -1,7 +1,6 @@
 ---
 name: orchestrator
-description: Delegate bounded independent reasoning tasks and reconcile their evidence. Invoke manually when independent validation or explicit parallel analysis is required; do not use merely because work is multi-step or spans files.
-disable-model-invocation: true
+description: Delegate bounded independent evidence tasks and reconcile results. Use for explicit parallel/subagent requests or when a selected workflow requires independent validation. Do not use merely because work is multi-step, spans files, or needs a handoff.
 ---
 
 # Orchestrator

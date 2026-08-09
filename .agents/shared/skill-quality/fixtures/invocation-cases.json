@@ -187,5 +187,61 @@
     "expected": "skip",
     "prompt": "Rank the engineering team by productivity from their GitLab event counts and recommend who should be promoted.",
     "reason": "Activity evidence must not be converted into performance or promotion judgments."
+  },
+  {
+    "id": "devops-agent-maintenance-extension",
+    "skill": "devops-pi-agent-maintenance",
+    "expected": "invoke",
+    "prompt": "In devops-pi-agent, add a Pi extension that truncates large tool results and update its maintenance contract.",
+    "reason": "The target is this repository's agent harness and extension contract."
+  },
+  {
+    "id": "devops-agent-maintenance-target-repo",
+    "skill": "devops-pi-agent-maintenance",
+    "expected": "skip",
+    "prompt": "Update the payment service Helm values in k8s-deploy after I approve the patch.",
+    "reason": "A product desired-state edit does not maintain the devops-pi-agent contract."
+  },
+  {
+    "id": "orchestrator-explicit-parallel",
+    "skill": "orchestrator",
+    "expected": "invoke",
+    "prompt": "Use three subagents to investigate these independent repositories in parallel.",
+    "reason": "Explicit bounded parallel delegation request."
+  },
+  {
+    "id": "orchestrator-independent-validation",
+    "skill": "orchestrator",
+    "expected": "invoke",
+    "prompt": "Have an independent agent forward-test this skill without seeing our diagnosis.",
+    "reason": "Explicit independent validation request."
+  },
+  {
+    "id": "orchestrator-single-file-edit",
+    "skill": "orchestrator",
+    "expected": "skip",
+    "prompt": "Update this one values.yaml file and validate the render.",
+    "reason": "A bounded single-repo edit does not need delegation."
+  },
+  {
+    "id": "orchestrator-handoff-only",
+    "skill": "orchestrator",
+    "expected": "skip",
+    "prompt": "Summarize the implementation handoff clearly.",
+    "reason": "A handoff alone is not a reason to delegate."
+  },
+  {
+    "id": "service-topology-cross-repo",
+    "skill": "service-delivery-topology",
+    "expected": "invoke",
+    "prompt": "Map how the frontend, BFF, backend repositories, CI artifact handoff, and API routes connect before a repo split.",
+    "reason": "The requested dependency and extraction analysis spans repository boundaries."
+  },
+  {
+    "id": "service-topology-single-live-pod",
+    "skill": "service-delivery-topology",
+    "expected": "skip",
+    "prompt": "Check why one live backend Pod is failing its readiness probe in qa.",
+    "reason": "A single live workload failure does not require cross-repo topology mapping."
   }
 ]

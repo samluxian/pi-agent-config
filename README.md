@@ -221,10 +221,10 @@ logs、diff 或 trace。
 
 ## Skills：依工作載入專用流程
 
-Pi 啟動時只看自動 skills 的 `name + description`；命中後才讀取完整
+Pi 啟動時只看 12 個 skills 的 `name + description`；語意命中後才讀取完整
 `SKILL.md`。`AGENTS.md` 不保存重複的 routing table。
 
-### 自動 skills
+### 可語意觸發的 skills
 
 | Skill | 用途 |
 | --- | --- |
@@ -237,19 +237,12 @@ Pi 啟動時只看自動 skills 的 `name + description`；命中後才讀取完
 | [`flex-app-chart-maintenance`](.agents/skills/flex-app-chart-maintenance/) | 維護 shared chart contract、KEDA、globals、compatibility 與 release notes。 |
 | [`runtime-dependency-ops`](.agents/skills/runtime-dependency-ops/) | 追查 request path、workload、identity、database、queue、cache、storage 與 worker failure。 |
 | [`tf-services-terraform-maintenance`](.agents/skills/tf-services-terraform-maintenance/) | 在指定 `tf-services` repo 解釋、plan-review 或維護 Terraform。 |
+| [`service-delivery-topology`](.agents/skills/service-delivery-topology/) | 分析跨 repository 的 service delivery topology 與 extraction impact。 |
+| [`orchestrator`](.agents/skills/orchestrator/) | 在明確要求平行分析或 workflow 要求獨立驗證時協調 bounded subagents。 |
+| [`devops-pi-agent-maintenance`](.agents/skills/devops-pi-agent-maintenance/) | 維護本 repo 的 agent contract、skills、extensions 與 regression checks。 |
 
 兩個 Flex App skills 都維持自動：chart maintenance 生產 shared contract 與
 release evidence；version upgrade 消費這些 evidence 並驗證 wrapper compatibility。
-
-### 手動 skills
-
-低頻或昂貴的跨領域流程不放進自動 skill list：
-
-| Skill | 手動入口 |
-| --- | --- |
-| [`service-delivery-topology`](.agents/skills/service-delivery-topology/) | `/skill:service-delivery-topology` |
-| [`orchestrator`](.agents/skills/orchestrator/) | `/skill:orchestrator` |
-| [`devops-pi-agent-maintenance`](.agents/skills/devops-pi-agent-maintenance/) | `/skill:devops-pi-agent-maintenance` |
 
 每個 `SKILL.md` 只保留 task boundary、核心流程、停止條件與 output contract；
 深層程序放在 `references/`，可重複檢查放在 `scripts/`。

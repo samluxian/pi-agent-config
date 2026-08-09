@@ -1,13 +1,12 @@
 ---
 name: devops-pi-agent-maintenance
-description: Maintain this devops-pi-agent repository's skills, extensions, AGENTS.md, README, settings baselines, and regression contracts. Invoke manually for agent behavior maintenance; do not use for product or service delivery work.
-disable-model-invocation: true
+description: Maintain devops-pi-agent skills, extensions, AGENTS.md, README, settings, and regression contracts. Use for this repository's agent behavior or maintenance rules. Do not use for product/service GitOps or target-repo edits.
 ---
 
 # DevOps Pi Agent Maintenance
 
-Keep agent behavior lean, testable, and owned by one surface. This skill is
-manual because repository-wide agent-contract changes are infrequent and broad.
+Keep agent behavior lean, testable, and owned by one surface. Use this skill
+only for this repository's agent contract, not ordinary delivery work.
 
 ## Flow
 
@@ -30,8 +29,8 @@ manual because repository-wide agent-contract changes are infrequent and broad.
 - `scripts/` or extensions: deterministic or enforceable behavior.
 - `README.md`: human-facing setup, inventory, and usage.
 
-Do not duplicate a workflow across these surfaces. Keep manual skills out of
-automatic routing and document their `/skill:<name>` entry points in README.
+Do not duplicate a workflow across these surfaces. Keep each skill's semantic
+boundary in its description instead of adding a routing table to `AGENTS.md`.
 
 ## Validation
 

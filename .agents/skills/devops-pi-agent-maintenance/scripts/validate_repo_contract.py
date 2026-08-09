@@ -104,7 +104,9 @@ def main() -> None:
             errors.append(f"missing UI metadata: {skill_dir.name}/agents/openai.yaml")
         if f".agents/skills/{skill_dir.name}/" not in readme:
             errors.append(f"README inventory missing skill: {skill_dir.name}")
-        if not disabled:
+        if disabled:
+            errors.append(f"skill disables semantic model invocation: {skill_dir.name}")
+        else:
             model_invoked.add(skill_dir.name)
             model_description_chars += len(description)
             if "Use " not in description or "Do not use" not in description:
@@ -112,9 +114,9 @@ def main() -> None:
                     f"model-invoked description lacks positive/negative boundary: {skill_dir.name}"
                 )
 
-    if model_description_chars > 2100:
+    if model_description_chars > 2850:
         errors.append(
-            f"automatic description budget exceeded: {model_description_chars} > 2100 characters"
+            f"automatic description budget exceeded: {model_description_chars} > 2850 characters"
         )
 
     package = json.loads(package_path.read_text(encoding="utf-8"))
