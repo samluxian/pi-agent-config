@@ -81,7 +81,8 @@ def main() -> None:
     if commit_rule not in normalized_agents:
         errors.append("AGENTS.md must require a suggested commit message after file changes")
     for relative in (
-        ".agents/skills/gitops-implementation-workflow/SKILL.md",
+        ".agents/skills/k8s-service-delivery/SKILL.md",
+        ".agents/skills/k8s-infra-delivery/SKILL.md",
         ".agents/skills/devops-pi-agent-maintenance/SKILL.md",
     ):
         if "Commit message:" not in (repo / relative).read_text(encoding="utf-8"):

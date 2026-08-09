@@ -221,7 +221,7 @@ logs、diff 或 trace。
 
 ## Skills：依工作載入專用流程
 
-Pi 啟動時只看 12 個 skills 的 `name + description`；語意命中後才讀取完整
+Pi 啟動時只看 13 個 skills 的 `name + description`；語意命中後才讀取完整
 `SKILL.md`。`AGENTS.md` 不保存重複的 routing table。
 
 ### 可語意觸發的 skills
@@ -230,7 +230,8 @@ Pi 啟動時只看 12 個 skills 的 `name + description`；語意命中後才�
 | --- | --- |
 | [`gitops-diagnostics-workflow`](.agents/skills/gitops-diagnostics-workflow/) | 唯讀診斷 desired state、render、Argo CD、Kubernetes、GitLab 或 GCP mismatch。 |
 | [`gitops-repo-audit`](.agents/skills/gitops-repo-audit/) | 靜態盤點 discovery、values、chart metadata、CI handoff 與 review readiness。 |
-| [`gitops-implementation-workflow`](.agents/skills/gitops-implementation-workflow/) | 在精確批准後執行最小 repo-file 修改與行為驗證。 |
+| [`k8s-service-delivery`](.agents/skills/k8s-service-delivery/) | 依固定 flex-app 契約導入或維護服務，分離 deployment values 與 app-config，並驗證 discovery/render。 |
+| [`k8s-infra-delivery`](.agents/skills/k8s-infra-delivery/) | 在精確批准後修改 bootstrap、App-of-Apps、infra 元件或平台 CI handoff。 |
 | [`gitops-mr-summary`](.agents/skills/gitops-mr-summary/) | 依 branch、diff 與 validation evidence 撰寫 MR copy。 |
 | [`developer-activity-summary`](.agents/skills/developer-activity-summary/) | 以唯讀 `glab`／`gh` evidence 整理指定日期的工作回顧。 |
 | [`flex-app-version-upgrade`](.agents/skills/flex-app-version-upgrade/) | 核對 release notes、chart source/render 與 wrapper migration。 |

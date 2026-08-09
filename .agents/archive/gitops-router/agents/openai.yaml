@@ -1,4 +1,4 @@
 interface:
   display_name: "GitOps Router"
   short_description: "Route broad GitOps requests to the right narrow workflow"
-  default_prompt: "Archived legacy router. Do not use for new work; choose gitops-implementation-workflow, gitops-diagnostics-workflow, or gitops-repo-audit instead."
+  default_prompt: "Archived legacy router. Do not use for new work; choose k8s-service-delivery, k8s-infra-delivery, gitops-diagnostics-workflow, or gitops-repo-audit instead."

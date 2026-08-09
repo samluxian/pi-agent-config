@@ -146,7 +146,8 @@ Responsibilities and outcomes:
 - Versioned workspace-wide agent instructions and project-scoped skills.
 - Split a broad GitOps workflow into narrower skills:
   - `gitops-router`
-  - `gitops-implementation-workflow`
+  - `k8s-service-delivery`
+  - `k8s-infra-delivery`
   - `gitops-diagnostics-workflow`
   - `gitops-repo-audit`
   - `session-memory`

@@ -1,6 +1,6 @@
 ---
 name: archived-gitops-router
-description: "Archived legacy GitOps router. Do not select for new work; use gitops-implementation-workflow, gitops-diagnostics-workflow, or gitops-repo-audit instead."
+description: "Archived legacy GitOps router. Do not select for new work; use k8s-service-delivery, k8s-infra-delivery, gitops-diagnostics-workflow, or gitops-repo-audit instead."
 ---
 
 # Archived GitOps Router
@@ -12,7 +12,8 @@ Pick the narrowest active project-scoped skill instead:
 
 | User intent | Skill |
 | --- | --- |
-| Implement an approved desired-state, Helm values, CI handoff, or workspace skill/docs change | `$gitops-implementation-workflow` |
+| Deliver an approved service-owned flex-app wrapper or values change | `$k8s-service-delivery` |
+| Deliver an approved bootstrap, infrastructure, or platform CI change | `$k8s-infra-delivery` |
 | Check, review, troubleshoot, verify, or explain GitOps/Helm/ArgoCD/Kubernetes/GCP behavior without editing | `$gitops-diagnostics-workflow` |
 | Run a static desired-state inventory or consistency audit before deciding whether to change anything | `$gitops-repo-audit` |
 | Write a handoff note after finishing or pausing work | `$session-memory` |

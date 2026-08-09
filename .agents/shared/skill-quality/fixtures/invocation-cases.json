@@ -63,18 +63,32 @@
     "reason": "An approved repo-file implementation is not a read-only diagnosis."
   },
   {
-    "id": "gitops-implementation-approved-values",
-    "skill": "gitops-implementation-workflow",
+    "id": "k8s-service-delivery-approved-config",
+    "skill": "k8s-service-delivery",
     "expected": "invoke",
-    "prompt": "I approve the exact proposed patch; update the uat Helm values and run the narrow render validation.",
-    "reason": "Explicit approval covers a repo-file desired-state implementation."
+    "prompt": "I approve the proposed onboarding patch for order-api. Add its flex-app wrapper, keep Kubernetes deployment settings in values files, put application parameters under app-config, and validate dev discovery plus render.",
+    "reason": "An approved flex-app service configuration for Kubernetes delivery belongs to the service delivery contract."
   },
   {
-    "id": "gitops-implementation-read-only",
-    "skill": "gitops-implementation-workflow",
+    "id": "k8s-service-delivery-shared-chart",
+    "skill": "k8s-service-delivery",
     "expected": "skip",
-    "prompt": "Do not edit anything; explain whether the current desired state matches the live Deployment.",
-    "reason": "A read-only comparison does not enter implementation."
+    "prompt": "Add a new public autoscaling field to the shared flex-app chart schema and templates.",
+    "reason": "Shared chart API authoring is outside service-owned delivery configuration."
+  },
+  {
+    "id": "k8s-infra-delivery-approved-bootstrap",
+    "skill": "k8s-infra-delivery",
+    "expected": "invoke",
+    "prompt": "I approve the exact patch; update the bootstrap App-of-Apps template for the existing dev infrastructure project and validate generated Applications.",
+    "reason": "An approved bootstrap and platform desired-state change belongs to infrastructure delivery."
+  },
+  {
+    "id": "k8s-infra-delivery-service-values",
+    "skill": "k8s-infra-delivery",
+    "expected": "skip",
+    "prompt": "Onboard payment-api with a flex-app Chart.yaml, environment deployment values, and application parameters under app-config.",
+    "reason": "A service-owned flex-app wrapper belongs to k8s-service-delivery, not infrastructure delivery."
   },
   {
     "id": "gitops-mr-summary-copy",
