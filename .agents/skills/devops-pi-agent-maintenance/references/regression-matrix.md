@@ -8,6 +8,7 @@ first; add real prompt trials when routing behavior changes.
 | Model-invoked skill description | Concise positive/negative boundary; unique invoke and skip fixtures; fixture validator; representative same-model prompt trials |
 | Manual skill | `disable-model-invocation: true`; README `/skill:<name>` entry; no automatic invocation fixtures |
 | Skill body/reference | Frontmatter and UI metadata valid; body within context budget; every pointer resolves; completion criteria remain checkable; no duplicated owner |
+| Terraform import/state recovery guidance | Distinguish configuration/state/live ownership; exact source and destination addresses; matching import destination; non-destroying removal; explicit root order; saved-plan path and sensitivity; partial-apply fresh plan; lock owner proof; final per-root no-op evidence |
 | Skill add/remove/rename | README inventory, UI metadata, fixtures, cross-skill pointers, and active references all accounted for |
 | `AGENTS.md` | Within context budget; README synchronized; shared rule is always-on; no skill routing table or domain workflow; `git diff --check` |
 | Pi extension | Hook allow/transform-or-block/failure/reset tests; package registration; initializer/install docs; bounded output review |

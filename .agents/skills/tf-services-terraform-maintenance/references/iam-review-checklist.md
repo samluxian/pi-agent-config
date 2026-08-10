@@ -12,6 +12,8 @@ Use for `newaile/service-account-iam` and `newaile/user-access` changes.
   - `google_project_iam_member`
 - Exact IAM member string.
 - Exact role string.
+- Terraform execution principal and whether it can read and write the specific
+  IAM policy surface required by the provider resource.
 
 ## Review questions
 
@@ -22,6 +24,11 @@ Use for `newaile/service-account-iam` and `newaile/user-access` changes.
 4. Is the role least-privilege for the stated task?
 5. Does this grant access to production or infra?
 6. Does the plan include removal of existing access?
+7. Does the Terraform runner have both read and write policy permissions needed
+   by this resource type, such as `getIamPolicy` and `setIamPolicy` on the exact
+   project, service account, bucket, or logging surface?
+8. Are runner prerequisites being kept separate from the IAM granted to the
+   workload or human subject?
 
 ## High-risk role patterns
 
@@ -62,6 +69,7 @@ IAM change:
 - Role:
 - Resource address:
 - Plan action:
+- Runner prerequisite:
 - Risk:
 - Safer alternative if applicable:
 ```

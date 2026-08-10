@@ -16,6 +16,8 @@ Use beginner-safe, plan-first Terraform practice in a user-identified
    Read `references/repo-map.md` when layout or ownership is unclear.
 3. Trace variables -> locals -> modules/resources -> outputs and state address.
    Explain unknown values and replacement risk without guessing provider behavior.
+   For imports, ownership transfers, saved plans, or failed applies, load
+   `references/state-handoffs-and-recovery.md` before proposing commands.
 4. For edits, propose exact files, plan expectation, IAM/network/runtime risk, and
    validation; wait for explicit approval and require a non-protected branch.
 5. Apply the smallest approved change. Never run `apply`, import, state mutation,
@@ -26,14 +28,17 @@ Use beginner-safe, plan-first Terraform practice in a user-identified
 Load deeper guidance only when needed:
 
 - `references/beginner-runbook.md` for command meaning and plan review.
+- `references/state-handoffs-and-recovery.md` for import, cross-root ownership,
+  saved-plan, state-lock, and partial-apply procedures.
 - `references/iam-review-checklist.md` for least-privilege IAM/WI.
 - `references/firewall-review-checklist.md` for network exposure and rules.
 
 ## Stop Conditions
 
 Stop on unresolved target root/workspace, missing initialization/provider access,
-state lock, credential request, unexpected replacement/destruction, broad IAM,
-or a plan that exceeds approved scope. Never print sensitive state or secrets.
+unknown state owner, active or unexplained state lock, unresolved partial apply,
+credential request, unexpected replacement/destruction, broad IAM, or a plan that
+exceeds approved scope. Never print sensitive state, saved plans, or secrets.
 
 ## Output
 

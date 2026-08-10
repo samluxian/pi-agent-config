@@ -59,9 +59,17 @@ terraform plan -var="env_name=dev"
 | `-` | Destroy a resource | High risk; stop and confirm |
 | `-/+` | Replace resource | High risk; may recreate VM/IP/IAM resource |
 
-Never judge a plan only by the count. Read the exact resource addresses and the
-important attributes: project, role, member, source range, ports, target tags,
-service account email, VM name, and backend environment.
+Never judge a plan only by the count. A replacement contributes both an add and
+a destroy. Read the exact resource addresses and the important attributes:
+project, role, member, source range, ports, target tags, service account email,
+VM name, and backend environment.
+
+If automation saves a plan, keep plan and apply in the same repository wrapper
+and working-directory contract, resolve the plan artifact path explicitly, and
+apply only the artifact tied to the approved commit. Treat saved plans as
+sensitive and invalidate them after configuration, state, provider, credential,
+or partial-apply changes. For imports, state handoffs, locks, or failed applies,
+follow `state-handoffs-and-recovery.md`.
 
 ## Common tasks
 
@@ -121,6 +129,8 @@ Questions to answer before editing:
 Stop and ask before continuing when:
 
 - plan includes destroy or replace;
+- state ownership is unknown or two roots may manage one remote object;
+- an apply partially completed or an active lock owner is unresolved;
 - backend bucket/prefix looks different than expected;
 - role includes `owner`, `editor`, project IAM admin, or secret manager admin;
 - firewall source is `0.0.0.0/0` or very broad;
