@@ -2,7 +2,7 @@
 set -euo pipefail
 
 root_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
-base_url="${SEARXNG_BASE_URL:-http://127.0.0.1:8080}"
+base_url="${SEARXNG_BASE_URL:-http://127.0.0.1:8888}"
 
 if ! command -v docker >/dev/null 2>&1; then
   echo "error: docker is not installed or not in PATH" >&2

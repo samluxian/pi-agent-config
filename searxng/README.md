@@ -16,11 +16,11 @@ docker compose up -d
 ./scripts/verify.sh
 ```
 
-The default endpoint is `http://127.0.0.1:8080`. Configure Pi in its launch
+The default endpoint is `http://127.0.0.1:8888`. Configure Pi in its launch
 environment:
 
 ```bash
-export SEARXNG_BASE_URL="http://127.0.0.1:8080"
+export SEARXNG_BASE_URL="http://127.0.0.1:8888"
 ```
 
 `settings.yml` enables only HTML and JSON output. JSON is necessary for the Pi
@@ -42,5 +42,5 @@ docker compose up -d
 ```
 
 Review an upstream release and pin `SEARXNG_VERSION` in `.env` before updating.
-Do not expose port 8080 publicly without TLS, authentication, rate limits, and
+Do not expose port 8888 publicly without TLS, authentication, rate limits, and
 an access policy.
