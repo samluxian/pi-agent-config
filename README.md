@@ -65,7 +65,7 @@ Agent 會先從最小範圍的狀態摘要判斷問題。若最後需要改 GitO
 | 精簡 context | 大型 tool output 保留有用的開頭與結尾，完整內容放在受限 temp file，不讓舊輸出持續佔滿 context。 |
 | 防止重複 loop | 阻擋部分無界限 Kubernetes dump，以及同一輪中重複執行剛成功的相同 command。 |
 | 可重複驗證 | 固定的 repo preflight、Helm summary、diagnostic snapshot、skill fixtures 與 extension tests。 |
-| 有邊界的 subagent | 強模型保留規劃與決策，只把明確、獨立、read-only 的蒐證工作交給較便宜的 child model。 |
+| 有邊界的 subagent | Parent 保留規劃、決策與 mutation authority；read-only children 蒐集 source、web、Kubernetes 與 GCP evidence，Terra worker 只執行已批准且檔案 ownership 明確的隔離 edits。 |
 
 ## 適合哪些工作
 
@@ -116,10 +116,15 @@ cd <workspace-root>/devops-pi-agent
 <workspace-root>/AGENTS.md
 <workspace-root>/.agents/skills
 <workspace-root>/.pi/extensions
+<workspace-root>/.pi/settings.json
+<workspace-root>/.pi/npm/node_modules/pi-web-access
 ```
 
-前兩個是指向此 repo canonical files 的相對 symlink；Pi extensions 會複製到該
-workspace 的 local scope，不會修改其他 workspace 或 `~/.pi/agent/extensions`。
+前兩個 contract paths 是指向此 repo canonical files 的相對 symlink；Pi extensions
+會協調到 workspace local scope：安裝缺少項目、更新 drifted copy，並移除 repo 中不
+存在的 workspace-local extension。Initializer 也會透過 Pi project settings 安裝 pinned
+`npm:pi-web-access@0.23.0`，同時保留其他 `.pi/settings.json` keys。Global Pi packages
+與 `~/.pi/agent/extensions` 不在此腳本的管理範圍。
 
 ### 3. 確認安裝
 
@@ -127,8 +132,9 @@ workspace 的 local scope，不會修改其他 workspace 或 `~/.pi/agent/extens
 ./scripts/init-workspace.sh --workspace-root <workspace-root> --check
 ```
 
-`--check` 會確認 symlink、Pi executable、extension 目錄與 dependencies 是否就緒，
-但不會比較已安裝 extension 與 repo source 是否內容相同。
+`--check` 會確認 symlink 與 Pi executable，並把 extensions 標示為 `ready`、
+`missing`、`drifted` 或 `unwanted`，同時顯示 manifest、dependencies 與 pinned
+`pi-web-access` project package 狀態。
 
 ### 4. 從 workspace root 啟動 Pi
 
@@ -142,7 +148,7 @@ extensions。
 
 ### 只安裝 contract 與 skills
 
-如果暫時不需要 Pi extensions：
+如果暫時不需要 Pi extensions 或 project-local `pi-web-access` package：
 
 ```bash
 ./scripts/init-workspace.sh --workspace-root <workspace-root> --no-pi-local
@@ -252,66 +258,41 @@ release evidence；version upgrade 消費這些 evidence 並驗證 wrapper compa
 
 | Extension | 功能 |
 | --- | --- |
-| `bash-guard` | 阻擋部分高風險、無界限輸出與同一輪中的重複成功 command。 |
-| `lean-context` | 將大型純文字結果限制為 80 行 head、40 行 tail 與 24 KiB，並記錄非 context 的 turn metrics。 |
-| `session-handoff` | 產生可審閱的結構化交接 prompt，並帶到 parent-linked 新 session。 |
-| `subagents` | 提供 bounded、read-only 的 `scout` 與 `researcher` child agents。 |
-| `web-search` | 透過 workspace 管理的 self-hosted SearXNG 做 web search。 |
-| `web-fetch` | 讀取 HTTPS 頁面、PDF 與可轉成文字的文件內容。 |
-
-SearXNG 的安裝與驗證方式見 [`searxng/README.md`](searxng/README.md)；web search
-extension 的設定見 [`extensions/web-search/README.md`](extensions/web-search/README.md)。
-
-### 換 session 時保留工作脈絡
-
-同一個 objective 只是 context 變大時使用 Pi 內建 compaction。準備換成全新 session
-時，先執行：
-
-```text
-/handoff <新 session 要完成的目標>
-```
-
-`session-handoff` 會從目前有效 conversation branch 產生包含 scope、approval、已驗證
-狀態、完成項目、決策、驗證、未確認事項與單一下一步的 prompt。你必須先在 editor
-審閱；確認後 extension 才建立 parent-linked 新 session，並把相同內容預填到新 editor。
-它不會自動送出，也不會讓新 model 隱式取得舊 session 的完整對話。Branch、dirty state、
-remote、deployment 與 runtime 狀態仍要由新 session 重新驗證。
+| `subagents` | 提供 read-only `scout`、`researcher`、`environment-scout`，以及 approval-gated editing `worker`。 |
+| `pi-web-access` | Pinned project-local package，提供 `web_search`、`fetch_content`、source checking 與 bounded content retrieval。 |
 
 ### Subagent 的責任邊界
 
-Subagent 不是另一個會自行做決定的工程師，而是隔離的 evidence collector：
+Subagent 不會取得 delegated authority。Parent 保留規劃、判斷、approval context、
+mutation authority、證據整合與最終驗證：
 
 ```text
-Parent model：規劃、判斷、保留 approval context、整合證據、負責實作
-  ├── scout：Luna / low，讀 local repositories
-  └── researcher：Terra / low，查外部文件
+Parent model：定義 scope、批准狀態、file ownership 與 validation
+  ├── scout：Luna / medium，read-only local repository evidence
+  ├── researcher：Terra / medium，read-only web search 與 source evidence
+  ├── environment-scout：Luna / medium，structured read-only kubectl/gcloud evidence
+  └── worker：Terra / medium，只執行已批准、ownership 明確的 isolated file edits
 ```
 
-每次 parallel request 最多四個 tasks，每個 child 最長五分鐘。Children 不繼承 parent
-conversation，固定使用 `--no-session`、`--no-skills`、`--no-extensions` 與 profile
-允許的 read-only tools。這套設計沒有 editing `worker`。
+每次 parallel request 最多四個 read-only tasks；worker 只能 single mode，避免 concurrent
+edit collisions。每個 child 最長五分鐘且不繼承 parent conversation，固定使用
+`--no-session`、`--no-skills`、`--no-extensions` 與 profile exact tool allowlist。
+Researcher 與 worker 會從 project-local `pi-web-access` 明確載入 `web_search` 和
+`fetch_content`。Environment scout 只接受固定 inspection operations，直接傳 argv 給
+`kubectl`/`gcloud`，不接受 shell 或 arbitrary flags；它封鎖 secret/config contents 與
+mutation operations，並限制 output。Worker 只能再委派 read-only `scout`、`researcher`
+與 `environment-scout`。Worker 的 `safe_bash` 只在 child 載入，而且只是 dangerous-pattern
+blocklist，不是 sandbox。
 
 ## 更新 workspace-local extensions
 
-Initializer 為了保護 local customization，**不會覆寫已存在的 extension source**。
-因此 repo 更新後，`--check` 顯示 ready 不代表內容已是最新版。
+Initializer 會把 repo 內的 extension directories 視為完整 desired state。每次執行都會
+安裝 missing extension、更新 drifted copy，並刪除 repo 中不存在的 workspace-local
+extension。不要把只存在 workspace copy 的 customization 放進 `.pi/extensions/`；應先
+納入此 repo 再重新初始化。
 
-若要更新單一 extension，先確認 installed copy 沒有需要保留的 local change，再移除並
-重新初始化。例如更新 `subagents`：
-
-```bash
-rm -rf <workspace-root>/.pi/extensions/subagents
-cd <workspace-root>/devops-pi-agent
-./scripts/init-workspace.sh --workspace-root <workspace-root>
-```
-
-接著在已開啟的 Pi session 執行：
-
-```text
-/reload
-```
-
-這只更新 workspace-local copy，不會修改 global Pi extensions。
+協調完成後，在已開啟的 Pi session 執行 `/reload` 載入最新版本。這個流程只管理
+workspace-local copies，不會修改 global Pi extensions 或 packages。
 
 ## Repository 地圖
 
@@ -320,10 +301,9 @@ cd <workspace-root>/devops-pi-agent
 | `AGENTS.md` | 每一輪都要遵守的安全、approval、workspace 與 evidence invariants；不包含領域 workflow 或 routing table。 |
 | `.agents/skills/` | 依工作類型載入的專用 workflows。 |
 | `.agents/shared/` | 多個 skills 共用的 deterministic scripts、references 與 invocation fixtures。 |
-| `extensions/` | Workspace-local Pi safety、context、search、fetch 與 subagent extensions。 |
+| `extensions/` | Workspace-local subagent extension，也是 initializer 的 copied desired state。 |
 | `config/` | 不會自動套用的 settings baseline。 |
-| `scripts/init-workspace.sh` | 建立 symlink、安裝 local extensions 與檢查 readiness。 |
-| `searxng/` | Loopback-only SearXNG templates、config generator 與 verifier。 |
+| `scripts/init-workspace.sh` | 建立 symlink、協調 local extensions 與檢查 readiness。 |
 | `docs/llm-wiki/` | 給 LLM/RAG 使用的 GitOps、chart 與 repo ownership 知識。 |
 | `docs/session-notes/` | 讓後續 session 可以接手的短紀錄。 |
 | `.agents/archive/` | 已停用、只保留歷史查詢的 workflows。 |
@@ -340,12 +320,13 @@ truth。
 ```bash
 npm run test:contract
 npm run test:extensions
+npm run test:init-workspace
 git diff --check
 ```
 
 目前 deterministic contract 會檢查 skill metadata、README inventory、invocation
-fixtures、extension registration、JSON 與 extension unit tests。Unit tests 不會呼叫
-付費模型。只要 repository files 有修改，完成報告就會附 suggested commit message；
+fixtures、extension registration、JSON、extension unit tests 與 initializer
+reconciliation。Unit tests 不會呼叫付費模型。只要 repository files 有修改，完成報告就會附 suggested commit message；
 沒有修改則會明確說明。
 
 只有 skill routing boundary 有實質變更時，才執行付費 benchmark：

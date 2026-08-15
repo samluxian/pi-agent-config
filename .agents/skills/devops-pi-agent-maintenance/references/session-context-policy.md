@@ -7,12 +7,11 @@ while new evidence advances that objective. Start a new session when the user
 switches to an unrelated objective, repo, or evidence path; carry forward a
 short handoff note instead of raw tool output.
 
-For an intentional Pi session switch, run `/handoff <new-session goal>`. Review
-the generated prompt before the extension creates a parent-linked session, then
-submit it explicitly in the replacement session. The handoff must preserve
-scope, approval boundaries, verified evidence, changed files, decisions,
-validation gaps, risks, and exactly one next action. Parent tracking does not
-implicitly expose the old conversation to the new model. Revalidate branch,
+For an intentional Pi session switch, prepare and review a short handoff prompt
+or `docs/session-notes/` entry, then start the replacement session manually. The
+handoff must preserve scope, approval boundaries, verified evidence, changed
+files, decisions, validation gaps, risks, and exactly one next action. A new
+session does not implicitly receive the old conversation. Revalidate branch,
 dirty state, remote freshness, deployment state, and runtime state after the
 switch.
 
@@ -42,10 +41,12 @@ and never treat a tool, test, provider, authentication, or validation failure
 as a reason to auto-escalate thinking.
 
 Subagents are explicit bounded delegation, not automatic per-skill execution.
-The parent retains planning, decisions, approval context, evidence
-reconciliation, and implementation. Each read-only subagent uses its configured
+The parent retains planning, decisions, approval context, mutation authority,
+evidence reconciliation, and final validation. Read-only agents collect bounded
+evidence. A worker may execute only an explicitly approved isolated edit with
+exact file ownership and must remain single-mode. Every child uses its configured
 model and thinking, receives no parent context implicitly, and must be given the
-paths, constraints, and required output needed for its isolated task. Cap one
+paths, constraints, and required output needed for its task. Cap one read-only
 parallel request at four tasks and enforce a wall-clock deadline per child.
 
 ## Context And Metrics

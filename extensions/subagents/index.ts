@@ -1,9 +1,9 @@
 /**
  * Minimal subagents extension.
  *
- * Registers a single `subagent` tool with two read-only evidence agents:
- * scout and researcher. The parent retains planning, decisions, and mutations.
- * Supports single and bounded parallel execution with verbal output only.
+ * Registers a single `subagent` tool with two read-only evidence agents
+ * (scout and researcher) and one approval-gated editing worker.
+ * Supports single and bounded parallel evidence execution with verbal output only.
  */
 import { spawn } from "node:child_process";
 import * as fs from "node:fs";
@@ -26,6 +26,7 @@ export interface AgentConfig {
 	thinking: ThinkingLevel;
 	systemPrompt: string;
 	filePath: string;
+	subagentAgents?: string[];
 }
 
 interface ToolEvent {
@@ -70,12 +71,13 @@ interface ExtensionConfig {
 
 const EXT_DIR = path.dirname(new URL(import.meta.url).pathname);
 const AGENTS_DIR = path.join(EXT_DIR, "agents");
+const TOOLS_DIR = path.join(EXT_DIR, "tools");
 const CONFIG_PATH = path.join(EXT_DIR, "config.json");
 export const DEFAULT_MAX_CONCURRENCY = 4;
 export const MAX_SUBAGENT_TASKS = 4;
 export const DEFAULT_SUBAGENT_TIMEOUT_MS = 5 * 60 * 1000;
 const DEFAULT_TERMINATE_GRACE_MS = 3000;
-const ALLOWED_AGENT_NAMES = new Set(["scout", "researcher"]);
+const ALLOWED_AGENT_NAMES = new Set(["scout", "researcher", "environment-scout", "worker"]);
 const THINKING_LEVELS = new Set<ThinkingLevel>(["off", "minimal", "low", "medium", "high", "xhigh", "max"]);
 
 export function normalizeConfig(value: unknown): ExtensionConfig {
@@ -98,13 +100,25 @@ function loadConfig(): ExtensionConfig {
 }
 
 // Built-in tools that pi provides natively (no extension needed)
-const BUILTIN_TOOLS = new Set(["read", "grep", "find", "ls"]);
+const BUILTIN_TOOLS = new Set(["read", "write", "edit", "grep", "find", "ls"]);
 
 // Custom tools are resolved relative to this package, not a global Pi config.
-const EXT_BASE = path.join(EXT_DIR, "..");
+const WEB_ACCESS_EXTENSION = path.join(
+	EXT_DIR,
+	"..",
+	"..",
+	"npm",
+	"node_modules",
+	"pi-web-access",
+	"index.ts",
+);
 const CUSTOM_TOOL_EXTENSIONS: Record<string, string> = {
-	web_search: path.join(EXT_BASE, "web-search", "index.ts"),
-	web_fetch: path.join(EXT_BASE, "web-fetch", "index.ts"),
+	web_search: WEB_ACCESS_EXTENSION,
+	fetch_content: WEB_ACCESS_EXTENSION,
+	kubectl_inspect: path.join(TOOLS_DIR, "environment-inspect.ts"),
+	gcloud_inspect: path.join(TOOLS_DIR, "environment-inspect.ts"),
+	safe_bash: path.join(TOOLS_DIR, "safe-bash.ts"),
+	subagent: path.join(EXT_DIR, "index.ts"),
 };
 
 // ── Agent Discovery & Registration ────────────────────────────────────
@@ -123,12 +137,15 @@ export function loadAgents(agentDir = AGENTS_DIR): AgentConfig[] {
 			.split(",")
 			.map((t) => t.trim())
 			.filter(Boolean);
+		const subagentAgents = frontmatter.subagent_agents
+			? frontmatter.subagent_agents.split(",").map((t) => t.trim()).filter(Boolean)
+			: undefined;
 
 		if (!name || !frontmatter.description || !frontmatter.model || !thinking || !THINKING_LEVELS.has(thinking)) {
 			throw new Error(`Invalid subagent profile: ${filePath}. name, description, model, and thinking are required.`);
 		}
 		if (!ALLOWED_AGENT_NAMES.has(name)) {
-			throw new Error(`Unsupported subagent profile: ${name}. Allowed agents: scout, researcher.`);
+			throw new Error(`Unsupported subagent profile: ${name}. Allowed agents: scout, researcher, environment-scout, worker.`);
 		}
 		if (loaded.some((agent) => agent.name === name)) {
 			throw new Error(`Duplicate subagent profile: ${name}`);
@@ -142,6 +159,7 @@ export function loadAgents(agentDir = AGENTS_DIR): AgentConfig[] {
 			thinking,
 			systemPrompt: body,
 			filePath,
+			...(subagentAgents ? { subagentAgents } : {}),
 		});
 	}
 	return loaded;
@@ -193,9 +211,12 @@ function formatToolPreview(name: string, args: Record<string, unknown>): string 
 		case "ls":
 			return `ls ${(args.path as string) || "."}`;
 		case "web_search":
-			return `search "${(args.query as string) || ""}"`;
-		case "web_fetch":
+			return `search ${((args.query as string) || "").slice(0, 80)}`;
+		case "fetch_content":
 			return `fetch ${(args.url as string) || ""}`;
+		case "kubectl_inspect":
+		case "gcloud_inspect":
+			return `${name} ${(args.operation as string) || ""}`;
 		default: {
 			const s = JSON.stringify(args);
 			return `${name} ${s.slice(0, 60)}`;
@@ -234,7 +255,7 @@ export async function buildPiArgs(
 	agent: AgentConfig,
 	task: string,
 	cwd: string,
-): Promise<{ args: string[]; tempDir: string }> {
+): Promise<{ args: string[]; tempDir: string; childEnv?: NodeJS.ProcessEnv }> {
 	const piBin = resolvePiBinary();
 	const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "pi-sub-"));
 
@@ -246,25 +267,25 @@ export async function buildPiArgs(
 
 	const args = [...piBin.baseArgs, "--mode", "json", "-p", "--no-session", "--no-skills"];
 
-	// Separate builtin tools from custom tools
-	const builtinTools: string[] = [];
+	// --tools is a unified allowlist for built-in and extension tools.
+	const allowlist: string[] = [];
 	const extensionPaths = new Set<string>();
 
 	for (const tool of agent.tools) {
 		if (BUILTIN_TOOLS.has(tool)) {
-			builtinTools.push(tool);
+			allowlist.push(tool);
 		} else if (CUSTOM_TOOL_EXTENSIONS[tool]) {
+			allowlist.push(tool);
 			extensionPaths.add(CUSTOM_TOOL_EXTENSIONS[tool]);
 		}
 	}
 
-	// Use --no-extensions then add only what we need
+	// Use --no-extensions then add only what the profile needs.
 	args.push("--no-extensions");
 
-	if (builtinTools.length > 0) {
-		args.push("--tools", builtinTools.join(","));
+	if (allowlist.length > 0) {
+		args.push("--tools", allowlist.join(","));
 	} else {
-		// No builtin tools needed — disable defaults so only extension tools are available
 		args.push("--no-tools");
 	}
 
@@ -288,7 +309,11 @@ export async function buildPiArgs(
 		args.push(`Task: ${task}`);
 	}
 
-	return { args: [piBin.command, ...args], tempDir };
+	const childEnv = agent.tools.includes("subagent") && agent.subagentAgents?.length
+		? { ...process.env, PI_SUBAGENT_ALLOWED: agent.subagentAgents.join(",") }
+		: undefined;
+
+	return { args: [piBin.command, ...args], tempDir, childEnv };
 }
 
 function extractTextFromContent(content: unknown): string {
@@ -325,7 +350,7 @@ export async function runSubagent(
 		spawnProcess?: typeof spawn;
 	} = {},
 ): Promise<AgentResult> {
-	const { args, tempDir } = await buildPiArgs(agent, task, cwd);
+	const { args, tempDir, childEnv } = await buildPiArgs(agent, task, cwd);
 	const command = args[0];
 	const spawnArgs = args.slice(1);
 
@@ -366,6 +391,7 @@ export async function runSubagent(
 			const proc = spawnProcess(command, spawnArgs, {
 				cwd,
 				stdio: ["ignore", "pipe", "pipe"],
+				...(childEnv ? { env: childEnv } : {}),
 			});
 
 			let buf = "";
@@ -695,30 +721,37 @@ function renderAgentProgress(
 export default function (pi: ExtensionAPI) {
 	const config = loadConfig();
 	const maxConcurrency = config.maxConcurrency;
-	const agents = loadAgents();
+	let agents = loadAgents();
+	const childAllowlist = process.env.PI_SUBAGENT_ALLOWED
+		?.split(",")
+		.map((name) => name.trim())
+		.filter(Boolean);
+	if (childAllowlist?.length) {
+		agents = agents.filter((agent) => childAllowlist.includes(agent.name));
+	}
 
 	pi.registerTool({
 		name: "subagent",
 		label: "Subagent",
 		description:
-			"Run scout or researcher for a bounded read-only evidence task. The parent retains planning and decisions; include paths, constraints, and required output because children receive no parent-session context.",
-		promptSnippet: "Run bounded read-only scout or researcher evidence tasks",
+			"Run scout, researcher, or environment-scout for bounded read-only evidence, or worker for an explicitly approved isolated file edit. Include all context because children receive no parent-session context.",
+		promptSnippet: "Run bounded scout, researcher, environment-scout, or approval-gated worker tasks",
 		promptGuidelines: [
-			"Use direct parallel read/fetch/search tool calls for simple I/O instead of subagent.",
+			"Use direct parallel read/fetch tool calls for simple I/O instead of subagent.",
 			"Use subagent only when the user explicitly requests delegation or the selected workflow requires independent validation.",
-			"The parent must retain planning, decisions, approval context, evidence reconciliation, and implementation; delegate only bounded evidence collection.",
-			"Subagent agents are read-only: scout explores local repositories and researcher checks external documentation. Never request file edits or system mutations.",
-			`Use at most ${MAX_SUBAGENT_TASKS} independent tasks and include all paths, constraints, and required output because subagents receive no parent-session context.`,
+			"Keep planning, decisions, approval context, and evidence reconciliation in the parent.",
+			"Scout, researcher, and environment-scout are read-only. Environment-scout may use only structured kubectl/gcloud inspection for explicitly named targets. Use worker only after explicit user approval, with exact file ownership and validation instructions; never delegate remote, infrastructure, cloud, secret, or Git mutations.",
+			"Worker is single-mode only. Use at most four parallel read-only tasks and include all paths, constraints, and required output because subagents receive no parent-session context.",
 		],
 		parameters: Type.Object({
 			agent: Type.Optional(
-				Type.String({ description: "Name of the agent to invoke: scout or researcher (SINGLE mode)", minLength: 1 }),
+				Type.String({ description: "Agent to invoke: scout, researcher, environment-scout, or worker (SINGLE mode)", minLength: 1 }),
 			),
 			task: Type.Optional(Type.String({ description: "Bounded evidence task (SINGLE mode)", minLength: 1 })),
 			tasks: Type.Optional(
 				Type.Array(
 					Type.Object({
-						agent: Type.String({ description: "Agent name: scout or researcher", minLength: 1 }),
+						agent: Type.String({ description: "Read-only agent name: scout, researcher, or environment-scout", minLength: 1 }),
 						task: Type.String({ description: "Independent bounded evidence task", minLength: 1 }),
 						cwd: Type.Optional(Type.String({ description: "Working directory for the agent process" })),
 					}),
@@ -752,6 +785,9 @@ export default function (pi: ExtensionAPI) {
 				for (const t of taskList) {
 					if (!agents.find((a) => a.name === t.agent)) {
 						throw new Error(`Unknown agent: ${t.agent}. Available agents: ${available}`);
+					}
+					if (t.agent === "worker") {
+						throw new Error("Worker is single-mode only to prevent concurrent file edits.");
 					}
 				}
 

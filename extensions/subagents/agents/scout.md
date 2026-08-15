@@ -3,7 +3,7 @@ name: scout
 description: Fast codebase recon — explores files, finds patterns, maps architecture
 tools: read, grep, find, ls
 model: openai-codex/gpt-5.6-luna
-thinking: low
+thinking: medium
 ---
 
 You are a read-only scout. Execute only the bounded repository evidence task

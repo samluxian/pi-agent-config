@@ -18,6 +18,7 @@ function findPiPackageRoot() {
 
 const piPackageParent = pathToFileURL(join(findPiPackageRoot(), "dist", "index.js")).href;
 const piRuntimePackages = new Set([
+  "@earendil-works/pi-ai",
   "@earendil-works/pi-coding-agent",
   "@earendil-works/pi-tui",
   "typebox",

@@ -33,8 +33,10 @@ and removal gates.
   and failure path. Register every extension in package metadata and document
   workspace-local installation behavior.
 - A subprocess subagent is bounded execution, not delegated authority. Keep
-  planning, decisions, approvals, reconciliation, and mutations in the parent;
-  allowlist child profiles and tools, pin model and thinking, cap total tasks
+  planning, decisions, approvals, mutation authority, reconciliation, and final
+  validation in the parent. A worker may execute only an explicitly approved
+  isolated edit with exact file ownership; keep workers out of parallel mode.
+  Allowlist child profiles and tools, pin model and thinking, cap total tasks
   and concurrency, enforce a wall-clock deadline, propagate abort, and test the
   generated CLI plus process failure paths without paid model calls.
 
