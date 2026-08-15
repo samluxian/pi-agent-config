@@ -1,6 +1,0 @@
-interface:
-  display_name: "Flex App Version Upgrade"
-  short_description: "Plan flex-app upgrades from notes and renders"
-  default_prompt: "Use $flex-app-version-upgrade to assess an existing k8s-deploy service wrapper upgrade by reading every published release note in the version range, verifying claims against exact chart sources and renders, and planning required values, selector, ServiceAccount, autoscaling, compatibility, and migration actions."
-policy:
-  allow_implicit_invocation: true

@@ -9,14 +9,14 @@ Skills live at `.agents/skills/<skill-name>/`:
 ```text
 <skill-name>/
 ├── SKILL.md
-├── agents/openai.yaml
 ├── references/
 ├── scripts/
 └── assets/
 ```
 
-Only `SKILL.md` is required. Add support files only when they reduce repeated
-reasoning or provide deterministic behavior.
+Only `SKILL.md` is required. Do not add provider-specific UI metadata. Add
+support files only when they reduce repeated reasoning or provide deterministic
+behavior.
 
 ## Context Ownership
 

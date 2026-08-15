@@ -98,6 +98,13 @@ byte-identical cross-skill helpers in `.agents/shared/`.
 Use the narrowest matching skill. Treat its description as the routing boundary.
 Do not duplicate detailed skill routing or workflow in this file.
 
+Any selected skill may require bounded independent validation. When it does, or
+when the user explicitly requests delegation, load
+`.agents/skills/orchestrator/SKILL.md` before calling a subagent. The domain skill
+retains task-specific evidence and stop conditions; the orchestrator owns role
+selection, bounded prompts, concurrency, authority boundaries, and reconciliation.
+Do not copy the orchestration workflow into domain skills.
+
 ## Evidence and Context
 
 Keep evidence layers separate:

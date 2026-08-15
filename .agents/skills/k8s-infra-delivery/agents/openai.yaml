@@ -1,4 +1,0 @@
-interface:
-  display_name: "K8s Infrastructure Delivery"
-  short_description: "Implement approved Kubernetes platform GitOps changes"
-  default_prompt: "Use $k8s-infra-delivery to implement an approved bootstrap, App-of-Apps, infrastructure component, cluster add-on, or platform CI handoff change and validate the bounded desired-state behavior."

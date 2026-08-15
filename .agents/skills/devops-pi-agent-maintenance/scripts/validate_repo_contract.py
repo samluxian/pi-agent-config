@@ -80,6 +80,13 @@ def main() -> None:
     commit_rule = "If repository files changed, include a suggested commit message."
     if commit_rule not in normalized_agents:
         errors.append("AGENTS.md must require a suggested commit message after file changes")
+    orchestration_rules = (
+        "Any selected skill may require bounded independent validation.",
+        "the orchestrator owns role selection, bounded prompts, concurrency, authority boundaries, and reconciliation.",
+    )
+    for rule in orchestration_rules:
+        if rule not in normalized_agents:
+            errors.append(f"AGENTS.md missing cross-skill orchestration rule: {rule}")
     for relative in (
         ".agents/skills/k8s-service-delivery/SKILL.md",
         ".agents/skills/k8s-infra-delivery/SKILL.md",
@@ -111,8 +118,6 @@ def main() -> None:
             errors.append(f"skill description too long: {skill_dir.name} has {len(description)} characters")
         if name != skill_dir.name:
             errors.append(f"skill name/path mismatch: {name} != {skill_dir.name}")
-        if not (skill_dir / "agents" / "openai.yaml").is_file():
-            errors.append(f"missing UI metadata: {skill_dir.name}/agents/openai.yaml")
         if f".agents/skills/{skill_dir.name}/" not in readme:
             errors.append(f"README inventory missing skill: {skill_dir.name}")
         if disabled:

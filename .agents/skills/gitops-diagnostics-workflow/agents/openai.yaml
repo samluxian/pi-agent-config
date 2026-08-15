@@ -1,4 +1,0 @@
-interface:
-  display_name: "GitOps Diagnostics"
-  short_description: "Run read-only GitOps checks, reviews, and troubleshooting"
-  default_prompt: "Use $gitops-diagnostics-workflow to inspect GitOps, Helm, ArgoCD, Kubernetes, GitLab, or GCP behavior read-only with the smallest fixed diagnostic script that answers the question."

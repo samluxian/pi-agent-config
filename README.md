@@ -251,8 +251,9 @@ Pi 啟動時只看 13 個 skills 的 `name + description`；語意命中後才�
 兩個 Flex App skills 都維持自動：chart maintenance 生產 shared contract 與
 release evidence；version upgrade 消費這些 evidence 並驗證 wrapper compatibility。
 
-每個 `SKILL.md` 只保留 task boundary、核心流程、停止條件與 output contract；
-深層程序放在 `references/`，可重複檢查放在 `scripts/`。
+每個 skill 只要求 `SKILL.md`，不維護 provider-specific UI metadata。`SKILL.md`
+只保留 task boundary、核心流程、停止條件與 output contract；深層程序放在
+`references/`，可重複檢查放在 `scripts/`。
 
 ## Pi Extensions：把重要限制做成程式
 
@@ -263,7 +264,14 @@ release evidence；version upgrade 消費這些 evidence 並驗證 wrapper compa
 
 ### Subagent 的責任邊界
 
-Subagent 不會取得 delegated authority。Parent 保留規劃、判斷、approval context、
+Subagent 不會取得 delegated authority。任何 selected domain skill 都可以把 orchestrator
+當 companion skill，但只有使用者明確要求 delegation，或該 workflow 要求 independent
+validation 時才載入；domain skill 保留 task-specific evidence 與 stop conditions。
+已知路徑的簡單 I/O 由 parent 直接執行，避免重複 scout 與浪費 context。Child prompt 採
+ASD-STE100-inspired Simplified Technical
+English（不宣稱完整合規）：使用短句、每句單一動作，以及固定的 `GOAL`、`INPUT`、
+`DO`、`DO NOT`、`STOP`、`RETURN` 欄位；明確限制 paths、evidence、output 與 blocker
+behavior，禁止 child 自行擴大 scope。Parent 保留規劃、判斷、approval context、
 mutation authority、證據整合與最終驗證：
 
 ```text

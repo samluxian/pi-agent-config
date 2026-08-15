@@ -1,4 +1,0 @@
-interface:
-  display_name: "K8s Service Delivery"
-  short_description: "Deliver flex-app services with a fixed config contract"
-  default_prompt: "Use $k8s-service-delivery to onboard or maintain an approved service's flex-app GitOps configuration, separate deployment values from app-config, and validate Argo CD discovery plus Helm render behavior."

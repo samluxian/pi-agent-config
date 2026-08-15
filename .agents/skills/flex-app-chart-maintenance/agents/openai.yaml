@@ -1,6 +1,0 @@
-interface:
-  display_name: "Flex App Chart Maintenance"
-  short_description: "Maintain flex-app contracts and release notes"
-  default_prompt: "Use $flex-app-chart-maintenance to review or update shared flex-app Helm chart behavior and write evidence-based, productized GitLab release notes."
-policy:
-  allow_implicit_invocation: true

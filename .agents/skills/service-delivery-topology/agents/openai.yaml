@@ -1,4 +1,0 @@
-interface:
-  display_name: "Service Delivery Topology"
-  short_description: "Map cross-repo app delivery and extraction impact"
-  default_prompt: "Use $service-delivery-topology to map frontend, BFF, backend, CI/CD, GitOps, hosting, gateway, secrets/config, data, and runtime dependencies before migration or extraction work."

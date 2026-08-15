@@ -1,4 +1,0 @@
-interface:
-  display_name: "DevOps Pi Agent Maintenance"
-  short_description: "Maintain this repo's skills, extensions, and agent contract"
-  default_prompt: "Use $devops-pi-agent-maintenance to make an approved, regression-tested change to this repository's skills, Pi extensions, AGENTS.md, or settings policy."

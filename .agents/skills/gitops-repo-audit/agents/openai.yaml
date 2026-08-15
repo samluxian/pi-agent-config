@@ -1,4 +1,0 @@
-interface:
-  display_name: "GitOps Repo Audit"
-  short_description: "Audit GitOps repo structure, values, bootstrap, and CI handoff"
-  default_prompt: "Use $gitops-repo-audit to inspect GitOps desired-state repositories read-only, inventory values/bootstrap/CI handoff risks, and report the smallest proposed fixes without mutating remotes or clusters."
