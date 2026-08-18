@@ -21,16 +21,20 @@ wrapper. Release notes are inputs, not deployment truth.
 5. Render current and target effective values with
    `scripts/render_flex_app_upgrade_summary.sh`. Use
    `references/version-ownership-matrix.md` when ownership is unclear.
-6. Compare release-note claims, source, renders, and—when requested—read-only live
+6. Compare resource presence and the emitted spec fields. Check Deployment
+   selectors, pod labels, affinity and KSA; Service selectors, type and ports;
+   PDB availability; HPA or ScaledObject bounds and metrics; and GSA annotations.
+7. Compare release-note claims, source, renders, and—when requested—read-only live
    selector/state evidence. Surface every conflict.
-7. Produce a bounded migration plan. For edits, hand off to the approved
+8. Produce a bounded migration plan. For edits, hand off to the approved
    implementation workflow and do not change files before approval.
 
 ## Stop Conditions
 
 Stop when a release note or exact chart source is unavailable, current/target
-versions are ambiguous, rendered ownership cannot be resolved, or live evidence
-would be required but is not authorized. Do not publish, tag, push, or deploy.
+versions are ambiguous, rendered ownership or spec-level compatibility cannot be
+resolved, or live evidence would be required but is not authorized. Do not
+publish, tag, push, or deploy.
 
 ## Output
 

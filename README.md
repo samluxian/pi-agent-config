@@ -240,10 +240,10 @@ Pi 啟動時只看 13 個 skills 的 `name + description`；語意命中後才�
 | [`k8s-infra-delivery`](.agents/skills/k8s-infra-delivery/) | 在精確批准後修改 bootstrap、App-of-Apps、infra 元件或平台 CI handoff。 |
 | [`gitops-mr-summary`](.agents/skills/gitops-mr-summary/) | 依 branch、diff 與 validation evidence 撰寫 MR copy。 |
 | [`developer-activity-summary`](.agents/skills/developer-activity-summary/) | 以唯讀 `glab`／`gh` evidence 整理指定日期的工作回顧。 |
-| [`flex-app-version-upgrade`](.agents/skills/flex-app-version-upgrade/) | 核對 release notes、chart source/render 與 wrapper migration。 |
+| [`flex-app-version-upgrade`](.agents/skills/flex-app-version-upgrade/) | 核對 release notes、chart source，並比較 selectors、PDB、autoscaling、KSA/GSA 等 render specs 與 wrapper migration。 |
 | [`flex-app-chart-maintenance`](.agents/skills/flex-app-chart-maintenance/) | 維護 shared chart contract、KEDA、globals、compatibility 與 release notes。 |
 | [`runtime-dependency-ops`](.agents/skills/runtime-dependency-ops/) | 追查 request path、workload、identity、database、queue、cache、storage 與 worker failure。 |
-| [`tf-services-terraform-maintenance`](.agents/skills/tf-services-terraform-maintenance/) | 在指定 `tf-services` repo 解釋、plan-review 或維護 Terraform。 |
+| [`tf-services-terraform-maintenance`](.agents/skills/tf-services-terraform-maintenance/) | 在指定 `tf-services` repo 解釋、plan-review、維護 Terraform，依 Google Cloud 官方規範檢查 architecture，並以繁體中文維護 Terraform README。 |
 | [`service-delivery-topology`](.agents/skills/service-delivery-topology/) | 分析跨 repository 的 service delivery topology 與 extraction impact。 |
 | [`orchestrator`](.agents/skills/orchestrator/) | 在明確要求平行分析或 workflow 要求獨立驗證時協調 bounded subagents。 |
 | [`devops-pi-agent-maintenance`](.agents/skills/devops-pi-agent-maintenance/) | 維護本 repo 的 agent contract、skills、extensions 與 regression checks。 |
@@ -259,8 +259,43 @@ release evidence；version upgrade 消費這些 evidence 並驗證 wrapper compa
 
 | Extension | 功能 |
 | --- | --- |
+| `humanizer` | 每輪將精簡 humanizer 規則套用至一般回覆與說明文件，並提供 `/humanizer` 完整改寫模式。 |
 | `subagents` | 提供 read-only `scout`、`researcher`、`environment-scout`，以及 approval-gated editing `worker`。 |
 | `pi-web-access` | Pinned project-local package，提供 `web_search`、`fetch_content`、source checking 與 bounded content retrieval。 |
+
+### 英文與繁體中文 Humanizer
+
+`humanizer` 是 Pi extension，不是自動觸發的 skill。啟用後，它會透過
+`before_agent_start` 在每輪加入精簡 style layer，套用至一般回覆，以及 agent 產生或修改
+的說明文件。這個模式使用目前 session 選定的模型直接生成內容，不會再呼叫第二次模型，
+因此不會加倍延遲與費用；實際語氣品質仍取決於目前模型。
+
+需要針對既有文字執行完整 35-pattern review 時，使用 `/humanizer`。Extension 會將完整
+中英文規則與待改寫文字包成一個獨立 user message：
+
+```text
+/humanizer In order to achieve this goal, the system has the ability to process requests.
+```
+
+只輸入 `/humanizer` 時，Pi 會開啟多行 editor。需要比對個人語氣時，可使用以下標記：
+
+```text
+[寫作樣本]
+貼上自己過去寫的 2–3 段文字
+
+[待改寫文字]
+貼上要改寫的內容
+```
+
+中文輸出預設使用台灣繁體中文，並保留 Kubernetes、GCP、Helm、Terraform、resource
+names、commands、code blocks、URLs 與其他 technical identifiers。它會檢查中英文常見
+LLM filler，但不把單一 pattern 當成 AI 證據，也不提供 AI 機率。預設只回傳最終改寫，
+不直接讀寫檔案；為避免截斷造成事實遺失，每次輸入限制為 1,500 行且不超過 48 KiB，
+較長文件應分段處理。
+
+英文 patterns 改編自 MIT 授權的
+[`blader/humanizer`](https://github.com/blader/humanizer) 2.11.1；copyright 與完整授權文字
+保留在 [`extensions/humanizer/THIRD_PARTY_NOTICES.md`](extensions/humanizer/THIRD_PARTY_NOTICES.md)。
 
 ### Subagent 的責任邊界
 
@@ -309,7 +344,7 @@ workspace-local copies，不會修改 global Pi extensions 或 packages。
 | `AGENTS.md` | 每一輪都要遵守的安全、approval、workspace 與 evidence invariants；不包含領域 workflow 或 routing table。 |
 | `.agents/skills/` | 依工作類型載入的專用 workflows。 |
 | `.agents/shared/` | 多個 skills 共用的 deterministic scripts、references 與 invocation fixtures。 |
-| `extensions/` | Workspace-local subagent extension，也是 initializer 的 copied desired state。 |
+| `extensions/` | Workspace-local Pi extensions，也是 initializer 的 copied desired state。 |
 | `config/` | 不會自動套用的 settings baseline。 |
 | `scripts/init-workspace.sh` | 建立 symlink、協調 local extensions 與檢查 readiness。 |
 | `docs/llm-wiki/` | 給 LLM/RAG 使用的 GitOps、chart 與 repo ownership 知識。 |

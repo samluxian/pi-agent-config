@@ -13,9 +13,14 @@ Use beginner-safe, plan-first Terraform practice in a user-identified
 1. Confirm repository, service/environment, branch/status, task type, backend,
    and whether the user requests inspection, plan review, or an approved edit.
 2. Run `scripts/tf_services_preflight.sh` or inspect equivalent bounded evidence.
-   Read `references/repo-map.md` when layout or ownership is unclear.
+   Read `references/repo-map.md` when layout or ownership is unclear. For a
+   Google Cloud architecture, root-layout, or module best-practice review, load
+   `references/google-cloud-terraform-best-practices.md` and keep official
+   guidance, repository policy, and current implementation separate.
 3. Trace variables -> locals -> modules/resources -> outputs and state address.
    Explain unknown values and replacement risk without guessing provider behavior.
+   Write Terraform README prose, section headings, and generated input/output
+   descriptions in Traditional Chinese; preserve commands and identifiers.
    For imports, ownership transfers, saved plans, or failed applies, load
    `references/state-handoffs-and-recovery.md` before proposing commands.
 4. For edits, propose exact files, plan expectation, IAM/network/runtime risk, and
@@ -27,6 +32,8 @@ Use beginner-safe, plan-first Terraform practice in a user-identified
 
 Load deeper guidance only when needed:
 
+- `references/google-cloud-terraform-best-practices.md` for Google Cloud root,
+  module, state, CI, security, and testing architecture guidance.
 - `references/beginner-runbook.md` for command meaning and plan review.
 - `references/state-handoffs-and-recovery.md` for import, cross-root ownership,
   saved-plan, state-lock, and partial-apply procedures.

@@ -6,8 +6,9 @@ usage() {
 Usage:
   render_flex_app_upgrade_summary.sh <release> <chart-path> [helm template args...]
 
-Renders one effective chart input set and prints only Deployment, Service, PDB,
-ServiceAccount, ConfigMap, and ExternalSecret fields useful for an upgrade diff.
+Renders one effective chart input set and prints bounded spec fields for an
+upgrade diff. The summary covers workload selectors, affinity, KSA/GSA, Services,
+PDB availability, HPA, ScaledObject, ConfigMap, and ExternalSecret references.
 Pass values files, namespace, and injected globals after <chart-path>.
 USAGE
 }
@@ -43,15 +44,44 @@ fi
 
 yq -r '
   select(.kind == "Deployment") |
-  "deployment " + .metadata.name + " selector=" + (.spec.selector.matchLabels | tojson)
+  "deployment " + .metadata.name +
+  " replicas=" + ((.spec.replicas // "") | tostring) +
+  " selector=" + ((.spec.selector.matchLabels // {}) | tojson) +
+  " podLabels=" + ((.spec.template.metadata.labels // {}) | tojson) +
+  " serviceAccount=" + (.spec.template.spec.serviceAccountName // "") +
+  " affinity=" + ((.spec.template.spec.affinity // {}) | tojson)
 ' "$out"
 yq -r '
   select(.kind == "Service") |
-  "service " + .metadata.name + " selector=" + (.spec.selector | tojson)
+  "service " + .metadata.name +
+  " type=" + (.spec.type // "ClusterIP") +
+  " selector=" + ((.spec.selector // {}) | tojson) +
+  " ports=" + ((.spec.ports // []) | tojson)
 ' "$out"
 yq -r '
   select(.kind == "PodDisruptionBudget") |
-  "pdb " + .metadata.name + " selector=" + (.spec.selector.matchLabels | tojson)
+  "pdb " + .metadata.name +
+  " selector=" + ((.spec.selector.matchLabels // {}) | tojson) +
+  " minAvailable=" + ((.spec.minAvailable // "") | tostring) +
+  " maxUnavailable=" + ((.spec.maxUnavailable // "") | tostring)
+' "$out"
+yq -r '
+  select(.kind == "HorizontalPodAutoscaler") |
+  "hpa " + .metadata.name +
+  " target=" + (.spec.scaleTargetRef.kind // "") + "/" + (.spec.scaleTargetRef.name // "") +
+  " min=" + ((.spec.minReplicas // "") | tostring) +
+  " max=" + ((.spec.maxReplicas // "") | tostring) +
+  " metrics=" + ((.spec.metrics // []) | tojson)
+' "$out"
+yq -r '
+  select(.kind == "ScaledObject") |
+  "scaledObject " + .metadata.name +
+  " target=" + (.spec.scaleTargetRef.kind // "Deployment") + "/" + (.spec.scaleTargetRef.name // "") +
+  " min=" + ((.spec.minReplicaCount // "") | tostring) +
+  " max=" + ((.spec.maxReplicaCount // "") | tostring) +
+  " polling=" + ((.spec.pollingInterval // "") | tostring) +
+  " cooldown=" + ((.spec.cooldownPeriod // "") | tostring) +
+  " triggers=" + ((.spec.triggers // []) | tojson)
 ' "$out"
 yq -r '
   select(.kind == "ServiceAccount") |

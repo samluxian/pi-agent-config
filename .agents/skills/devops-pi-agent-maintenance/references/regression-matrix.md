@@ -8,6 +8,7 @@ first; add real prompt trials when routing behavior changes.
 | Model-invoked skill description | Concise positive/negative boundary; unique invoke and skip fixtures; fixture validator; representative same-model prompt trials |
 | Manual skill | `disable-model-invocation: true`; README `/skill:<name>` entry; no automatic invocation fixtures |
 | Skill body/reference | Frontmatter valid; body within context budget; every pointer resolves; completion criteria remain checkable; no duplicated owner |
+| Flex-app upgrade summary script | Fixture output covers Deployment selector/pod labels/affinity/KSA, Service selector/type/ports, PDB availability, HPA, ScaledObject, GSA, config keys, and secret references; missing-chart failure remains explicit |
 | Terraform import/state recovery guidance | Distinguish configuration/state/live ownership; exact source and destination addresses; matching import destination; non-destroying removal; explicit root order; saved-plan path and sensitivity; partial-apply fresh plan; lock owner proof; final per-root no-op evidence |
 | Skill add/remove/rename | README inventory, fixtures, cross-skill pointers, and active references all accounted for |
 | `AGENTS.md` | Within context budget; README synchronized; shared rule is always-on; no skill routing table or domain workflow; `git diff --check` |
@@ -23,6 +24,12 @@ first; add real prompt trials when routing behavior changes.
 python3 .agents/skills/devops-pi-agent-maintenance/scripts/validate_repo_contract.py
 git diff --check
 git status --short --untracked-files=all
+```
+
+For a flex-app upgrade summary script or compatibility-field change, also run:
+
+```bash
+bash .agents/skills/flex-app-version-upgrade/scripts/tests/render_flex_app_upgrade_summary_test.sh
 ```
 
 For a removed surface, use a narrow `rg` over active guidance, skills, package,
