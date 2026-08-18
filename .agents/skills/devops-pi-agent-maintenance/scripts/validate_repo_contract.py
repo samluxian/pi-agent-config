@@ -81,7 +81,8 @@ def main() -> None:
     if commit_rule not in normalized_agents:
         errors.append("AGENTS.md must require a suggested commit message after file changes")
     orchestration_rules = (
-        "Any selected skill may require bounded independent validation.",
+        "Default to bounded read-only delegation when evidence acquisition is expected to produce large raw output or require multiple independent searches or reads.",
+        "Keep simple known-path I/O in the parent.",
         "the orchestrator owns role selection, bounded prompts, concurrency, authority boundaries, and reconciliation.",
     )
     for rule in orchestration_rules:

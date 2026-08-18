@@ -40,14 +40,18 @@ Use `low` for routine work, raise it only for the reasoning conditions above,
 and never treat a tool, test, provider, authentication, or validation failure
 as a reason to auto-escalate thinking.
 
-Subagents are explicit bounded delegation, not automatic per-skill execution.
-The parent retains planning, decisions, approval context, mutation authority,
-evidence reconciliation, and final validation. Read-only agents collect bounded
-evidence. A worker may execute only an explicitly approved isolated edit with
-exact file ownership and must remain single-mode. Every child uses its configured
-model and thinking, receives no parent context implicitly, and must be given the
-paths, constraints, and required output needed for its task. Cap one read-only
-parallel request at four tasks and enforce a wall-clock deadline per child.
+Subagents are bounded delegation, not automatic execution for every skill. Use
+them by default when read-only acquisition requires multiple searches or reads,
+inspects several large sources, or would otherwise fill the parent context with
+replaceable raw output. Keep simple known-path I/O and tightly coupled analysis
+in the parent. The parent retains planning, decisions, approval context, mutation
+authority, evidence reconciliation, and final validation. Read-only agents
+collect bounded evidence. A worker may execute only an explicitly approved
+isolated edit with exact file ownership and must remain single-mode. Every child
+uses its configured model and thinking, receives no parent context implicitly,
+and must be given the paths, constraints, and required output needed for its
+task. Cap one read-only parallel request at four tasks and enforce a wall-clock
+deadline per child.
 
 ## Context And Metrics
 

@@ -54,6 +54,13 @@ function toolHarness() {
   return tool;
 }
 
+test("prompts the parent to isolate high-volume read-only evidence", () => {
+  const guidance = toolHarness().promptGuidelines.join("\n");
+  assert.match(guidance, /Use subagent by default when read-only evidence acquisition requires multiple searches or reads/);
+  assert.match(guidance, /simple known-path I\/O/);
+  assert.match(guidance, /Keep planning, decisions, approval context, and evidence reconciliation in the parent/);
+});
+
 test("loads three read-only profiles and the Terra medium worker", () => {
   const agents = profiles();
   assert.deepEqual([...agents.keys()].sort(), ["environment-scout", "researcher", "scout", "worker"]);

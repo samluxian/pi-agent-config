@@ -15,9 +15,11 @@ worker only after the user explicitly approves an isolated edit and the task nam
 exact owned files, constraints, existing-change boundaries, and validation.
 Worker may delegate only to scout, researcher, and environment-scout.
 
-Prefer direct parallel search/fetch calls for simple I/O. Subagents receive no
-parent-session context, so every task must carry all required facts and safety
-boundaries.
+Use subagents by default when read-only evidence acquisition needs multiple
+searches or reads, covers several large sources, or would fill the parent context
+with replaceable raw output. Prefer direct read/fetch calls for simple known-path
+I/O. Subagents receive no parent-session context, so every task must carry all
+required facts and safety boundaries and return a bounded summary.
 
 ## Bounds
 

@@ -1,14 +1,16 @@
 ---
 name: orchestrator
-description: Delegate bounded independent evidence tasks and reconcile results. Use for explicit parallel/subagent requests or when a selected workflow requires independent validation. Do not use merely because work is multi-step, spans files, or needs a handoff.
+description: Delegate bounded evidence tasks and reconcile results. Use by default for high-volume read-only discovery, explicit subagent requests, or workflow-required independent validation. Do not use for simple I/O, tightly coupled analysis, or handoffs.
 ---
 
 # Session Orchestration
 
-Use this skill as a companion to any selected domain skill, but only for
-explicitly requested delegation or required independent validation. The domain
-skill retains its evidence and stop conditions. Use direct parallel tools for
-simple I/O. Subagents have no parent-session context or delegated authority.
+Use this skill as a companion to any selected domain skill. Default to bounded
+delegation when read-only evidence acquisition is likely to fill the parent
+context with replaceable raw output. Also use it for explicitly requested
+delegation or required independent validation. The domain skill retains its
+evidence and stop conditions. Use direct tools for simple known-path I/O.
+Subagents have no parent-session context or delegated authority.
 
 ## Readiness
 
@@ -38,8 +40,10 @@ blocker behavior. Tell the child to stop and report instead of widening scope.
 
 ## Flow
 
-1. Decide whether delegation adds independent evidence. Do not delegate merely
-   because work is multi-step, spans files, or needs a handoff.
+1. Delegate read-only acquisition by default when it requires multiple searches
+   or reads, inspects several large sources, or would otherwise return raw output
+   that dominates the parent context. Do not delegate merely because work is
+   multi-step, spans files, or needs a handoff.
 2. Define independent tasks and an exact output format. Include every required
    path, known fact, constraint, safety boundary, and validation expectation in
    each prompt.

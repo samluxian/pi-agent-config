@@ -231,11 +231,25 @@
     "reason": "Explicit independent validation request."
   },
   {
+    "id": "orchestrator-high-volume-readonly",
+    "skill": "orchestrator",
+    "expected": "invoke",
+    "prompt": "Search twelve large documentation trees for conflicting definitions and return only a bounded evidence summary so raw results do not fill the main context.",
+    "reason": "High-volume independent read-only acquisition should be isolated from the parent context."
+  },
+  {
     "id": "orchestrator-single-file-edit",
     "skill": "orchestrator",
     "expected": "skip",
     "prompt": "Update this one values.yaml file and validate the render.",
     "reason": "A bounded single-repo edit does not need delegation."
+  },
+  {
+    "id": "orchestrator-known-path-io",
+    "skill": "orchestrator",
+    "expected": "skip",
+    "prompt": "Read README.md and package.json from this known repository and tell me the package name.",
+    "reason": "Two known-path reads are simple parent I/O, not high-volume discovery."
   },
   {
     "id": "orchestrator-handoff-only",

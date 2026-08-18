@@ -65,7 +65,7 @@ Agent 會先從最小範圍的狀態摘要判斷問題。若最後需要改 GitO
 | 精簡 context | 大型 tool output 保留有用的開頭與結尾，完整內容放在受限 temp file，不讓舊輸出持續佔滿 context。 |
 | 防止重複 loop | 阻擋部分無界限 Kubernetes dump，以及同一輪中重複執行剛成功的相同 command。 |
 | 可重複驗證 | 固定的 repo preflight、Helm summary、diagnostic snapshot、skill fixtures 與 extension tests。 |
-| 有邊界的 subagent | Parent 保留規劃、決策與 mutation authority；read-only children 蒐集 source、web、Kubernetes 與 GCP evidence，Terra worker 只執行已批准且檔案 ownership 明確的隔離 edits。 |
+| 有邊界的 subagent | 高容量 read-only evidence 預設由 children 蒐集並回傳 bounded summary；parent 保留規劃、決策與 mutation authority，Terra worker 只執行已批准且檔案 ownership 明確的隔離 edits。 |
 
 ## 適合哪些工作
 
@@ -245,7 +245,7 @@ Pi 啟動時只看 13 個 skills 的 `name + description`；語意命中後才�
 | [`runtime-dependency-ops`](.agents/skills/runtime-dependency-ops/) | 追查 request path、workload、identity、database、queue、cache、storage 與 worker failure。 |
 | [`tf-services-terraform-maintenance`](.agents/skills/tf-services-terraform-maintenance/) | 在指定 `tf-services` repo 解釋、plan-review、維護 Terraform，依 Google Cloud 官方規範檢查 architecture，並以繁體中文維護 Terraform README。 |
 | [`service-delivery-topology`](.agents/skills/service-delivery-topology/) | 分析跨 repository 的 service delivery topology 與 extraction impact。 |
-| [`orchestrator`](.agents/skills/orchestrator/) | 在明確要求平行分析或 workflow 要求獨立驗證時協調 bounded subagents。 |
+| [`orchestrator`](.agents/skills/orchestrator/) | 預設委派高容量 read-only discovery，也處理明確的 subagent 要求與 workflow-required independent validation。 |
 | [`devops-pi-agent-maintenance`](.agents/skills/devops-pi-agent-maintenance/) | 維護本 repo 的 agent contract、skills、extensions 與 regression checks。 |
 
 兩個 Flex App skills 都維持自動：chart maintenance 生產 shared contract 與
@@ -300,9 +300,11 @@ LLM filler，但不把單一 pattern 當成 AI 證據，也不提供 AI 機率�
 ### Subagent 的責任邊界
 
 Subagent 不會取得 delegated authority。任何 selected domain skill 都可以把 orchestrator
-當 companion skill，但只有使用者明確要求 delegation，或該 workflow 要求 independent
-validation 時才載入；domain skill 保留 task-specific evidence 與 stop conditions。
-已知路徑的簡單 I/O 由 parent 直接執行，避免重複 scout 與浪費 context。Child prompt 採
+當 companion skill。當 read-only evidence acquisition 需要多次搜尋或讀取、涵蓋多個大型
+source，或 raw output 可能主導 parent context 時，預設載入 orchestrator 並委派；使用者明確
+要求 delegation 或 workflow 要求 independent validation 時也會載入。Domain skill 保留
+task-specific evidence 與 stop conditions。已知路徑的簡單 I/O 由 parent 直接執行，避免
+重複 scout。Child prompt 採
 ASD-STE100-inspired Simplified Technical
 English（不宣稱完整合規）：使用短句、每句單一動作，以及固定的 `GOAL`、`INPUT`、
 `DO`、`DO NOT`、`STOP`、`RETURN` 欄位；明確限制 paths、evidence、output 與 blocker
