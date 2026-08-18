@@ -261,7 +261,47 @@ release evidence；version upgrade 消費這些 evidence 並驗證 wrapper compa
 | --- | --- |
 | `humanizer` | 每輪將精簡 humanizer 規則套用至一般回覆與說明文件，並提供 `/humanizer` 完整改寫模式。 |
 | `subagents` | 提供 read-only `scout`、`researcher`、`environment-scout`，以及 approval-gated editing `worker`。 |
+| `workspace-memory` | 建立 machine-local workspace inventory，保存使用者確認的 repo／branch notes，並注入 bounded orientation context。 |
 | `pi-web-access` | Pinned project-local package，提供 `web_search`、`fetch_content`、source checking 與 bounded content retrieval。 |
+
+### Machine-local Workspace Memory
+
+`workspace-memory` 記住本機 workspace 下有哪些 sibling Git repositories，不同步到其他
+機器，也不把 catalog 寫進 product repositories。每台機器各自初始化：
+
+```text
+/workspace init [workspace-root]
+/workspace refresh
+/workspace list
+/workspace show <repo>
+/workspace use <repo>
+/workspace remember <repo> [--branch] <confirmed note>
+/workspace analyze <repo>
+/workspace forget <repo>
+```
+
+`init` 與 `refresh` 是 deterministic：只檢查 workspace 第一層目錄、`.git`、少量已知檔名
+以及 local branch／HEAD／dirty state；不讀檔案內容、不執行 `git fetch`，也不呼叫模型。
+`analyze` 只會排入一個要求 parent 依 orchestrator contract 使用 bounded scout 的 user
+message；delegation 仍由 parent 執行與整合，不是 extension 直接強制。候選摘要不會自動保存，
+使用者必須執行 `remember` 才會建立 authoritative note。Repository note 可跨 branch 使用；
+`--branch` note 綁定當下 branch 與 HEAD，HEAD 改變後只會標成 stale。
+
+Catalog 儲存在：
+
+```text
+~/.pi/agent/workspace-memory/<workspace-hash>/catalog.json
+```
+
+Registry 與 catalog 採 machine-local JSON、atomic write 與 `0600` 權限。Extension 不會
+自動收集 raw conversation、logs、manifests、diff、credentials、`.env` 或 secret values；
+`remember` 不做內容分類，使用者不得把這些資料寫入 confirmed note。每輪 system prompt
+最多注入 40 行／4 KiB；完整的 bounded entry 透過 read-only
+`workspace_catalog` tool 按需取得。Memory 只供 orientation，修改前仍須重新確認 target
+repo branch、working tree、staged／unstaged changes 與需要的 remote freshness。
+
+在 workspace root 初始化後執行 `/reload`，後續從該 root 或 indexed child repo 啟動的 Pi
+可透過 machine-local registry 找到同一份 catalog。
 
 ### 英文與繁體中文 Humanizer
 
