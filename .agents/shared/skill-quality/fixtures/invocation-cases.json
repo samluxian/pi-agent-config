@@ -91,18 +91,25 @@
     "reason": "A service-owned flex-app wrapper belongs to k8s-service-delivery, not infrastructure delivery."
   },
   {
-    "id": "gitops-mr-summary-copy",
-    "skill": "gitops-mr-summary",
+    "id": "mr-summary-copy",
+    "skill": "mr-summary",
     "expected": "invoke",
-    "prompt": "Write a concise Traditional Chinese MR description from this branch diff and validation evidence.",
-    "reason": "The requested output is MR copy."
+    "prompt": "請根據目前 branch diff 與 validation evidence，撰寫可直接貼上的繁體中文 MR 標題與內容。",
+    "reason": "使用者要求根據 repository evidence 撰寫 MR 文案."
   },
   {
-    "id": "gitops-mr-summary-review",
-    "skill": "gitops-mr-summary",
+    "id": "mr-summary-application-copy",
+    "skill": "mr-summary",
+    "expected": "invoke",
+    "prompt": "根據這個 frontend repository 的變更與測試結果，整理一份 GitHub pull request description。",
+    "reason": "一般應用程式 repository 的 MR 或 PR 文案也屬於 mr-summary."
+  },
+  {
+    "id": "mr-summary-review",
+    "skill": "mr-summary",
     "expected": "skip",
     "prompt": "Review this branch for Helm rendering defects and tell me whether it is safe to merge.",
-    "reason": "Technical review and readiness analysis are not MR prose writing."
+    "reason": "技術 review 與 merge readiness 分析不是 MR 文案撰寫."
   },
   {
     "id": "gitops-audit-static-tree",
@@ -193,7 +200,7 @@
     "skill": "developer-activity-summary",
     "expected": "skip",
     "prompt": "Use the current branch diff and validation results to write a GitLab merge request description.",
-    "reason": "MR copy belongs to gitops-mr-summary rather than a cross-day personal activity recap."
+    "reason": "MR 文案屬於 mr-summary，不是跨日期的個人活動回顧."
   },
   {
     "id": "developer-activity-performance-rating",

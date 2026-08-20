@@ -238,12 +238,12 @@ Pi 啟動時只看 13 個 skills 的 `name + description`；語意命中後才�
 | [`gitops-repo-audit`](.agents/skills/gitops-repo-audit/) | 靜態盤點 discovery、values、chart metadata、CI handoff 與 review readiness。 |
 | [`k8s-service-delivery`](.agents/skills/k8s-service-delivery/) | 依固定 flex-app 契約導入或維護服務，分離 deployment values 與 app-config，並驗證 discovery/render。 |
 | [`k8s-infra-delivery`](.agents/skills/k8s-infra-delivery/) | 在精確批准後修改 bootstrap、App-of-Apps、infra 元件或平台 CI handoff。 |
-| [`gitops-mr-summary`](.agents/skills/gitops-mr-summary/) | 依 branch、diff 與 validation evidence 撰寫 MR copy。 |
+| [`mr-summary`](.agents/skills/mr-summary/) | 依 branch、diff 與 validation evidence，以固定格式撰寫台灣繁體中文 MR 標題與內容。 |
 | [`developer-activity-summary`](.agents/skills/developer-activity-summary/) | 以唯讀 `glab`／`gh` evidence 整理指定日期的工作回顧。 |
 | [`flex-app-version-upgrade`](.agents/skills/flex-app-version-upgrade/) | 核對 release notes、chart source，並比較 selectors、PDB、autoscaling、KSA/GSA 等 render specs 與 wrapper migration。 |
 | [`flex-app-chart-maintenance`](.agents/skills/flex-app-chart-maintenance/) | 維護 shared chart contract、KEDA、globals、compatibility 與 release notes。 |
 | [`runtime-dependency-ops`](.agents/skills/runtime-dependency-ops/) | 追查 request path、workload、identity、database、queue、cache、storage 與 worker failure。 |
-| [`tf-services-terraform-maintenance`](.agents/skills/tf-services-terraform-maintenance/) | 在指定 `tf-services` repo 解釋、plan-review、維護 Terraform，依 Google Cloud 官方規範檢查 architecture，並以繁體中文維護 Terraform README。 |
+| [`tf-services-terraform-maintenance`](.agents/skills/tf-services-terraform-maintenance/) | 在指定 `tf-services` repo 解釋、plan-review、維護 Terraform；預設遵循 `main.tf`／`vars.tf`、backend-driven environment 與 configuration ownership 慣例，並以繁體中文維護 Terraform README。 |
 | [`service-delivery-topology`](.agents/skills/service-delivery-topology/) | 分析跨 repository 的 service delivery topology 與 extraction impact。 |
 | [`orchestrator`](.agents/skills/orchestrator/) | 預設委派高容量 read-only discovery，也處理明確的 subagent 要求與 workflow-required independent validation。 |
 | [`devops-pi-agent-maintenance`](.agents/skills/devops-pi-agent-maintenance/) | 維護本 repo 的 agent contract、skills、extensions 與 regression checks。 |

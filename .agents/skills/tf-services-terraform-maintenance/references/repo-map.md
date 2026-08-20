@@ -21,18 +21,54 @@ docs/                     Human documentation
 Most services follow this shape:
 
 ```text
-newaile/<service>/
+<family>/<service>/
 ├── main.tf
 ├── vars.tf
 ├── outputs.tf            optional
 ├── environments/
 │   └── <env>.backend.tfvars
-└── other resource files
+└── <resource-concern>.tf
 ```
+
+A service root stays exactly two levels below the repository root because the
+change-detection and execution scripts discover `<family>/<service>`. Shared
+modules stay under `<family>/modules/`.
 
 `environments/<env>.backend.tfvars` selects the remote GCS backend state for that
 service/environment. The backend file is not normal input variables; it tells
-Terraform where to read and write state.
+Terraform where to read and write state. Its presence is also the service's
+source of truth for enabled environments.
+
+## Default root and configuration conventions
+
+Before editing, compare the closest existing root in the same family. Apply the
+following defaults unless that evidence shows a necessary exception:
+
+- `main.tf` owns the `terraform` block, GCS backend declaration, shared defaults
+  module, and provider configuration. Preserve required Terraform/provider
+  constraints when they exist, but do not create a separate `versions.tf` by
+  default.
+- `vars.tf` is the configuration surface. Do not introduce `variables.tf` when
+  the family uses `vars.tf`.
+- `env_name` is a required string without a default or a hard-coded environment
+  validation. `Makefile` and CI call the repository scripts, which pass it with
+  `-var="env_name=<env>"`; the matching backend file decides whether that
+  service/environment is enabled.
+- Put operator-controlled inventories and defaults in `vars.tf`. Examples
+  include exact Secret Manager IDs, Workload Identity mappings, namespaces,
+  regions, service lists, and environment-specific database or cache settings.
+- Resource files consume `var.*` values and keep fixed provider/resource
+  behavior visible. Use `locals` only for derived filtering, flattening, naming,
+  or transformations rather than as a second configuration inventory.
+- Name resource files by concern, such as `secrets.tf`, `service-accounts.tf`,
+  `instances.tf`, or `databases.tf`. Follow the closest same-family root when
+  that family already has a stable name.
+- A structure-only change must preserve resource addresses, `for_each` keys,
+  exact resource identifiers, IAM roles, and GSA/KSA bindings. If any must
+  change, treat it as a behavior or state-handoff change instead.
+- Regenerate generated README sections after variable or provider metadata
+  changes. Keep Terraform README prose and generated descriptions in Traditional
+  Chinese while preserving technical identifiers.
 
 ## Current services
 

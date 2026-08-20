@@ -13,11 +13,14 @@ Use beginner-safe, plan-first Terraform practice in a user-identified
 1. Confirm repository, service/environment, branch/status, task type, backend,
    and whether the user requests inspection, plan review, or an approved edit.
 2. Run `scripts/tf_services_preflight.sh` or inspect equivalent bounded evidence.
-   Read `references/repo-map.md` when layout or ownership is unclear. For a
-   Google Cloud architecture, root-layout, or module best-practice review, load
+   Before root authoring or maintenance, read `references/repo-map.md` and
+   compare the closest existing root in the same family. For a Google Cloud
+   architecture, root-layout, or module best-practice review, load
    `references/google-cloud-terraform-best-practices.md` and keep official
    guidance, repository policy, and current implementation separate.
 3. Trace variables -> locals -> modules/resources -> outputs and state address.
+   Apply the repo map's root, file, and configuration-ownership conventions by
+   default. Keep a deviation only when concrete same-family evidence requires it.
    Explain unknown values and replacement risk without guessing provider behavior.
    Write Terraform README prose, section headings, and generated input/output
    descriptions in Traditional Chinese; preserve commands and identifiers.
@@ -25,8 +28,9 @@ Use beginner-safe, plan-first Terraform practice in a user-identified
    `references/state-handoffs-and-recovery.md` before proposing commands.
 4. For edits, propose exact files, plan expectation, IAM/network/runtime risk, and
    validation; wait for explicit approval and require a non-protected branch.
-5. Apply the smallest approved change. Never run `apply`, import, state mutation,
-   workspace mutation, or remote Git operations.
+5. Apply the smallest approved change. During structural cleanup, preserve state
+   addresses, `for_each` keys, and exact infrastructure identifiers. Never run
+   `apply`, import, state mutation, workspace mutation, or remote Git operations.
 6. Validate with formatting, affected-root validation, and a user-operated plan.
    Use `scripts/run-terraform.sh` only for its documented safe modes.
 
