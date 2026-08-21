@@ -34,11 +34,17 @@ and removal gates.
   workspace-local installation behavior.
 - A subprocess subagent is bounded execution, not delegated authority. Keep
   planning, decisions, approvals, mutation authority, reconciliation, and final
-  validation in the parent. A worker may execute only an explicitly approved
-  isolated edit with exact file ownership; keep workers out of parallel mode.
-  Allowlist child profiles and tools, pin model and thinking, cap total tasks
-  and concurrency, enforce a wall-clock deadline, propagate abort, and test the
-  generated CLI plus process failure paths without paid model calls.
+  delivery judgment in the parent. A worker may execute only an explicitly
+  approved isolated edit with exact file ownership. Reviewer may execute bounded
+  diff, render, plan, test, and validation commands but has no write/edit tools.
+  Keep reviewer and worker out of parallel mode. After final edits, require one
+  fresh final reviewer per changed repository. Only semantic `pass` clears that
+  repository; partial, failed, timed-out, blocked, stale, or missing-verdict
+  review remains a gap. Later edits invalidate only the matching repository.
+  Allowlist profiles and tools, pin model and thinking, cap tasks and concurrency,
+  expose role deadlines, propagate abort, bound reviewer conclusions, and test
+  repository scope, partial/final, semantic verdict, stale review, timeout, and
+  process failure without paid model calls.
 
 ## AGENTS And README Branch
 

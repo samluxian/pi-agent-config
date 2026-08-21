@@ -1,8 +1,8 @@
 /**
  * Minimal subagents extension.
  *
- * Registers a single `subagent` tool with two read-only evidence agents
- * (scout and researcher) and one approval-gated editing worker.
+ * Registers a single `subagent` tool with bounded evidence agents, an
+ * execution-capable reviewer, and one approval-gated editing worker.
  * Supports single and bounded parallel evidence execution with verbal output only.
  */
 import { spawn } from "node:child_process";
@@ -11,6 +11,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { getMarkdownTheme, parseFrontmatter, truncateHead, withFileMutationQueue, DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES } from "@earendil-works/pi-coding-agent";
+import { StringEnum } from "@earendil-works/pi-ai";
 import { Container, Markdown, Spacer, Text, visibleWidth } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 
@@ -30,6 +31,7 @@ export interface AgentConfig {
 }
 
 interface ToolEvent {
+	toolCallId: string;
 	tool: string;
 	args: string;
 }
@@ -44,9 +46,14 @@ interface AgentProgress {
 	toolCount: number;
 	tokens: number;
 	durationMs: number;
+	timeoutMs?: number;
+	timedOut?: boolean;
 	lastMessage: string;
 	error?: string;
 }
+
+export type ReviewerVerdict = "pass" | "fail" | "blocked" | "missing";
+export type ReviewMode = "partial" | "final";
 
 interface AgentResult {
 	agent: string;
@@ -55,6 +62,8 @@ interface AgentResult {
 	exitCode: number;
 	progress: AgentProgress;
 	model?: string;
+	reviewVerdict?: ReviewerVerdict;
+	reviewMode?: ReviewMode;
 	usage: { input: number; output: number; cacheRead: number; cacheWrite: number; cost: number; turns: number };
 }
 
@@ -76,9 +85,158 @@ const CONFIG_PATH = path.join(EXT_DIR, "config.json");
 export const DEFAULT_MAX_CONCURRENCY = 4;
 export const MAX_SUBAGENT_TASKS = 4;
 export const DEFAULT_SUBAGENT_TIMEOUT_MS = 5 * 60 * 1000;
+export const WORKER_SUBAGENT_TIMEOUT_MS = 10 * 60 * 1000;
+export const REVIEWER_MAX_OUTPUT_BYTES = 16 * 1024;
+export const REVIEWER_MAX_OUTPUT_LINES = 160;
 const DEFAULT_TERMINATE_GRACE_MS = 3000;
-const ALLOWED_AGENT_NAMES = new Set(["scout", "researcher", "environment-scout", "worker"]);
+const ALLOWED_AGENT_NAMES = new Set(["scout", "researcher", "environment-scout", "reviewer", "worker"]);
 const THINKING_LEVELS = new Set<ThinkingLevel>(["off", "minimal", "low", "medium", "high", "xhigh", "max"]);
+
+export interface ReviewGateState {
+	mutationGeneration: number;
+	reviewedGeneration: number;
+	pending: boolean;
+}
+
+export function createReviewGate() {
+	let mutationGeneration = 0;
+	let reviewedGeneration = 0;
+
+	return {
+		markMutation(): number {
+			mutationGeneration++;
+			return mutationGeneration;
+		},
+		snapshot(): number {
+			return mutationGeneration;
+		},
+		completeReview(generation: number, success: boolean): boolean {
+			if (success && generation === mutationGeneration) reviewedGeneration = generation;
+			return reviewedGeneration === mutationGeneration;
+		},
+		state(): ReviewGateState {
+			return {
+				mutationGeneration,
+				reviewedGeneration,
+				pending: reviewedGeneration !== mutationGeneration,
+			};
+		},
+		reset(): void {
+			mutationGeneration = 0;
+			reviewedGeneration = 0;
+		},
+	};
+}
+
+export interface RepositoryReviewScopeState extends ReviewGateState {
+	scope: string;
+}
+
+export interface RepositoryReviewGateState {
+	pending: boolean;
+	scopes: RepositoryReviewScopeState[];
+}
+
+export function createRepositoryReviewGate() {
+	const gates = new Map<string, ReturnType<typeof createReviewGate>>();
+
+	const gateFor = (scope: string) => {
+		let gate = gates.get(scope);
+		if (!gate) {
+			gate = createReviewGate();
+			gates.set(scope, gate);
+		}
+		return gate;
+	};
+
+	return {
+		markMutation(scope: string): number {
+			return gateFor(scope).markMutation();
+		},
+		snapshot(scope: string): number {
+			return gates.get(scope)?.snapshot() ?? 0;
+		},
+		completeReview(scope: string, generation: number, success: boolean): boolean {
+			const gate = gates.get(scope);
+			if (!gate) return true;
+			return gate.completeReview(generation, success);
+		},
+		state(): RepositoryReviewGateState {
+			const scopes = [...gates.entries()]
+				.map(([scope, gate]) => ({ scope, ...gate.state() }))
+				.sort((left, right) => left.scope.localeCompare(right.scope));
+			return { pending: scopes.some((entry) => entry.pending), scopes };
+		},
+		reset(): void {
+			gates.clear();
+		},
+	};
+}
+
+function nearestExistingPath(candidate: string): string {
+	let current = candidate;
+	while (!fs.existsSync(current)) {
+		const parent = path.dirname(current);
+		if (parent === current) return candidate;
+		current = parent;
+	}
+	try {
+		return fs.realpathSync(current);
+	} catch {
+		return current;
+	}
+}
+
+export function resolveRepositoryScope(cwd: string, targetPath?: string): string {
+	const normalizedTarget = targetPath?.startsWith("@") ? targetPath.slice(1) : targetPath;
+	const candidate = normalizedTarget
+		? path.resolve(cwd, normalizedTarget)
+		: path.resolve(cwd);
+	let current = nearestExistingPath(candidate);
+	try {
+		if (fs.statSync(current).isFile()) current = path.dirname(current);
+	} catch {}
+
+	while (true) {
+		if (fs.existsSync(path.join(current, ".git"))) return current;
+		const parent = path.dirname(current);
+		if (parent === current) break;
+		current = parent;
+	}
+	return nearestExistingPath(path.resolve(cwd));
+}
+
+export function parseReviewerVerdict(output: string): ReviewerVerdict {
+	const match = output.match(/^## Verdict\s*\r?\n\s*-\s*`?(pass|fail|blocked)`?/im);
+	return (match?.[1]?.toLowerCase() as ReviewerVerdict | undefined) ?? "missing";
+}
+
+export function reviewerResultPassed(result: Pick<AgentResult, "exitCode" | "progress" | "reviewVerdict">): boolean {
+	return result.exitCode === 0 && !result.progress.error && result.reviewVerdict === "pass";
+}
+
+export function createExecutionGate() {
+	let active = 0;
+	let exclusiveRole: "reviewer" | "worker" | undefined;
+
+	return {
+		enter(role?: "reviewer" | "worker"): (() => void) | undefined {
+			if (exclusiveRole || (role && active > 0)) return undefined;
+			active++;
+			if (role) exclusiveRole = role;
+			let released = false;
+			return () => {
+				if (released) return;
+				released = true;
+				active--;
+				if (role) exclusiveRole = undefined;
+			};
+		},
+		state() {
+			return { active, exclusiveRole };
+		},
+	};
+}
 
 export function normalizeConfig(value: unknown): ExtensionConfig {
 	const raw = value && typeof value === "object"
@@ -145,7 +303,7 @@ export function loadAgents(agentDir = AGENTS_DIR): AgentConfig[] {
 			throw new Error(`Invalid subagent profile: ${filePath}. name, description, model, and thinking are required.`);
 		}
 		if (!ALLOWED_AGENT_NAMES.has(name)) {
-			throw new Error(`Unsupported subagent profile: ${name}. Allowed agents: scout, researcher, environment-scout, worker.`);
+			throw new Error(`Unsupported subagent profile: ${name}. Allowed agents: scout, researcher, environment-scout, reviewer, worker.`);
 		}
 		if (loaded.some((agent) => agent.name === name)) {
 			throw new Error(`Duplicate subagent profile: ${name}`);
@@ -381,9 +539,19 @@ export async function runSubagent(
 		onUpdate?.(progress);
 	}, 150);
 
-	const timeoutMs = Math.max(1, options.timeoutMs ?? DEFAULT_SUBAGENT_TIMEOUT_MS);
+	const defaultTimeoutMs = agent.name === "worker"
+		? WORKER_SUBAGENT_TIMEOUT_MS
+		: DEFAULT_SUBAGENT_TIMEOUT_MS;
+	const timeoutMs = Math.max(1, options.timeoutMs ?? defaultTimeoutMs);
+	progress.timeoutMs = timeoutMs;
 	const terminateGraceMs = Math.max(0, options.terminateGraceMs ?? DEFAULT_TERMINATE_GRACE_MS);
 	const spawnProcess = options.spawnProcess ?? spawn;
+	const workerReviewGate = createReviewGate();
+	const activeToolCalls = new Map<string, {
+		toolName: string;
+		args: Record<string, unknown>;
+		reviewGeneration?: number;
+	}>();
 	let exitCode = 1;
 
 	try {
@@ -433,25 +601,56 @@ export async function runSubagent(
 				progress.durationMs = Date.now() - startTime;
 
 				if (evt.type === "tool_execution_start") {
+					const args = (evt.args || {}) as Record<string, unknown>;
+					const toolCallId = String(evt.toolCallId ?? "");
+					activeToolCalls.set(toolCallId, {
+						toolName: evt.toolName,
+						args,
+						...(evt.toolName === "subagent" && args.agent === "reviewer"
+							? { reviewGeneration: workerReviewGate.snapshot() }
+							: {}),
+					});
 					progress.toolCount++;
 					progress.currentTool = evt.toolName;
-					progress.currentToolArgs = extractToolArgsPreview((evt.args || {}) as Record<string, unknown>);
+					progress.currentToolArgs = extractToolArgsPreview(args);
 					fireUpdate();
 				}
 
 				if (evt.type === "tool_execution_end") {
-					if (progress.currentTool) {
+					const toolCallId = String(evt.toolCallId ?? "");
+					const call = activeToolCalls.get(toolCallId);
+					if (call && !evt.isError && (call.toolName === "edit" || call.toolName === "write" || call.toolName === "safe_bash")) {
+						workerReviewGate.markMutation();
+					}
+					if (call?.toolName === "subagent" && call.args.agent === "reviewer") {
+						const nestedResults = evt.result?.details?.results;
+						const nestedResult = Array.isArray(nestedResults) && nestedResults.length === 1
+							? nestedResults[0]
+							: undefined;
+						const succeeded = !evt.isError
+							&& call.args.reviewMode !== "partial"
+							&& nestedResult
+							&& reviewerResultPassed(nestedResult);
+						workerReviewGate.completeReview(call.reviewGeneration ?? -1, Boolean(succeeded));
+					}
+					activeToolCalls.delete(toolCallId);
+
+					if (call) {
 						progress.recentTools.push({
-							tool: progress.currentTool,
-							args: progress.currentToolArgs || "",
+							toolCallId,
+							tool: call.toolName,
+							args: extractToolArgsPreview(call.args),
 						});
 						// Keep last 20
 						if (progress.recentTools.length > 20) {
 							progress.recentTools.splice(0, progress.recentTools.length - 20);
 						}
 					}
-					progress.currentTool = undefined;
-					progress.currentToolArgs = undefined;
+					const remainingCall = Array.from(activeToolCalls.values()).at(-1);
+					progress.currentTool = remainingCall?.toolName;
+					progress.currentToolArgs = remainingCall
+						? extractToolArgsPreview(remainingCall.args)
+						: undefined;
 					fireUpdate();
 				}
 
@@ -526,10 +725,10 @@ export async function runSubagent(
 				finish(1);
 			});
 
-			timeoutTimer = setTimeout(
-				() => terminate(`Subagent timed out after ${formatDuration(timeoutMs)}`),
-				timeoutMs,
-			);
+			timeoutTimer = setTimeout(() => {
+				progress.timedOut = true;
+				terminate(`Subagent timed out after ${formatDuration(timeoutMs)}`);
+			}, timeoutMs);
 			abortHandler = () => terminate("Subagent aborted by parent request");
 			if (signal?.aborted) abortHandler();
 			else if (signal) signal.addEventListener("abort", abortHandler, { once: true });
@@ -540,18 +739,35 @@ export async function runSubagent(
 		} catch {}
 	}
 
+	if (agent.name === "worker" && exitCode === 0 && workerReviewGate.state().pending && !progress.error) {
+		progress.error = "Worker modified files without a successful reviewer after the latest edit.";
+	}
+
 	result.exitCode = exitCode;
+	if (agent.name === "reviewer") {
+		result.reviewVerdict = parseReviewerVerdict(result.output);
+		if (exitCode === 0 && !progress.error && result.reviewVerdict !== "pass") {
+			progress.error = `Reviewer verdict '${result.reviewVerdict}' does not satisfy the review gate.`;
+		}
+	}
 	progress.status = exitCode === 0 && !progress.error ? "completed" : "failed";
 	progress.durationMs = Date.now() - startTime;
 	if (progress.error) result.output = result.output || `Error: ${progress.error}`;
 
-	// Truncate output if very large
-	if (result.output.length > DEFAULT_MAX_BYTES) {
-		const trunc = truncateHead(result.output, { maxLines: DEFAULT_MAX_LINES, maxBytes: DEFAULT_MAX_BYTES });
+	const outputLimits = agent.name === "reviewer"
+		? { maxLines: REVIEWER_MAX_OUTPUT_LINES, maxBytes: REVIEWER_MAX_OUTPUT_BYTES }
+		: { maxLines: DEFAULT_MAX_LINES, maxBytes: DEFAULT_MAX_BYTES };
+	const truncationMarker = "[Output truncated]";
+	const markerBytes = Buffer.byteLength(`\n${truncationMarker}`, "utf-8");
+	const trunc = truncateHead(result.output, {
+		maxLines: Math.max(1, outputLimits.maxLines - 1),
+		maxBytes: Math.max(1, outputLimits.maxBytes - markerBytes),
+	});
+	if (trunc.truncated) {
+		const bounded = trunc.content.replace(/\n+$/, "");
+		result.output = bounded ? `${bounded}\n${truncationMarker}` : truncationMarker;
+	} else {
 		result.output = trunc.content;
-		if (trunc.truncated) {
-			result.output += "\n\n[Output truncated]";
-		}
 	}
 
 	return result;
@@ -626,7 +842,7 @@ function renderAgentProgress(
 		? theme.fg("warning", "⟳")
 		: isPending
 			? theme.fg("dim", "○")
-			: r.exitCode === 0
+			: prog.status === "completed"
 				? theme.fg("success", "✓")
 				: theme.fg("error", "✗");
 	const stats = `${prog.toolCount} tools · ${formatTokens(prog.tokens)} tok · ${formatDuration(prog.durationMs)}`;
@@ -721,6 +937,9 @@ function renderAgentProgress(
 export default function (pi: ExtensionAPI) {
 	const config = loadConfig();
 	const maxConcurrency = config.maxConcurrency;
+	const parentReviewGate = createRepositoryReviewGate();
+	const executionGate = createExecutionGate();
+	let remindedPendingSignature: string | undefined;
 	let agents = loadAgents();
 	const childAllowlist = process.env.PI_SUBAGENT_ALLOWED
 		?.split(",")
@@ -730,24 +949,83 @@ export default function (pi: ExtensionAPI) {
 		agents = agents.filter((agent) => childAllowlist.includes(agent.name));
 	}
 
+	const pendingScopes = () => parentReviewGate.state().scopes.filter((entry) => entry.pending);
+	const pendingSignature = () => pendingScopes()
+		.map((entry) => `${entry.scope}:${entry.mutationGeneration}`)
+		.join("|");
+	const pendingSummary = () => pendingScopes()
+		.map((entry) => `${entry.scope}#${entry.mutationGeneration}`)
+		.join(", ");
+
+	pi.on("session_start", () => {
+		parentReviewGate.reset();
+		remindedPendingSignature = undefined;
+	});
+
+	pi.on("tool_result", (event, ctx) => {
+		if ((event.toolName !== "edit" && event.toolName !== "write") || event.isError) return;
+		const input = event.input as { path?: unknown } | undefined;
+		const targetPath = typeof input?.path === "string" ? input.path : undefined;
+		const scope = resolveRepositoryScope(ctx.cwd, targetPath);
+		const generation = parentReviewGate.markMutation(scope);
+		remindedPendingSignature = undefined;
+		return {
+			content: [
+				...event.content,
+				{
+					type: "text" as const,
+					text: `Repository mutation ${scope}#${generation} requires a fresh final reviewer for that repository before validation can be declared complete.`,
+				},
+			],
+		};
+	});
+
+	pi.on("message_end", (event) => {
+		if (event.message.role !== "assistant" || !parentReviewGate.state().pending) return;
+		if (event.message.content.some((part) => part.type === "toolCall")) return;
+		return {
+			message: {
+				...event.message,
+				content: [{
+					type: "text" as const,
+					text: `Validation is blocked: these repositories still require a fresh final reviewer after their latest edit: ${pendingSummary()}.`,
+				}],
+			},
+		};
+	});
+
+	pi.on("agent_settled", () => {
+		if (!parentReviewGate.state().pending) return;
+		const signature = pendingSignature();
+		if (remindedPendingSignature === signature) return;
+		remindedPendingSignature = signature;
+		pi.sendMessage({
+			customType: "review-gate",
+			content: `Repository review is pending for ${pendingSummary()}. Invoke one final reviewer per repository. Give each reviewer the exact repository cwd, intended behavior, changed paths, existing-change boundaries, and smallest sufficient validation matrix.`,
+			display: true,
+		}, { deliverAs: "followUp", triggerTurn: true });
+	});
+
 	pi.registerTool({
 		name: "subagent",
 		label: "Subagent",
 		description:
-			"Run scout, researcher, or environment-scout for bounded read-only evidence, or worker for an explicitly approved isolated file edit. Include all context because children receive no parent-session context.",
-		promptSnippet: "Run bounded scout, researcher, environment-scout, or approval-gated worker tasks",
+			"Run scout, researcher, or environment-scout for bounded read-only evidence, reviewer for execution-capable post-mutation validation, or worker for an explicitly approved isolated file edit. Include all context because children receive no parent-session context.",
+		promptSnippet: "Run bounded evidence, execution-capable reviewer, or approval-gated worker tasks",
 		promptGuidelines: [
 			"Use direct read/fetch tool calls for simple known-path I/O instead of subagent.",
 			"Use subagent by default when read-only evidence acquisition requires multiple searches or reads, covers several large sources, or would fill the parent context with replaceable raw output. Also use it for explicit delegation requests or workflow-required independent validation.",
-			"Keep planning, decisions, approval context, and evidence reconciliation in the parent.",
-			"Scout, researcher, and environment-scout are read-only. Environment-scout may use only structured kubectl/gcloud inspection for explicitly named targets. Use worker only after explicit user approval, with exact file ownership and validation instructions; never delegate remote, infrastructure, cloud, secret, or Git mutations.",
-			"Worker is single-mode only. Use at most four parallel read-only tasks and include all paths, constraints, and required output because subagents receive no parent-session context.",
+			"Keep planning, decisions, approval context, evidence reconciliation, and final delivery judgment in the parent.",
+			"Scout, researcher, and environment-scout are read-only. Reviewer can execute bounded review commands but cannot edit files. Environment-scout may use only structured kubectl/gcloud inspection for explicitly named targets. Use worker only after explicit user approval and exact file ownership; never delegate mutation of remotes, infrastructure, cloud, secrets, or Git.",
+			"After any parent or worker repository edit, invoke one fresh final reviewer per changed repository after its final edit. A semantic pass clears only that repository; partial, blocked, failed, timed-out, stale, or missing-verdict reviews do not clear the gate.",
+			"Before invoking reviewer, build a changed-path validation matrix and keep one reviewer to at most three independent heavy validation units. Prefer changed/new files and the smallest behavior proof over branch-wide reruns.",
+			"Worker and reviewer are single-mode only. Use at most four parallel read-only tasks and include all paths, constraints, and required output because subagents receive no parent-session context.",
 		],
 		parameters: Type.Object({
 			agent: Type.Optional(
-				Type.String({ description: "Agent to invoke: scout, researcher, environment-scout, or worker (SINGLE mode)", minLength: 1 }),
+				Type.String({ description: "Agent to invoke: scout, researcher, environment-scout, reviewer, or worker (SINGLE mode)", minLength: 1 }),
 			),
-			task: Type.Optional(Type.String({ description: "Bounded evidence task (SINGLE mode)", minLength: 1 })),
+			task: Type.Optional(Type.String({ description: "Bounded evidence, review, or edit task (SINGLE mode)", minLength: 1 })),
 			tasks: Type.Optional(
 				Type.Array(
 					Type.Object({
@@ -761,7 +1039,12 @@ export default function (pi: ExtensionAPI) {
 					},
 				),
 			),
-			cwd: Type.Optional(Type.String({ description: "Working directory for the agent process (single mode)" })),
+			reviewMode: Type.Optional(
+				StringEnum(["partial", "final"] as const, {
+					description: "Reviewer gate behavior in single mode. partial records evidence only; final semantic pass clears the matching repository gate.",
+				}),
+			),
+			cwd: Type.Optional(Type.String({ description: "Working directory for the agent process (single mode); reviewer should use the exact repository root" })),
 		}),
 
 		async execute(toolCallId, params, signal, onUpdate, ctx) {
@@ -772,7 +1055,19 @@ export default function (pi: ExtensionAPI) {
 			if (Number(hasParallel) + Number(hasSingle) !== 1) {
 				throw new Error("Provide exactly one mode: (agent + task) for single mode, or tasks[] for parallel mode.");
 			}
+			if (params.reviewMode && (!hasSingle || params.agent !== "reviewer")) {
+				throw new Error("reviewMode is valid only for a single reviewer task.");
+			}
 
+			const exclusiveRole = hasSingle && (params.agent === "reviewer" || params.agent === "worker")
+				? params.agent
+				: undefined;
+			const releaseExecution = executionGate.enter(exclusiveRole);
+			if (!releaseExecution) {
+				throw new Error("Reviewer or worker single-mode execution cannot overlap another subagent call.");
+			}
+
+			try {
 			if (hasParallel) {
 				// ── Parallel mode ──
 				const taskList = params.tasks!;
@@ -786,8 +1081,9 @@ export default function (pi: ExtensionAPI) {
 					if (!agents.find((a) => a.name === t.agent)) {
 						throw new Error(`Unknown agent: ${t.agent}. Available agents: ${available}`);
 					}
-					if (t.agent === "worker") {
-						throw new Error("Worker is single-mode only to prevent concurrent file edits.");
+					if (t.agent === "worker" || t.agent === "reviewer") {
+						const label = t.agent === "worker" ? "Worker" : "Reviewer";
+						throw new Error(`${label} is single-mode only to prevent concurrent repository commands or edits.`);
 					}
 				}
 
@@ -851,22 +1147,54 @@ export default function (pi: ExtensionAPI) {
 					throw new Error(`Unknown agent: ${agentName}. Available agents: ${available}`);
 				}
 
+				const executionCwd = params.cwd ?? cwd;
+				const reviewMode: ReviewMode | undefined = agentName === "reviewer"
+					? (params.reviewMode ?? "final")
+					: undefined;
+				const reviewScope = agentName === "reviewer"
+					? resolveRepositoryScope(executionCwd)
+					: undefined;
+				const reviewGeneration = reviewScope
+					? parentReviewGate.snapshot(reviewScope)
+					: undefined;
+				const effectiveTask = agentName === "reviewer"
+					? [
+						"REVIEW EXECUTION CONTRACT",
+						`Mode: ${reviewMode}`,
+						`Repository scope: ${reviewScope}`,
+						`Hard process deadline: ${formatDuration(DEFAULT_SUBAGENT_TIMEOUT_MS)}. Finish commands within four minutes and reserve the final minute for findings.`,
+						"A partial pass records evidence but does not clear the repository review gate. A final semantic pass can clear only this repository scope.",
+						"",
+						task,
+					].join("\n")
+					: task;
 				const liveResult: AgentResult = {
 					agent: agentName,
-					task,
+					task: effectiveTask,
 					output: "",
 					exitCode: -1,
 					model: agent.model,
+					reviewMode,
 					usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0, turns: 0 },
-					progress: { agent: agentName, status: "running" as const, task, recentTools: [], toolCount: 0, tokens: 0, durationMs: 0, lastMessage: "" },
+					progress: { agent: agentName, status: "running" as const, task: effectiveTask, recentTools: [], toolCount: 0, tokens: 0, durationMs: 0, lastMessage: "" },
 				};
-				const result = await runSubagent(agent, task, params.cwd ?? cwd, signal, (progress) => {
+				const result = await runSubagent(agent, effectiveTask, executionCwd, signal, (progress) => {
 					liveResult.progress = progress;
 					onUpdate?.({
 						content: [{ type: "text", text: "(running...)" }],
 						details: { mode: "single" as const, results: [liveResult] },
 					});
 				});
+				result.reviewMode = reviewMode;
+
+				if (reviewScope && reviewGeneration !== undefined && reviewMode === "final") {
+					const childSucceeded = reviewerResultPassed(result);
+					const accepted = parentReviewGate.completeReview(reviewScope, reviewGeneration, childSucceeded);
+					if (childSucceeded && !accepted) {
+						result.progress.error = `Reviewer completed before the latest edit in ${reviewScope}; run a fresh final reviewer.`;
+						result.progress.status = "failed";
+					}
+				}
 
 				const isError = result.exitCode !== 0 || !!result.progress.error;
 				return {
@@ -877,6 +1205,9 @@ export default function (pi: ExtensionAPI) {
 			}
 
 			throw new Error("Invalid subagent mode");
+			} finally {
+				releaseExecution();
+			}
 		},
 
 		// ── Render: tool call header ──

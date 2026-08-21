@@ -65,7 +65,7 @@ Agent 會先從最小範圍的狀態摘要判斷問題。若最後需要改 GitO
 | 精簡 context | 大型 tool output 保留有用的開頭與結尾，完整內容放在受限 temp file，不讓舊輸出持續佔滿 context。 |
 | 防止重複 loop | 阻擋部分無界限 Kubernetes dump，以及同一輪中重複執行剛成功的相同 command。 |
 | 可重複驗證 | 固定的 repo preflight、Helm summary、diagnostic snapshot、skill fixtures 與 extension tests。 |
-| 有邊界的 subagent | 高容量 read-only evidence 預設由 children 蒐集並回傳 bounded summary；parent 保留規劃、決策與 mutation authority，Terra worker 只執行已批准且檔案 ownership 明確的隔離 edits。 |
+| 有邊界的 subagent | 高容量 evidence 與驗證輸出留在 children context；execution-capable reviewer 在最後修改後執行 diff、render、plan 與 tests，parent 只接收 bounded findings 並保留決策與 mutation authority。 |
 
 ## 適合哪些工作
 
@@ -186,6 +186,10 @@ extensions。
 用兩個 read-only subagents 分別整理 local repo wiring 和官方文件，最後由你判斷
 ```
 
+```text
+/skill:context-window-retrospective 回顧這個 context window 做了什麼、reviewer 花了多少時間，並提出 skill 與 extension 的改善計畫
+```
+
 如果問題牽涉 production、IAM、secret、資料遷移或不明確的 shared behavior，請在
 prompt 中直接說明環境、限制與你希望 agent 停在哪一步。
 
@@ -227,8 +231,8 @@ logs、diff 或 trace。
 
 ## Skills：依工作載入專用流程
 
-Pi 啟動時只看 13 個 skills 的 `name + description`；語意命中後才讀取完整
-`SKILL.md`。`AGENTS.md` 不保存重複的 routing table。
+Pi 啟動時只將 13 個自動 skills 的 `name + description`放入語意 routing；另有 1 個
+手動 skill只在明確呼叫時載入。`AGENTS.md`不保存重複的 routing table。
 
 ### 可語意觸發的 skills
 
@@ -243,10 +247,16 @@ Pi 啟動時只看 13 個 skills 的 `name + description`；語意命中後才�
 | [`flex-app-version-upgrade`](.agents/skills/flex-app-version-upgrade/) | 核對 release notes、chart source，並比較 selectors、PDB、autoscaling、KSA/GSA 等 render specs 與 wrapper migration。 |
 | [`flex-app-chart-maintenance`](.agents/skills/flex-app-chart-maintenance/) | 維護 shared chart contract、KEDA、globals、compatibility 與 release notes。 |
 | [`runtime-dependency-ops`](.agents/skills/runtime-dependency-ops/) | 追查 request path、workload、identity、database、queue、cache、storage 與 worker failure。 |
-| [`tf-services-terraform-maintenance`](.agents/skills/tf-services-terraform-maintenance/) | 在指定 `tf-services` repo 解釋、plan-review、維護 Terraform；預設遵循 `main.tf`／`vars.tf`、backend-driven environment 與 configuration ownership 慣例，並以繁體中文維護 Terraform README。 |
+| [`tf-services-terraform-maintenance`](.agents/skills/tf-services-terraform-maintenance/) | 在指定 `tf-services` repo 解釋、plan-review、維護 Terraform；預設遵循 `main.tf`／`vars.tf`、backend-driven environment 與 configuration ownership 慣例。Repository 修改後，fresh reviewer 會對每個受影響 root/environment 執行 fmt、validate 與 unsaved remote-state plan，並以繁體中文維護 Terraform README。 |
 | [`service-delivery-topology`](.agents/skills/service-delivery-topology/) | 分析跨 repository 的 service delivery topology 與 extraction impact。 |
 | [`orchestrator`](.agents/skills/orchestrator/) | 預設委派高容量 read-only discovery，也處理明確的 subagent 要求與 workflow-required independent validation。 |
 | [`devops-pi-agent-maintenance`](.agents/skills/devops-pi-agent-maintenance/) | 維護本 repo 的 agent contract、skills、extensions 與 regression checks。 |
+
+### 手動 skills
+
+| Skill | 用途 |
+| --- | --- |
+| [`context-window-retrospective`](.agents/skills/context-window-retrospective/) | 使用 `/skill:context-window-retrospective` 回顧目前 active context window，彙整 bounded session/reviewer metrics，區分必要驗證、重複工作與錯誤決策，再提出 skill／extension改善計畫。 |
 
 兩個 Flex App skills 都維持自動：chart maintenance 生產 shared contract 與
 release evidence；version upgrade 消費這些 evidence 並驗證 wrapper compatibility。
@@ -260,7 +270,7 @@ release evidence；version upgrade 消費這些 evidence 並驗證 wrapper compa
 | Extension | 功能 |
 | --- | --- |
 | `humanizer` | 每輪將精簡 humanizer 規則套用至一般回覆與說明文件，並提供 `/humanizer` 完整改寫模式。 |
-| `subagents` | 提供 read-only `scout`、`researcher`、`environment-scout`，以及 approval-gated editing `worker`。 |
+| `subagents` | 提供 read-only `scout`、`researcher`、`environment-scout`、execution-capable `reviewer`，以及 approval-gated editing `worker`。 |
 | `workspace-memory` | 建立 machine-local workspace inventory，保存使用者確認的 repo／branch notes，並注入 bounded orientation context。 |
 | `pi-web-access` | Pinned project-local package，提供 `web_search`、`fetch_content`、source checking 與 bounded content retrieval。 |
 
@@ -352,22 +362,42 @@ behavior，禁止 child 自行擴大 scope。Parent 保留規劃、判斷、appr
 mutation authority、證據整合與最終驗證：
 
 ```text
-Parent model：定義 scope、批准狀態、file ownership 與 validation
+Parent model：定義 scope、批准狀態、file ownership 與 final judgment
   ├── scout：Luna / medium，read-only local repository evidence
   ├── researcher：Terra / medium，read-only web search 與 source evidence
   ├── environment-scout：Luna / medium，structured read-only kubectl/gcloud evidence
+  ├── reviewer：Terra / medium，執行 bounded review commands，不使用 write/edit
   └── worker：Terra / medium，只執行已批准、ownership 明確的 isolated file edits
+      └── reviewer：在 worker 最後一次 edit 後獨立驗證
 ```
 
-每次 parallel request 最多四個 read-only tasks；worker 只能 single mode，避免 concurrent
-edit collisions。每個 child 最長五分鐘且不繼承 parent conversation，固定使用
-`--no-session`、`--no-skills`、`--no-extensions` 與 profile exact tool allowlist。
-Researcher 與 worker 會從 project-local `pi-web-access` 明確載入 `web_search` 和
-`fetch_content`。Environment scout 只接受固定 inspection operations，直接傳 argv 給
-`kubectl`/`gcloud`，不接受 shell 或 arbitrary flags；它封鎖 secret/config contents 與
-mutation operations，並限制 output。Worker 只能再委派 read-only `scout`、`researcher`
-與 `environment-scout`。Worker 的 `safe_bash` 只在 child 載入，而且只是 dangerous-pattern
-blocklist，不是 sandbox。
+Parent 或 worker 修改 repository files 後，必須在每個 changed repository的最後一次 edit
+後啟動 fresh final reviewer。Reviewer 依 changed-path validation matrix執行最小充分的
+`git diff`、Helm lint/template、Terraform fmt/validate/plan/show、Kubernetes或 Argo CD diff
+與 repository tests，讓大量 raw output留在 reviewer context，只回傳最多 160 行／16 KiB
+的 findings。每次最多執行三個獨立 heavy validation units，四分鐘內結束 commands並保留
+最後一分鐘整理結果。
+
+Review gate依 Git repository root分開追蹤。只有 semantic `pass`能清除同 repository的
+pending generation；process exit 0本身不算成功。`partial` mode只保存分片 evidence，不清除
+gate；`blocked`、`fail`、missing verdict、timeout、stale或 failed review都保持 pending。
+Worker 已完成且涵蓋最終版本的 final review可直接交給 parent整合；parent不重跑。後續修改
+只會使同 repository的舊 review失效。Parent嘗試結束時，extension會列出所有 pending
+repositories並排入一次 bounded reviewer follow-up，不會無限重複。
+
+每次 parallel request 最多四個 read-only tasks；reviewer 與 worker 只能 single mode，避免
+review commands、temporary artifacts 或 edits 發生碰撞。Scout、researcher、environment
+scout 與 reviewer 最長五分鐘；worker 最長十分鐘，讓 nested reviewer 有時間完成。Reviewer
+可以用 `reviewMode: partial`回傳分片 evidence，或用 `reviewMode: final`提交可清除單一 repository
+gate的最終判斷。Terraform no-op接受 `No changes.`或明確的 zero-action summary。每個
+child 都不繼承 parent conversation，固定使用 `--no-session`、`--no-skills`、
+`--no-extensions` 與 profile exact tool allowlist。Researcher 與 worker 會從 project-local
+`pi-web-access` 明確載入 `web_search` 和 `fetch_content`。Environment scout 只接受固定
+inspection operations，直接傳 argv 給 `kubectl`/`gcloud`，封鎖 secret/config contents 與
+mutation operations，並限制 output。Worker 可委派 `scout`、`researcher`、
+`environment-scout` 與 single-mode `reviewer`。Reviewer 與 worker 的 `safe_bash` 只在 child
+載入，而且只是 dangerous-pattern blocklist，不是 sandbox；所有 approval、secret、Git、
+remote 與 deployment mutation 禁令仍然適用。
 
 ## 更新 workspace-local extensions
 

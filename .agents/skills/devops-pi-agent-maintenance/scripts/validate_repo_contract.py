@@ -84,6 +84,7 @@ def main() -> None:
         "Default to bounded read-only delegation when evidence acquisition is expected to produce large raw output or require multiple independent searches or reads.",
         "Keep simple known-path I/O in the parent.",
         "the orchestrator owns role selection, bounded prompts, concurrency, authority boundaries, and reconciliation.",
+        "After repository file mutations by the parent or a worker, invoke one fresh final reviewer per changed repository after its final edit and before claiming validation is complete.",
     )
     for rule in orchestration_rules:
         if rule not in normalized_agents:
@@ -95,6 +96,25 @@ def main() -> None:
     ):
         if "Commit message:" not in (repo / relative).read_text(encoding="utf-8"):
             errors.append(f"skill output contract missing commit message: {relative}")
+
+    terraform_skill_path = skills_root / "tf-services-terraform-maintenance" / "SKILL.md"
+    normalized_terraform_skill = re.sub(
+        r"\s+", " ", terraform_skill_path.read_text(encoding="utf-8")
+    )
+    terraform_review_rules = (
+        "After the final repository edit, give a fresh reviewer every exact affected root/environment.",
+        "Treat every unapproved source or legacy root as read-only evidence",
+        "scripts/run-terraform.sh plan <service-path> <env>",
+        "Require an add/change/destroy/replace summary and explicit unexpected-drift findings.",
+        "Accept Terraform `No changes.` or an explicit zero-action summary as no-op.",
+        "Do not retry authentication or state-lock failures.",
+        "Never save plan files or print sensitive state, plan output, or secrets.",
+    )
+    for rule in terraform_review_rules:
+        if rule not in normalized_terraform_skill:
+            errors.append(f"Terraform maintenance skill missing reviewer-plan rule: {rule}")
+    if "user-operated plan" in normalized_terraform_skill:
+        errors.append("Terraform maintenance skill must not delegate post-edit plan to the user")
 
     readme = readme_path.read_text(encoding="utf-8")
     skill_names: set[str] = set()
@@ -122,7 +142,8 @@ def main() -> None:
         if f".agents/skills/{skill_dir.name}/" not in readme:
             errors.append(f"README inventory missing skill: {skill_dir.name}")
         if disabled:
-            errors.append(f"skill disables semantic model invocation: {skill_dir.name}")
+            if f"/skill:{skill_dir.name}" not in readme:
+                errors.append(f"README manual invocation missing skill: {skill_dir.name}")
         else:
             model_invoked.add(skill_dir.name)
             model_description_chars += len(description)
@@ -162,6 +183,17 @@ def main() -> None:
     ok, output = run([sys.executable, str(fixture_validator)], repo)
     if not ok:
         errors.append(f"invocation fixture validation failed: {output}")
+
+    retrospective_test = (
+        skills_root
+        / "context-window-retrospective"
+        / "scripts"
+        / "tests"
+        / "summarize_session_metrics_test.py"
+    )
+    ok, output = run([sys.executable, str(retrospective_test)], repo)
+    if not ok:
+        errors.append(f"context-window retrospective metrics test failed: {output}")
 
     ok, output = run(["git", "diff", "--check"], repo)
     if not ok:

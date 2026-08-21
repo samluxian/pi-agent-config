@@ -10,8 +10,10 @@ Use beginner-safe, plan-first Terraform practice in a user-identified
 
 ## Flow
 
-1. Confirm repository, service/environment, branch/status, task type, backend,
-   and whether the user requests inspection, plan review, or an approved edit.
+1. Confirm repository, exact editable roots, service/environment, branch/status,
+   task type, backend, and whether the user requests inspection, plan review, or
+   an approved edit. Treat every unapproved source or legacy root as read-only
+   evidence; cross-project IAM ownership does not widen the edit boundary.
 2. Run `scripts/tf_services_preflight.sh` or inspect equivalent bounded evidence.
    Before root authoring or maintenance, read `references/repo-map.md` and
    compare the closest existing root in the same family. For a Google Cloud
@@ -31,8 +33,14 @@ Use beginner-safe, plan-first Terraform practice in a user-identified
 5. Apply the smallest approved change. During structural cleanup, preserve state
    addresses, `for_each` keys, and exact infrastructure identifiers. Never run
    `apply`, import, state mutation, workspace mutation, or remote Git operations.
-6. Validate with formatting, affected-root validation, and a user-operated plan.
-   Use `scripts/run-terraform.sh` only for its documented safe modes.
+6. After the final repository edit, give a fresh reviewer every exact affected
+   root/environment. The reviewer must run formatting, affected-root validation,
+   and an unsaved remote-state plan with
+   `scripts/run-terraform.sh plan <service-path> <env>` for each pair. Require an
+   add/change/destroy/replace summary and explicit unexpected-drift findings.
+   Accept Terraform `No changes.` or an explicit zero-action summary as no-op.
+   Continue independent root plans after a root-local failure; stop related roots
+   on shared authentication, state-lock, backend, ownership, or safety failure.
 
 Load deeper guidance only when needed:
 
@@ -46,10 +54,11 @@ Load deeper guidance only when needed:
 
 ## Stop Conditions
 
-Stop on unresolved target root/workspace, missing initialization/provider access,
-unknown state owner, active or unexplained state lock, unresolved partial apply,
-credential request, unexpected replacement/destruction, broad IAM, or a plan that
-exceeds approved scope. Never print sensitive state, saved plans, or secrets.
+Stop on unresolved target root/workspace/environment, missing initialization or
+provider access, unknown state owner, active or unexplained state lock, unresolved
+partial apply, credential request, unexpected replacement/destruction, broad IAM,
+or a plan that exceeds approved scope. Do not retry authentication or state-lock
+failures. Never save plan files or print sensitive state, plan output, or secrets.
 
 ## Output
 

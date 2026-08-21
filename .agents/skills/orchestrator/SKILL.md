@@ -23,10 +23,10 @@ Route only self-contained tasks:
 
 - `scout`: read-only local repository structure, callers, and patterns.
 - `researcher`: current external documentation and source-backed claims.
-- `environment-scout`: structured read-only inspection of explicitly named
-  Kubernetes or GCP targets.
-- `worker`: an explicitly approved isolated file edit with exact ownership and
-  validation instructions.
+- `environment-scout`: structured read-only inspection of named Kubernetes or
+  GCP targets.
+- `reviewer`: execution-capable post-mutation review; single mode with no edits.
+- `worker`: an approved isolated file edit with exact ownership and validation.
 
 ## Bounded Task Prompts
 
@@ -38,6 +38,11 @@ Structure each child prompt as `GOAL`, `INPUT`, `DO`, `DO NOT`, `STOP`, and
 `RETURN`. State exact paths, allowed operations, evidence and output limits, and
 blocker behavior. Tell the child to stop and report instead of widening scope.
 
+## Review Planning
+
+Before reviewer, load `references/reviewer-planning.md`. Follow its repository
+scope, heavy-unit budget, changed-path, partial/final, failure, and no-op rules.
+
 ## Flow
 
 1. Delegate read-only acquisition by default when it requires multiple searches
@@ -47,39 +52,25 @@ blocker behavior. Tell the child to stop and report instead of widening scope.
 2. Define independent tasks and an exact output format. Include every required
    path, known fact, constraint, safety boundary, and validation expectation in
    each prompt.
-3. Run up to four independent read-only tasks in parallel. Keep workers in single
-   mode and all planning, approval context, decisions, and final validation in
-   the parent.
+3. Run up to four independent read-only tasks in parallel. Keep reviewer and
+   worker in single mode. Parent retains planning, approval, and final judgment.
 4. Do not re-scout facts already established. Use direct reads only for narrow
    verification needed to reconcile or edit.
 5. Reconcile child results against primary evidence. Surface conflicts, stale
    evidence, and unsupported claims; do not average conclusions.
-6. Validate the recommendation or implementation with the smallest behavior
-   check that proves it before claiming completion.
+6. After the final parent edit, start a fresh reviewer to execute validation.
+   Require worker to do the same before returning. Reuse review that covers the
+   final edit; rerun after later edits. Parent reconciles the bounded findings.
 
 ## Limits
 
 - Do not delegate secrets, credentials, remote mutations, or unbounded scans.
-- Do not have multiple workers edit the same or adjacent files.
+- Do not run reviewer or worker in parallel with repository commands or edits.
 - Do not use a subagent to bypass approval, branch, evidence, or deployment rules.
 - Stop when tasks are too coupled for independent execution or delegation would
   duplicate context, require user back-and-forth, or create merge risk.
 
 ## Output
 
-```text
-Decision:
-- Reconciled recommendation
-
-Evidence:
-- Agreed facts and conflicts
-
-Validation:
-- Independent checks, behavior evidence, and gaps
-
-Risk:
-- Context, authority, or implementation risk
-
-Next step:
-- One concrete action
-```
+Return the reconciled decision, agreed evidence and conflicts, validation and
+gaps, context/authority/implementation risk, and one concrete next action.
