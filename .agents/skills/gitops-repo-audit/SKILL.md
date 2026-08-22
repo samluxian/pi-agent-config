@@ -21,8 +21,7 @@ Assess repository evidence without editing files or crossing into live systems.
    desired state, and generated/rendered evidence distinct.
 4. Use `scripts/audit_gitops_tree.sh` when its checks match the repository.
 5. Report each finding with evidence, impact, confidence, and one remediation.
-   Do not turn an audit into an edit without explicit approval and implementation
-   handoff.
+   Hand implementation requests to the appropriate delivery skill.
 
 ## Stop Conditions
 

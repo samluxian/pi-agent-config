@@ -1,94 +1,94 @@
 [
   {
     "id": "flex-chart-shared-schema",
-    "skill": "flex-app-chart-maintenance",
+    "skill": "shared-helm-chart-maintenance",
     "expected": "invoke",
     "prompt": "Add a new public value to the shared flex-app schema and render it in the Deployment template.",
     "reason": "The requested change owns shared chart API behavior."
   },
   {
     "id": "flex-chart-productized-release-note",
-    "skill": "flex-app-chart-maintenance",
+    "skill": "shared-helm-chart-maintenance",
     "expected": "invoke",
     "prompt": "Compare flex-app-3.5.0 with flex-app-3.6.0 and write a productized Traditional Chinese GitLab Release note from chart evidence, including the VoiceHub project driver and PDB migration rationale.",
     "reason": "Evidence-based shared chart release-note authoring belongs to chart maintenance."
   },
   {
     "id": "flex-chart-service-values",
-    "skill": "flex-app-chart-maintenance",
+    "skill": "shared-helm-chart-maintenance",
     "expected": "skip",
     "prompt": "Change replicas only for order-api in the qa values file without touching the shared chart.",
     "reason": "A service-owned values change is outside shared chart maintenance."
   },
   {
     "id": "flex-upgrade-version-compare",
-    "skill": "flex-app-version-upgrade",
+    "skill": "helm-dependency-upgrade",
     "expected": "invoke",
     "prompt": "Assess upgrading this k8s-deploy wrapper from flex-app 1.8.0 to 1.10.0 and compare rendered selectors.",
     "reason": "The task compares current and target flex-app wrapper behavior."
   },
   {
     "id": "flex-upgrade-release-note-plan",
-    "skill": "flex-app-version-upgrade",
+    "skill": "helm-dependency-upgrade",
     "expected": "invoke",
     "prompt": "Plan upgrading this order-api wrapper from flex-app 3.4.2 to 3.6.0: read every published GitLab Release note in the range, verify each breaking/default claim against the exact chart sources and renders, then list required values and migration actions.",
     "reason": "Release-note consumption reconciled with wrapper render evidence is part of version-upgrade planning."
   },
   {
     "id": "flex-upgrade-shared-authoring",
-    "skill": "flex-app-version-upgrade",
+    "skill": "helm-dependency-upgrade",
     "expected": "skip",
     "prompt": "Design a new KEDA profile directly in the shared flex-app chart defaults and schema.",
     "reason": "Shared chart authoring is not an existing wrapper version assessment."
   },
   {
     "id": "gitops-diagnostics-existing-mismatch",
-    "skill": "gitops-diagnostics-workflow",
+    "skill": "gitops-state-diagnostics",
     "expected": "invoke",
     "prompt": "Read-only diagnose why the existing Argo CD application is OutOfSync with its Helm render.",
     "reason": "The task is expected-versus-actual GitOps troubleshooting."
   },
   {
     "id": "gitops-diagnostics-pipeline-stage-gate",
-    "skill": "gitops-diagnostics-workflow",
+    "skill": "gitops-state-diagnostics",
     "expected": "invoke",
     "prompt": "Read-only identify whether this failed GitLab deployment pipeline stopped in application build, artifact handoff, or the GitOps update before deciding which layer owns the fix.",
     "reason": "The task first needs bounded delivery-stage diagnosis rather than immediate source or live-state inspection."
   },
   {
     "id": "gitops-diagnostics-approved-edit",
-    "skill": "gitops-diagnostics-workflow",
+    "skill": "gitops-state-diagnostics",
     "expected": "skip",
     "prompt": "Apply the approved change to the dev values file and validate the resulting Helm render.",
     "reason": "An approved repo-file implementation is not a read-only diagnosis."
   },
   {
-    "id": "k8s-service-delivery-approved-config",
-    "skill": "k8s-service-delivery",
+    "id": "gitops-service-delivery-approved-config",
+    "skill": "gitops-service-delivery",
     "expected": "invoke",
     "prompt": "I approve the proposed onboarding patch for order-api. Add its flex-app wrapper, keep Kubernetes deployment settings in values files, put application parameters under app-config, and validate dev discovery plus render.",
     "reason": "An approved flex-app service configuration for Kubernetes delivery belongs to the service delivery contract."
   },
   {
-    "id": "k8s-service-delivery-shared-chart",
-    "skill": "k8s-service-delivery",
+    "id": "gitops-service-delivery-shared-chart",
+    "skill": "gitops-service-delivery",
     "expected": "skip",
     "prompt": "Add a new public autoscaling field to the shared flex-app chart schema and templates.",
     "reason": "Shared chart API authoring is outside service-owned delivery configuration."
   },
   {
-    "id": "k8s-infra-delivery-approved-bootstrap",
-    "skill": "k8s-infra-delivery",
+    "id": "kubernetes-platform-delivery-approved-bootstrap",
+    "skill": "kubernetes-platform-delivery",
     "expected": "invoke",
     "prompt": "I approve the exact patch; update the bootstrap App-of-Apps template for the existing dev infrastructure project and validate generated Applications.",
     "reason": "An approved bootstrap and platform desired-state change belongs to infrastructure delivery."
   },
   {
-    "id": "k8s-infra-delivery-service-values",
-    "skill": "k8s-infra-delivery",
+    "id": "kubernetes-platform-delivery-service-values",
+    "skill": "kubernetes-platform-delivery",
     "expected": "skip",
     "prompt": "Onboard payment-api with a flex-app Chart.yaml, environment deployment values, and application parameters under app-config.",
-    "reason": "A service-owned flex-app wrapper belongs to k8s-service-delivery, not infrastructure delivery."
+    "reason": "A service-owned flex-app wrapper belongs to gitops-service-delivery, not infrastructure delivery."
   },
   {
     "id": "mr-summary-copy",
@@ -127,56 +127,56 @@
   },
   {
     "id": "runtime-dependency-pubsub",
-    "skill": "runtime-dependency-ops",
+    "skill": "runtime-dependency-diagnostics",
     "expected": "invoke",
     "prompt": "Trace why this Kubernetes worker can start but cannot consume its Pub/Sub subscription.",
     "reason": "The failure crosses a workload and its runtime queue dependency."
   },
   {
     "id": "runtime-dependency-source-contract",
-    "skill": "runtime-dependency-ops",
+    "skill": "runtime-dependency-diagnostics",
     "expected": "invoke",
     "prompt": "A qa Pod starts and then fails readiness even though Helm render and live probes match. Map the running image to its source revision and check the application's implemented health path and startup behavior.",
     "reason": "Application-level runtime evidence requires a bounded deployed source/runtime contract check."
   },
   {
     "id": "runtime-dependency-transient-request",
-    "skill": "runtime-dependency-ops",
+    "skill": "runtime-dependency-diagnostics",
     "expected": "invoke",
     "prompt": "A production Kubernetes service returned intermittent 5XX for two minutes but all Pods are healthy now. Read-only correlate the exact incident window across the request entrance, LB/NEG metrics, node autoscaler events, Pod/endpoint history, and explicit HTTP status evidence.",
     "reason": "A time-bounded live request failure requires runtime request-path and infrastructure correlation."
   },
   {
     "id": "runtime-dependency-topology-design",
-    "skill": "runtime-dependency-ops",
+    "skill": "runtime-dependency-diagnostics",
     "expected": "skip",
     "prompt": "Design how the frontend, BFF, backend repositories, and CI deployment should be split next quarter; there is no live incident or deployed-runtime evidence.",
     "reason": "Cross-repository construction planning without a live incident is not runtime diagnosis."
   },
   {
     "id": "runtime-dependency-gitops-diff",
-    "skill": "runtime-dependency-ops",
+    "skill": "runtime-dependency-diagnostics",
     "expected": "skip",
     "prompt": "Explain why Argo CD renders a different image tag than the k8s-deploy values file.",
     "reason": "A generic delivery-state mismatch is not runtime dependency wiring."
   },
   {
     "id": "runtime-dependency-static-source-review",
-    "skill": "runtime-dependency-ops",
+    "skill": "runtime-dependency-diagnostics",
     "expected": "skip",
     "prompt": "Review this service's source architecture and propose a general retry refactor; there is no current Kubernetes incident or deployed artifact.",
     "reason": "Static source design review without runtime evidence is outside this incident workflow."
   },
   {
     "id": "tf-services-plan-explain",
-    "skill": "tf-services-terraform-maintenance",
+    "skill": "terraform-repository-maintenance",
     "expected": "invoke",
     "prompt": "In the identified tf-services repo, explain the plan for billing-api dev and its IAM replacement risk.",
     "reason": "The target repository, service, environment, and Terraform plan are explicit."
   },
   {
     "id": "tf-services-generic-module",
-    "skill": "tf-services-terraform-maintenance",
+    "skill": "terraform-repository-maintenance",
     "expected": "skip",
     "prompt": "Write a generic AWS VPC Terraform module in this application repository.",
     "reason": "Generic Terraform outside the identified tf-services GCP repository is out of scope."
@@ -211,14 +211,14 @@
   },
   {
     "id": "devops-agent-maintenance-extension",
-    "skill": "devops-pi-agent-maintenance",
+    "skill": "pi-agent-maintenance",
     "expected": "invoke",
     "prompt": "In devops-pi-agent, add a Pi extension that truncates large tool results and update its maintenance contract.",
     "reason": "The target is this repository's agent harness and extension contract."
   },
   {
     "id": "devops-agent-maintenance-target-repo",
-    "skill": "devops-pi-agent-maintenance",
+    "skill": "pi-agent-maintenance",
     "expected": "skip",
     "prompt": "Update the payment service Helm values in k8s-deploy after I approve the patch.",
     "reason": "A product desired-state edit does not maintain the devops-pi-agent contract."
@@ -267,14 +267,14 @@
   },
   {
     "id": "service-topology-cross-repo",
-    "skill": "service-delivery-topology",
+    "skill": "service-architecture-mapping",
     "expected": "invoke",
     "prompt": "Map how the frontend, BFF, backend repositories, CI artifact handoff, and API routes connect before a repo split.",
     "reason": "The requested dependency and extraction analysis spans repository boundaries."
   },
   {
     "id": "service-topology-single-live-pod",
-    "skill": "service-delivery-topology",
+    "skill": "service-architecture-mapping",
     "expected": "skip",
     "prompt": "Check why one live backend Pod is failing its readiness probe in qa.",
     "reason": "A single live workload failure does not require cross-repo topology mapping."

@@ -57,26 +57,34 @@ function fakeProcess({ closeOnSignal, successEvent, successEvents } = {}) {
   return proc;
 }
 
-function extensionHarness() {
+function extensionHarness({ allowedAgents } = {}) {
   let tool;
   const handlers = new Map();
   const sentMessages = [];
-  subagents({
-    registerTool(definition) {
-      tool = definition;
-    },
-    on(eventName, handler) {
-      handlers.set(eventName, handler);
-    },
-    sendMessage(message, options) {
-      sentMessages.push({ message, options });
-    },
-  });
+  const previousAllowlist = process.env.PI_SUBAGENT_ALLOWED;
+  if (allowedAgents === undefined) delete process.env.PI_SUBAGENT_ALLOWED;
+  else process.env.PI_SUBAGENT_ALLOWED = allowedAgents;
+  try {
+    subagents({
+      registerTool(definition) {
+        tool = definition;
+      },
+      on(eventName, handler) {
+        handlers.set(eventName, handler);
+      },
+      sendMessage(message, options) {
+        sentMessages.push({ message, options });
+      },
+    });
+  } finally {
+    if (previousAllowlist === undefined) delete process.env.PI_SUBAGENT_ALLOWED;
+    else process.env.PI_SUBAGENT_ALLOWED = previousAllowlist;
+  }
   return { tool, handlers, sentMessages };
 }
 
-function toolHarness() {
-  return extensionHarness().tool;
+function toolHarness(options) {
+  return extensionHarness(options).tool;
 }
 
 test("prompts the parent to isolate high-volume read-only evidence", () => {
@@ -86,12 +94,21 @@ test("prompts the parent to isolate high-volume read-only evidence", () => {
   assert.match(guidance, /Keep planning, decisions, approval context, evidence reconciliation, and final delivery judgment in the parent/);
 });
 
+test("applies an explicit nested child allowlist without inheriting it into other tests", async () => {
+  const tool = toolHarness({ allowedAgents: "scout" });
+  await assert.rejects(
+    tool.execute("restricted-worker", { agent: "worker", task: "Do not run" }, undefined, undefined, { cwd: process.cwd() }),
+    /Unknown agent: worker\. Available agents: scout/,
+  );
+});
+
 test("loads three read-only profiles plus the Terra medium reviewer and worker", () => {
   const agents = profiles();
   assert.deepEqual([...agents.keys()].sort(), ["environment-scout", "researcher", "reviewer", "scout", "worker"]);
   assert.equal(agents.get("scout").model, "openai-codex/gpt-5.6-luna");
   assert.equal(agents.get("scout").thinking, "medium");
   assert.deepEqual(agents.get("scout").tools, ["read", "grep", "find", "ls"]);
+  assert.equal(agents.get("scout").subagentAgents, undefined);
   assert.equal(agents.get("researcher").model, "openai-codex/gpt-5.6-terra");
   assert.equal(agents.get("researcher").thinking, "medium");
   assert.deepEqual(agents.get("researcher").tools, ["web_search", "fetch_content"]);
@@ -100,8 +117,12 @@ test("loads three read-only profiles plus the Terra medium reviewer and worker",
   assert.deepEqual(agents.get("environment-scout").tools, ["kubectl_inspect", "gcloud_inspect"]);
   assert.equal(agents.get("reviewer").model, "openai-codex/gpt-5.6-terra");
   assert.equal(agents.get("reviewer").thinking, "medium");
-  assert.deepEqual(agents.get("reviewer").tools, ["read", "grep", "find", "ls", "safe_bash"]);
+  assert.deepEqual(agents.get("reviewer").tools, ["read", "grep", "find", "ls", "safe_bash", "subagent"]);
+  assert.deepEqual(agents.get("reviewer").subagentAgents, ["scout"]);
   assert.match(agents.get("reviewer").systemPrompt, /Execute bounded commands so raw diffs, renders, plans, and/);
+  assert.match(agents.get("reviewer").systemPrompt, /Delegate repository reading to scout by default/);
+  assert.match(agents.get("reviewer").systemPrompt, /Scouts are leaf agents/);
+  assert.match(agents.get("reviewer").systemPrompt, /semantic verdict in this reviewer/);
   assert.match(agents.get("reviewer").systemPrompt, /five-minute hard deadline/);
   assert.match(agents.get("reviewer").systemPrompt, /at most three independent heavy units/);
   assert.match(agents.get("reviewer").systemPrompt, /No changes\. Your infrastructure matches the configuration/);
@@ -268,9 +289,10 @@ test("builds isolated child arguments with model, thinking, exact tools, and wor
         assert.ok(args.some((arg) => arg.endsWith("/tools/environment-inspect.ts")));
         assert.equal(childEnv, undefined);
       } else if (agent.name === "reviewer") {
-        assert.equal(args[args.indexOf("--tools") + 1], "read,grep,find,ls,safe_bash");
+        assert.equal(args[args.indexOf("--tools") + 1], "read,grep,find,ls,safe_bash,subagent");
         assert.ok(args.some((arg) => arg.endsWith("/tools/safe-bash.ts")));
-        assert.equal(childEnv, undefined);
+        assert.ok(args.some((arg) => arg.endsWith("/subagents/index.ts")));
+        assert.equal(childEnv.PI_SUBAGENT_ALLOWED, "scout");
       } else {
         assert.equal(args[args.indexOf("--tools") + 1], "read,write,edit,safe_bash,web_search,fetch_content,subagent");
         assert.ok(args.some((arg) => arg.endsWith("/tools/safe-bash.ts")));

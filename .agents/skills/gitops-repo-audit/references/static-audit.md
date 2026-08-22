@@ -43,7 +43,7 @@ Look for:
   probe, resource, and rollout-strategy changes that require stronger proof
 - secret-like values in ConfigMap or plain values files
 
-Use `$gitops-diagnostics-workflow` for render/live verification after the static
+Use `$gitops-state-diagnostics` for render/live verification after the static
 audit identifies the risky surface.
 
 ## CI Handoff Audit

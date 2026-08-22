@@ -10,6 +10,22 @@ final reviewer per repository with that repository root as `cwd`. A semantic
 `pass` clears only that repository. Use `reviewMode: partial` for sharded evidence
 that must not clear the gate and `reviewMode: final` for repository completion.
 
+## Delegated Reading
+
+Reviewer delegates repository reading to scout by default when the evidence spans
+multiple files, a large diff, callers, tests, or contracts. Use one bounded
+single request or one parallel request with at most four independent scout
+tasks. Every task names exact paths, intended behavior, existing-change
+boundaries, evidence limits, stop conditions, and required output.
+
+Scout is a leaf role with no subagent or command tool. It returns read-only
+evidence, not validation decisions or a verdict. Reviewer keeps the validation
+matrix, command execution, evidence reconciliation, finding severity, and
+semantic verdict. Use direct read only for simple known paths or narrow
+verification of a scout finding. Count scout work inside the existing reviewer
+time budget; a failed or timed-out scout remains a gap and does not justify an
+unbounded reread.
+
 ## Validation Matrix
 
 For each changed path, map:
