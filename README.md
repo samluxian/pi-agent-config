@@ -8,6 +8,12 @@ DevOps Pi Agent 是一套放在 Pi Coding Agent workspace 裡的操作規則、s
 GitOps、Helm chart 與 infrastructure repositories 仍保有各自的 Git history、branch、remote
 與權限。
 
+使用者明確要求維護本 repository 時，可以直接在它的 `main` branch 建立、修改、重新命名
+或刪除 repository-owned source、tests、scripts、extensions、configuration 與 documentation。
+這個例外不延伸到 sibling/target repositories，不涵蓋 secrets、credentials、generated
+artifacts、caches 或 git-ignored temporary files，也不允許 agent commit、push、修改 Git
+或操作 remotes。完整 authority boundary 以 [`AGENTS.md`](AGENTS.md) 為準。
+
 ## Repository 定位
 
 這個 repository 管理四類內容：
@@ -54,6 +60,9 @@ command -v npm
 command -v pi
 ```
 
+建議另外安裝 `make`，使用人類友善的 workspace targets；沒有 `make` 時仍可直接執行
+initializer script。
+
 如果 Node 由 NVM 管理，請先在目前 shell 選定版本，例如：
 
 ```bash
@@ -66,10 +75,21 @@ nvm use default
 
 ```bash
 cd <workspace-root>/devops-pi-agent
-./scripts/init-workspace.sh --workspace-root <workspace-root>
+make workspace-init
 ```
 
-未指定 `--workspace-root` 時，腳本使用本 repository 的上一層目錄。
+Makefile 預設把本 repository 的上一層當成 workspace root。需要指定其他位置時：
+
+```bash
+make workspace-init WORKSPACE_ROOT=<workspace-root>
+```
+
+Makefile 只把參數交給 initializer，不包含另一份設定同步邏輯。沒有 `make` 或需要直接呼叫
+底層 CLI 時，原本方式仍可使用：
+
+```bash
+./scripts/init-workspace.sh --workspace-root <workspace-root>
+```
 
 Initializer 會建立或協調以下 workspace-local 資源：
 
@@ -93,6 +113,12 @@ Initializer 不管理 global Pi extensions 或 `~/.pi/agent/extensions`。
 如果目前不需要 extensions 或 project-local package：
 
 ```bash
+make workspace-contract-only WORKSPACE_ROOT=<workspace-root>
+```
+
+對應的底層指令是：
+
+```bash
 ./scripts/init-workspace.sh \
   --workspace-root <workspace-root> \
   --no-pi-local
@@ -103,6 +129,12 @@ Initializer 不管理 global Pi extensions 或 `~/.pi/agent/extensions`。
 ## 檢查安裝狀態
 
 執行唯讀檢查：
+
+```bash
+make workspace-check WORKSPACE_ROOT=<workspace-root>
+```
+
+對應的底層指令是：
 
 ```bash
 ./scripts/init-workspace.sh \

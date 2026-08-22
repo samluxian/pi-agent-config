@@ -2,6 +2,7 @@
 
 import importlib.util
 import io
+import sys
 import unittest
 from contextlib import redirect_stderr
 from collections import Counter
@@ -11,6 +12,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 
+sys.dont_write_bytecode = True
 SCRIPT = Path(__file__).with_name("collect_activity.py")
 SPEC = importlib.util.spec_from_file_location("collect_activity", SCRIPT)
 MODULE = importlib.util.module_from_spec(SPEC)
@@ -102,9 +104,39 @@ class CollectorTests(unittest.TestCase):
         self.assertFalse(report["evidence_complete"])
         self.assertEqual(report["limitations"], [{"type": "restricted_contributions", "count": 2}])
 
-    def test_timezone_is_required_by_cli(self):
-        with redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
-            MODULE.build_parser().parse_args(["--gitlab-from", "2026-07-27", "--gitlab-to", "2026-07-31"])
+    def test_timezone_defaults_to_asia_taipei(self):
+        args = MODULE.build_parser().parse_args(
+            ["--gitlab-from", "2026-07-27", "--gitlab-to", "2026-07-31"]
+        )
+        self.assertEqual(args.timezone, "Asia/Taipei")
+
+    def test_explicit_timezone_overrides_default(self):
+        args = MODULE.build_parser().parse_args(
+            [
+                "--gitlab-from",
+                "2026-07-27",
+                "--gitlab-to",
+                "2026-07-31",
+                "--timezone",
+                "UTC",
+            ]
+        )
+        self.assertEqual(args.timezone, "UTC")
+
+    def test_unknown_timezone_is_rejected(self):
+        argv = [
+            "collect_activity.py",
+            "--gitlab-from",
+            "2026-07-27",
+            "--gitlab-to",
+            "2026-07-31",
+            "--timezone",
+            "Not/A_Timezone",
+        ]
+        with patch.object(MODULE.sys, "argv", argv), redirect_stderr(io.StringIO()):
+            with self.assertRaises(SystemExit) as error:
+                MODULE.main()
+        self.assertEqual(error.exception.code, 2)
 
 
 if __name__ == "__main__":

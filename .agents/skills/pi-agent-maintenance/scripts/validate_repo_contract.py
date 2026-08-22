@@ -158,6 +158,21 @@ def main() -> None:
     for rule in orchestration_rules:
         if rule not in normalized_agents:
             errors.append(f"AGENTS.md missing cross-skill orchestration rule: {rule}")
+    skills_main_rule = (
+        "when explicitly requested, any repository-owned source, test, script, "
+        "extension, configuration, or documentation file may be created, edited, "
+        "renamed, or deleted on this skills repository's `main` branch."
+    )
+    if skills_main_rule not in normalized_agents:
+        errors.append("AGENTS.md missing the explicit skills-repository main-branch exception")
+    skills_main_exclusions = (
+        "This exception does not apply to sibling or target repositories",
+        "secrets, credentials, generated artifacts, caches, or git-ignored temporary files",
+        "it never permits Git or remote mutations",
+    )
+    for exclusion in skills_main_exclusions:
+        if exclusion not in normalized_agents:
+            errors.append(f"AGENTS.md missing skills-repository main exclusion: {exclusion}")
     for relative in (
         ".agents/skills/gitops-service-delivery/SKILL.md",
         ".agents/skills/kubernetes-platform-delivery/SKILL.md",
@@ -186,6 +201,18 @@ def main() -> None:
         errors.append("Terraform maintenance skill must not delegate post-edit plan to the user")
 
     readme = readme_path.read_text(encoding="utf-8")
+    normalized_readme = re.sub(r"\s+", " ", readme)
+    readme_main_rules = (
+        "使用者明確要求維護本 repository 時",
+        "建立、修改、重新命名 或刪除 repository-owned source、tests、scripts、extensions、configuration 與 documentation",
+        "不延伸到 sibling/target repositories",
+        "不涵蓋 secrets、credentials、generated artifacts、caches 或 git-ignored temporary files",
+        "不允許 agent commit、push、修改 Git 或操作 remotes",
+        "完整 authority boundary 以 [`AGENTS.md`](AGENTS.md) 為準",
+    )
+    for rule in readme_main_rules:
+        if rule not in normalized_readme:
+            errors.append(f"README missing skills-repository main rule: {rule}")
     root_readme_targets = markdown_link_targets(readme_path)
     skill_names: set[str] = set()
     model_invoked: set[str] = set()
@@ -289,6 +316,18 @@ def main() -> None:
     ok, output = run([sys.executable, str(contract_test)], repo)
     if not ok:
         errors.append(f"repository contract validator test failed: {output}")
+
+    developer_activity_test = (
+        skills_root / "developer-activity-summary" / "scripts" / "test_collect_activity.py"
+    )
+    ok, output = run([sys.executable, str(developer_activity_test)], repo)
+    if not ok:
+        errors.append(f"developer activity collector test failed: {output}")
+
+    makefile_test = repo / "scripts" / "test-makefile.sh"
+    ok, output = run(["bash", str(makefile_test)], repo)
+    if not ok:
+        errors.append(f"workspace Makefile test failed: {output}")
 
     ok, output = run(["git", "diff", "--check"], repo)
     if not ok:

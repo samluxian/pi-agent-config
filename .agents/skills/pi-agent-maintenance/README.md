@@ -30,8 +30,11 @@ README。
 6. 執行能證明行為的最小 deterministic checks。
 7. 最後一次 edit 後，啟動 fresh reviewer 檢查完整 final diff。
 
-Workspace guidance maintenance 可以在本 repository 的 `main` branch 進行，但仍要先檢查
-working tree、保留既有變更，而且不能 commit 或 push。
+使用者明確要求時，可以直接在本 repository 的 `main` branch 建立、修改、重新命名或刪除
+repository-owned source、tests、scripts、extensions、configuration 與 documentation。這個
+例外不適用 sibling/target repositories、secrets、generated artifacts、cache 或 git-ignored
+temporary files，也不允許 agent commit、push 或修改 Git remotes。修改前仍須檢查 working
+tree、確認 approval scope 並保留無關的使用者變更。
 
 ## Skill 維護
 
@@ -97,6 +100,7 @@ Human-facing 行為、安裝方式或文件入口有變更時，要在同一個 
 npm run test:contract
 npm run test:extensions
 npm run test:init-workspace
+npm run test:makefile
 git diff --check
 ```
 
@@ -107,6 +111,7 @@ git diff --check
 | `npm run test:contract` | Skill metadata、README inventory、fixtures、extension registration 與 repository contracts。 |
 | `npm run test:extensions` | Extension hooks、commands、tools、bounds、failure 與 reset behavior。 |
 | `npm run test:init-workspace` | Symlink、extension reconciliation、dependency installation 與 readiness checks。 |
+| `npm run test:makefile` | Makefile help、default goal、workspace root override 與 initializer argument delegation。 |
 | `git diff --check` | Trailing whitespace、衝突標記與 whitespace errors。 |
 
 依 changed surface 加上更小的 targeted test。完整對照表在

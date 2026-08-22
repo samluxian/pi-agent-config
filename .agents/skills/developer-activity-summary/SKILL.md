@@ -1,6 +1,6 @@
 ---
 name: developer-activity-summary
-description: Summarize authenticated GitLab or GitHub activity into dated first-person updates. Use for bounded daily activity reports with an explicit fallback window. Do not use for MR prose, repo audits, performance evaluation, or implementation.
+description: Summarize authenticated GitLab or GitHub activity into dated action-led updates. Use for bounded daily activity reports with an explicit fallback window. Do not use for MR prose, repo audits, performance evaluation, or implementation.
 ---
 
 # Developer Activity Summary
@@ -11,7 +11,8 @@ Never infer work from repository contents alone.
 ## Flow
 
 1. Fix the reporting window.
-   - Resolve absolute dates, timezone, included platforms, and output language.
+   - Resolve absolute dates, included platforms, and output language.
+   - Default to `Asia/Taipei`; use another timezone only when explicitly requested.
    - Treat any fallback platform or date range as separate evidence.
    - Ask one question if the window is ambiguous.
 
@@ -35,16 +36,19 @@ Never infer work from repository contents alone.
    - Group by local calendar date.
    - Prefer merged or reviewed delivery evidence over low-signal events.
    - Deduplicate events describing the same work item.
-   - Use first person only when requested and avoid performance judgments.
+   - Start every update with an action, result, or work item, never a personal
+     pronoun such as 我、我們、你、他、她、他們、I、We、You、He、She, or They.
+   - When first-person voice is requested, omit the subject at the start or place
+     the personal reference later. Avoid performance judgments.
 
 ## Output
 
 ```text
 Summary:
-- YYYY-MM-DD: concise first-person update
+- YYYY-MM-DD: concise action-led update without a sentence-initial personal pronoun
 
 Evidence:
-- Primary identity, platform, timezone, and date window
+- Primary identity, platform, timezone (default `Asia/Taipei`), and date window
 - Fallback identity/platform/window when used
 
 Gaps:

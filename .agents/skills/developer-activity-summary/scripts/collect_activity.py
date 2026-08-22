@@ -15,6 +15,9 @@ from urllib.parse import urlencode
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 
+DEFAULT_TIMEZONE = "Asia/Taipei"
+
+
 class CollectorError(RuntimeError):
     pass
 
@@ -434,7 +437,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--gitlab-to", type=parse_day)
     parser.add_argument("--github-from", type=parse_day)
     parser.add_argument("--github-to", type=parse_day)
-    parser.add_argument("--timezone", required=True)
+    parser.add_argument(
+        "--timezone",
+        default=DEFAULT_TIMEZONE,
+        help=f"IANA timezone for calendar-day grouping (default: {DEFAULT_TIMEZONE})",
+    )
     parser.add_argument("--role", choices=("primary", "supplemental"), default="primary")
     parser.add_argument("--max-items-per-day", type=int, default=40)
     parser.add_argument("--output", type=Path, help="write normalized JSON to this path instead of stdout")

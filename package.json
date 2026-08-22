@@ -5,6 +5,7 @@
   "scripts": {
     "test:extensions": "node --import ./extensions/subagents/test-loader.mjs --test extensions/*/test.mjs",
     "test:init-workspace": "bash scripts/test-init-workspace.sh",
+    "test:makefile": "bash scripts/test-makefile.sh",
     "test:contract": "python3 .agents/skills/pi-agent-maintenance/scripts/validate_repo_contract.py",
     "benchmark:invocation": "python3 .agents/skills/pi-agent-maintenance/scripts/run_invocation_benchmark.py"
   },

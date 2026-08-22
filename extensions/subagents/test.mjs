@@ -106,7 +106,7 @@ test("loads three read-only profiles plus the Terra medium reviewer and worker",
   const agents = profiles();
   assert.deepEqual([...agents.keys()].sort(), ["environment-scout", "researcher", "reviewer", "scout", "worker"]);
   assert.equal(agents.get("scout").model, "openai-codex/gpt-5.6-luna");
-  assert.equal(agents.get("scout").thinking, "medium");
+  assert.equal(agents.get("scout").thinking, "off");
   assert.deepEqual(agents.get("scout").tools, ["read", "grep", "find", "ls"]);
   assert.equal(agents.get("scout").subagentAgents, undefined);
   assert.equal(agents.get("researcher").model, "openai-codex/gpt-5.6-terra");

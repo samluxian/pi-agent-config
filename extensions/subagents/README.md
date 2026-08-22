@@ -129,6 +129,9 @@ prompt、model、thinking level 與 exact tool allowlist。
 | `reviewer` | `openai-codex/gpt-5.6-terra` | `read`, `grep`, `find`, `ls`, `safe_bash`, `subagent` | 透過 scout 讀取較大的 repository evidence，自行執行 validation commands 並產生 semantic verdict；沒有 `write` 或 `edit`。 |
 | `worker` | `openai-codex/gpt-5.6-terra` | `read`, `write`, `edit`, `safe_bash`, web tools, `subagent` | 只處理使用者已批准、repository 與 owned files 都明確的 isolated edit。 |
 
+`scout` 使用 `thinking: off`，讓 bounded repository lookup 以速度和成本為優先；其他角色維持
+`thinking: medium`。這個設定只關閉額外 thinking budget，不會移除 scout 的 read-only tools。
+
 `researcher` 與 `worker` 需要 web tools 時，extension 會明確載入 project-local
 `pi-web-access`。`environment-scout`、`reviewer` 與 `worker` 所需的 custom tools 也由
 extension 按 profile 加入，不依賴 child 自動載入 extensions。

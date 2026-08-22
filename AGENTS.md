@@ -49,11 +49,14 @@ Editable delivery scope is limited to repository files that define desired
 behavior, including Helm values, Kustomize overlays, GitOps configuration, and
 CI pipeline files.
 
-Workspace guidance maintenance is the exception: when explicitly requested,
-`AGENTS.md`, `README.md`, `.agents/skills/**`, and `docs/session-notes/**` may be
-edited on this skills repository's `main` branch. Inspect status first, keep the
-change bounded, update README when human-facing behavior changes, and never
-commit or push.
+Skills-repository maintenance is the exception: when explicitly requested, any
+repository-owned source, test, script, extension, configuration, or documentation
+file may be created, edited, renamed, or deleted on this skills repository's
+`main` branch. This exception does not apply to sibling or target repositories,
+secrets, credentials, generated artifacts, caches, or git-ignored temporary
+files, and it never permits Git or remote mutations. Inspect status first, keep
+the change bounded, preserve unrelated user changes, update the relevant README
+when human-facing behavior changes, and never commit or push.
 
 ## Repository and Git Safety
 
@@ -61,8 +64,9 @@ Before editing, identify the actual target repository and inspect its branch,
 working tree, unstaged changes, and staged changes.
 
 - A clean workspace or skills repository does not prove a target repo is clean.
-- Do not edit delivery files on `main`, `master`, `release`, protected, or shared
-  branches. Ask the user to switch branches.
+- Outside the explicit skills-repository maintenance exception above, do not edit
+  delivery files on `main`, `master`, `release`, protected, or shared branches.
+  Ask the user to switch branches.
 - Do not assume local refs are current. Ask the user to run `git fetch origin`
   when remote freshness matters.
 - Never discard, overwrite, stage, commit, restore, or otherwise alter user
