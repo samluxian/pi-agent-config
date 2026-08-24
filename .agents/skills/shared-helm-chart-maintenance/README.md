@@ -6,7 +6,7 @@ Chart values 和 templates 視為 public contract。Agent 執行規則以 [`SKIL
 
 ## 支援的 adapter
 
-目前只支援 shared `flex-app` chart。通用名稱不代表支援任意 chart；其他 chart 必須先定義
+目前只支援本 skill 所定義的 shared application-chart contract。通用名稱不代表支援任意 chart；其他 chart 必須先定義
 values、render、compatibility 與 test adapter。
 
 ## 何時使用

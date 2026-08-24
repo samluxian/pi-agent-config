@@ -2,7 +2,7 @@
 
 Use this reference when reviewing or designing Terraform layout, root modules,
 reusable modules, state boundaries, CI operations, or repository architecture in
-a named `tf-services` repository.
+a supported Terraform repository.
 
 Google's live documentation is authoritative. This file is an operational digest,
 not a frozen substitute. Re-check the official pages before making a material

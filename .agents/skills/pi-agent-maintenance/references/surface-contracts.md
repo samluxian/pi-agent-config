@@ -53,6 +53,8 @@ and removal gates.
 
 ## AGENTS And README Branch
 
+- Read `public-repository-safety.md` before changing `AGENTS.md`, skills,
+  extensions, repository scripts, fixtures, configuration, or documentation.
 - `AGENTS.md` contains only rules needed on every turn: safety, approval,
   workspace ownership, routing, evidence budget, and shared response shape.
 - Domain commands, symptom matrices, long examples, and release procedures live

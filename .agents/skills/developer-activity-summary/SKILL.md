@@ -25,6 +25,8 @@ Never infer work from repository contents alone.
    - Prefer `.agents/skills/developer-activity-summary/scripts/collect_activity.py`.
    - Use authored commits, MRs/PRs, reviews, comments, issues, and repository
      events only when their timestamps fall inside the requested window.
+   - Keep the exact MR/PR URL and state returned by the authenticated API; never
+     construct or guess a link.
    - Keep primary and fallback platform evidence separate.
 
 4. Apply fallback only when needed.
@@ -38,22 +40,32 @@ Never infer work from repository contents alone.
    - Deduplicate events describing the same work item.
    - Start every update with an action, result, or work item, never a personal
      pronoun such as 我、我們、你、他、她、他們、I、We、You、He、She, or They.
+   - Attach each corresponding MR/PR with its API-returned state. Use `!IID` for
+     GitLab and `#number` for GitHub.
+   - State when supported activity has only push or other evidence and no MR/PR.
    - When first-person voice is requested, omit the subject at the start or place
      the personal reference later. Avoid performance judgments.
 
 ## Output
 
-```text
-Summary:
-- YYYY-MM-DD: concise action-led update without a sentence-initial personal pronoun
+Use this fixed Markdown structure and map state labels case-insensitively:
+`merged` as `已合併`, `open` or `opened` as `進行中`, and `closed` as `已關閉`.
 
-Evidence:
-- Primary identity, platform, timezone (default `Asia/Taipei`), and date window
-- Fallback identity/platform/window when used
+```markdown
+## 工作摘要與 MR
 
-Gaps:
-- Dates or claims without sufficient evidence
+### YYYY-MM-DD（<使用者提供且可解析的日期標籤>）
+
+- <action-led work item>：<br>
+  [<project> !<iid>](<authenticated API URL>)（<已合併／進行中／已關閉>）
+- <action-led activity without an MR/PR>；只有 <evidence type>，沒有相對應 MR/PR。
 ```
 
-Do not include tokens, private repository URLs beyond what the user supplied,
-full API payloads, or unrelated activity.
+For GitHub, replace `!<iid>` with `#<number>`. Omit the parenthesized date label
+when none was supplied. Append fallback identity, platform, and window to the
+supported item when fallback evidence is used. For an unsupported date, write
+`- 此日期沒有足夠 activity evidence，未補寫無證據內容。` under that date.
+
+Include only exact MR/PR URLs returned by authenticated activity evidence. Do not
+include tokens, unrelated private repository URLs, full API payloads, or
+unrelated activity.

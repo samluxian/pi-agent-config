@@ -6,7 +6,7 @@ Read this reference only when changing KEDA or event-driven autoscaling.
   and target utilization.
 - If KEDA autoscaling is enabled by default, enable one safe default trigger so
   the default render is valid.
-- Keep `scaleTargetRef` internal while `flex-app` supports only Deployment
+- Keep `scaleTargetRef` internal while the supported chart targets only Deployment
   targets.
 - Keep scale-to-zero fields such as `idleReplicaCount` out of recommended
   defaults unless scale-to-zero is part of the public contract.
@@ -25,7 +25,7 @@ autoscaling:
     pubsub:
       enabled: true
       subscriptions:
-        - name: aile-message-sub
+        - name: example-subscription
           threshold: 10
           activationThreshold: 0
       threshold: 1

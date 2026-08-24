@@ -19,10 +19,10 @@ scan every row.
 
 Kubernetes interpretation follows the official [Pod lifecycle](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/): Pod phase is a high-level summary, while conditions and container states carry the diagnostic split. For Service failures, the official [Pod debugging guide](https://kubernetes.io/docs/tasks/debug/debug-application/debug-pods/#debugging-services) starts by verifying EndpointSlices and Pods matching the Service selector.
 
-## Springcloud-Aile Tag Pre-Check
+## Application Tag Pre-Check
 
-Use this branch only when a `springcloud-aile` tag pipeline fails in
-`pre-check` before `build-images` and `update-k8s-deploy-*` run.
+Use this branch only when an application tag pipeline fails in `pre-check`
+before image-build and GitOps-update jobs run.
 
 Inspect the `manage-tags.sh` parser line first. Accepted forms are:
 
@@ -45,7 +45,7 @@ migrated.
 First check:
 
 ```bash
-for svc in aile-service-gateway <target-service>; do
+for svc in <gateway-service> <target-service>; do
   kubectl --context <context> exec -n <namespace> deploy/$svc -c $svc -- \
     sh -c 'env | grep -E "NACOS_(DISCOVERY|CONFIG)_SERVER_ADDR|NACOS_SP" | sort'
 done

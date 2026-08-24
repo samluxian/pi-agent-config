@@ -108,7 +108,7 @@ def main() -> int:
     possible_unknown = []
     if chart_flat:
         for key in sorted(env_flat):
-            # App-specific values.yaml may define keys outside flex-app defaults.
+            # App-specific values.yaml may define keys outside shared chart defaults.
             # Warn only when an env-only structural key is absent from both
             # base and chart defaults; skip known dynamic maps such as env vars
             # and named services.

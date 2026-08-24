@@ -1,4 +1,4 @@
-# Beginner Terraform Runbook for tf-services
+# Beginner Terraform Repository Runbook
 
 ## Mental model
 
@@ -17,7 +17,7 @@ not run apply; it should stop at plan review unless the human operates apply.
 Always start with repo status:
 
 ```bash
-cd <tf-services-repo>
+cd <terraform-repository>
 git branch --show-current
 git status --short --untracked-files=all
 git diff --name-status HEAD
@@ -39,15 +39,15 @@ terraform fmt -check -recursive .
 Run a single service/env plan:
 
 ```bash
-bash scripts/run-terraform.sh plan newaile/service-account-iam dev
+bash scripts/run-terraform.sh plan <family>/<service> <env>
 ```
 
 This script does roughly:
 
 ```bash
-cd newaile/service-account-iam
-terraform init -backend-config=environments/dev.backend.tfvars
-terraform plan -var="env_name=dev"
+cd <family>/<service>
+terraform init -backend-config=environments/<env>.backend.tfvars
+terraform plan -var="env_name=<env>"
 ```
 
 ## Reading plan output
@@ -78,8 +78,8 @@ follow `state-handoffs-and-recovery.md`.
 Usually inspect:
 
 ```text
-newaile/service-account-iam/vars.tf
-newaile/service-account-iam/services.tf
+<family>/<iam-root>/vars.tf
+<family>/<iam-root>/<resource-file>.tf
 ```
 
 Questions to answer before editing:
@@ -87,15 +87,15 @@ Questions to answer before editing:
 - Which Kubernetes service name will bind to the Google service account?
 - Which envs need the account?
 - What exact least-privilege GCP roles are required?
-- Does the namespace/member format match `newaile/<service>`?
+- Does the namespace/member format match the target repository evidence?
 
 ### Add or change human IAM access
 
 Usually inspect:
 
 ```text
-newaile/user-access/vars.tf
-newaile/user-access/users.tf
+<family>/<human-access-root>/vars.tf
+<family>/<human-access-root>/<resource-file>.tf
 ```
 
 Questions to answer before editing:
@@ -110,10 +110,8 @@ Questions to answer before editing:
 Usually inspect:
 
 ```text
-newaile/infra-firewalls/vars.tf
-newaile/infra-firewalls/firewall-rules.tf
-newaile/ippbx/firewall.tf
-newaile/windows-builder/firewall.tf
+<family>/<firewall-root>/vars.tf
+<family>/<firewall-root>/<resource-file>.tf
 ```
 
 Questions to answer before editing:

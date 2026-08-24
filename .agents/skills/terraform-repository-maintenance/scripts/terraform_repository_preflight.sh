@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Compact, read-only preflight for the tf-services Terraform repository.
+# Compact, read-only preflight for a supported Terraform repository.
 set -euo pipefail
 
 if [[ $# -ne 1 ]]; then
-  echo "Usage: $0 <tf-services-repo>" >&2
+  echo "Usage: $0 <terraform-repository>" >&2
   exit 2
 fi
 

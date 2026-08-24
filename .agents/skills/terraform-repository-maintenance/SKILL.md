@@ -1,6 +1,6 @@
 ---
 name: terraform-repository-maintenance
-description: Inspect, explain, plan-review, or maintain Terraform through a repository adapter. Use for tf-services GCP or state work. Do not use for other repositories or runtime diagnosis.
+description: Inspect, explain, plan-review, or maintain Terraform through a repository adapter. Use for supported Google Cloud roots or state work. Do not use for unrelated repositories or runtime diagnosis.
 ---
 
 # Terraform Repository Maintenance
@@ -10,8 +10,8 @@ GCP and remote state remain read-only.
 
 ## Supported Adapter
 
-This skill currently supports only the `tf-services` repository contract. Stop for
-another repository until its layout, backend, command, ownership, and review adapter exists.
+Use `references/repo-map.md` as the supported repository contract. Stop for
+another layout until its backend, command, ownership, and review adapter exists.
 
 ## Flow
 
@@ -19,7 +19,7 @@ another repository until its layout, backend, command, ownership, and review ada
    task type, backend, and whether the user requests inspection, plan review, or
    an approved edit. Treat every unapproved source or legacy root as read-only
    evidence; cross-project IAM ownership does not widen the edit boundary.
-2. Run `scripts/tf_services_preflight.sh` or inspect equivalent bounded evidence.
+2. Run `scripts/terraform_repository_preflight.sh` or inspect equivalent bounded evidence.
    Before root authoring or maintenance, read `references/repo-map.md` and
    compare the closest existing root in the same family. For a Google Cloud
    architecture, root-layout, or module best-practice review, load

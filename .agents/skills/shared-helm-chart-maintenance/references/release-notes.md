@@ -1,6 +1,6 @@
-# Flex App Release Notes
+# Shared Chart Release Notes
 
-Read this reference after chart contract proof when authoring a `flex-app`
+Read this reference after chart contract proof when authoring a shared chart
 release note, and from `$helm-dependency-upgrade` when consuming published
 notes for an upgrade plan.
 
@@ -15,7 +15,7 @@ Establish these inputs before writing:
 - accepted and rejected validation cases, including skipped gates
 - release MR or issue and any evidence-backed originating project
 
-A project driver such as VoiceHub may be named when supplied by the user, MR,
+A project driver may be named only when supplied by the user, MR,
 issue, or repository evidence. Explain how the project-specific need became a
 reusable shared-chart capability. Do not infer a project name from workload,
 branch, or resource naming alone.

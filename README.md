@@ -35,6 +35,29 @@ Kubernetes、Argo CD、GitLab/GitHub、GCP 與 Git remotes 對 agent 維持唯�
 repository 的 desired state，再走原有 MR、CI 與 GitOps 流程。完整規則以
 [`AGENTS.md`](AGENTS.md) 為準。
 
+## 公開內容安全
+
+本 repository 的 `AGENTS.md`、skills、extensions、scripts、fixtures、configuration 與文件
+都視為公開內容，不應保存公司、客戶或私人系統的具體名稱與 identifiers。範例使用
+`<organization>`、`<service>` 與 `example.test` 等 placeholders；私人 target-repository 證據
+只留在當次調查，不複製回本 repository。
+
+執行通用檢查：
+
+```bash
+npm run test:public-safety
+```
+
+需要比對組織專用名詞時，把一行一個 literal term 的檔案放在 repository 外，再執行：
+
+```bash
+PI_PUBLIC_SAFETY_TERMS_FILE=/path/outside/repository/private-terms.txt \
+  npm run test:public-safety
+```
+
+Scanner 只回報類別與位置，不輸出 terms。完整規則與 Git history 限制見
+[public repository safety contract](.agents/skills/pi-agent-maintenance/references/public-repository-safety.md)。
+
 ## Workspace 配置
 
 建議把本 repository 與工作 repositories 放在同一層，但不要合併 Git history：
@@ -42,9 +65,9 @@ repository 的 desired state，再走原有 MR、CI 與 GitOps 流程。完整�
 ```text
 <workspace-root>/
 ├── devops-pi-agent/
-├── k8s-deploy/
-├── helm-chart/
-└── your-service/
+├── gitops-repository/
+├── chart-repository/
+└── application-repository/
 ```
 
 Initializer 不依賴固定的 workspace 名稱或使用者家目錄。

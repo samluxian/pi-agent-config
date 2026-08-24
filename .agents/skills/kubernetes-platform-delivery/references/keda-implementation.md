@@ -37,7 +37,7 @@ When KEDA is selected and not already installed for the target environment:
 
 ## Chart Design Rules
 
-For shared application charts such as `flex-app`:
+For a supported shared application chart:
 
 - Keep KEDA opt-in (`keda.enabled: false`) unless the user explicitly requests a
   breaking chart model change.

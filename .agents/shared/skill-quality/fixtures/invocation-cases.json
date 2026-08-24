@@ -1,44 +1,44 @@
 [
   {
-    "id": "flex-chart-shared-schema",
+    "id": "shared-chart-schema",
     "skill": "shared-helm-chart-maintenance",
     "expected": "invoke",
-    "prompt": "Add a new public value to the shared flex-app schema and render it in the Deployment template.",
+    "prompt": "Add a new public value to the supported shared application chart schema and render it in the Deployment template.",
     "reason": "The requested change owns shared chart API behavior."
   },
   {
-    "id": "flex-chart-productized-release-note",
+    "id": "shared-chart-productized-release-note",
     "skill": "shared-helm-chart-maintenance",
     "expected": "invoke",
-    "prompt": "Compare flex-app-3.5.0 with flex-app-3.6.0 and write a productized Traditional Chinese GitLab Release note from chart evidence, including the VoiceHub project driver and PDB migration rationale.",
+    "prompt": "Compare application-chart 3.5.0 with 3.6.0 and write a productized Traditional Chinese GitLab Release note from chart evidence, including a user-provided project driver and PDB migration rationale.",
     "reason": "Evidence-based shared chart release-note authoring belongs to chart maintenance."
   },
   {
-    "id": "flex-chart-service-values",
+    "id": "shared-chart-service-values",
     "skill": "shared-helm-chart-maintenance",
     "expected": "skip",
     "prompt": "Change replicas only for order-api in the qa values file without touching the shared chart.",
     "reason": "A service-owned values change is outside shared chart maintenance."
   },
   {
-    "id": "flex-upgrade-version-compare",
+    "id": "chart-upgrade-version-compare",
     "skill": "helm-dependency-upgrade",
     "expected": "invoke",
-    "prompt": "Assess upgrading this k8s-deploy wrapper from flex-app 1.8.0 to 1.10.0 and compare rendered selectors.",
-    "reason": "The task compares current and target flex-app wrapper behavior."
+    "prompt": "Assess upgrading this GitOps wrapper's application chart from 1.8.0 to 1.10.0 and compare rendered selectors.",
+    "reason": "The task compares current and target application-chart wrapper behavior."
   },
   {
-    "id": "flex-upgrade-release-note-plan",
+    "id": "chart-upgrade-release-note-plan",
     "skill": "helm-dependency-upgrade",
     "expected": "invoke",
-    "prompt": "Plan upgrading this order-api wrapper from flex-app 3.4.2 to 3.6.0: read every published GitLab Release note in the range, verify each breaking/default claim against the exact chart sources and renders, then list required values and migration actions.",
+    "prompt": "Plan upgrading this example-api wrapper's application chart from 3.4.2 to 3.6.0: read every published GitLab Release note in the range, verify each breaking/default claim against the exact chart sources and renders, then list required values and migration actions.",
     "reason": "Release-note consumption reconciled with wrapper render evidence is part of version-upgrade planning."
   },
   {
-    "id": "flex-upgrade-shared-authoring",
+    "id": "chart-upgrade-shared-authoring",
     "skill": "helm-dependency-upgrade",
     "expected": "skip",
-    "prompt": "Design a new KEDA profile directly in the shared flex-app chart defaults and schema.",
+    "prompt": "Design a new KEDA profile directly in the shared application chart defaults and schema.",
     "reason": "Shared chart authoring is not an existing wrapper version assessment."
   },
   {
@@ -66,14 +66,14 @@
     "id": "gitops-service-delivery-approved-config",
     "skill": "gitops-service-delivery",
     "expected": "invoke",
-    "prompt": "I approve the proposed onboarding patch for order-api. Add its flex-app wrapper, keep Kubernetes deployment settings in values files, put application parameters under app-config, and validate dev discovery plus render.",
-    "reason": "An approved flex-app service configuration for Kubernetes delivery belongs to the service delivery contract."
+    "prompt": "I approve the proposed onboarding patch for example-api. Add its application-chart wrapper, keep Kubernetes deployment settings in values files, put application parameters under app-config, and validate dev discovery plus render.",
+    "reason": "An approved application-chart service configuration for Kubernetes delivery belongs to the service delivery contract."
   },
   {
     "id": "gitops-service-delivery-shared-chart",
     "skill": "gitops-service-delivery",
     "expected": "skip",
-    "prompt": "Add a new public autoscaling field to the shared flex-app chart schema and templates.",
+    "prompt": "Add a new public autoscaling field to the shared application chart schema and templates.",
     "reason": "Shared chart API authoring is outside service-owned delivery configuration."
   },
   {
@@ -87,8 +87,8 @@
     "id": "kubernetes-platform-delivery-service-values",
     "skill": "kubernetes-platform-delivery",
     "expected": "skip",
-    "prompt": "Onboard payment-api with a flex-app Chart.yaml, environment deployment values, and application parameters under app-config.",
-    "reason": "A service-owned flex-app wrapper belongs to gitops-service-delivery, not infrastructure delivery."
+    "prompt": "Onboard example-api with an application-chart Chart.yaml, environment deployment values, and application parameters under app-config.",
+    "reason": "A service-owned application-chart wrapper belongs to gitops-service-delivery, not infrastructure delivery."
   },
   {
     "id": "mr-summary-copy",
@@ -157,7 +157,7 @@
     "id": "runtime-dependency-gitops-diff",
     "skill": "runtime-dependency-diagnostics",
     "expected": "skip",
-    "prompt": "Explain why Argo CD renders a different image tag than the k8s-deploy values file.",
+    "prompt": "Explain why Argo CD renders a different image tag than the GitOps repository values file.",
     "reason": "A generic delivery-state mismatch is not runtime dependency wiring."
   },
   {
@@ -168,18 +168,18 @@
     "reason": "Static source design review without runtime evidence is outside this incident workflow."
   },
   {
-    "id": "tf-services-plan-explain",
+    "id": "terraform-repository-plan-explain",
     "skill": "terraform-repository-maintenance",
     "expected": "invoke",
-    "prompt": "In the identified tf-services repo, explain the plan for billing-api dev and its IAM replacement risk.",
+    "prompt": "In the identified supported Terraform repository, explain the plan for example-service dev and its IAM replacement risk.",
     "reason": "The target repository, service, environment, and Terraform plan are explicit."
   },
   {
-    "id": "tf-services-generic-module",
+    "id": "terraform-repository-generic-module",
     "skill": "terraform-repository-maintenance",
     "expected": "skip",
     "prompt": "Write a generic AWS VPC Terraform module in this application repository.",
-    "reason": "Generic Terraform outside the identified tf-services GCP repository is out of scope."
+    "reason": "Generic Terraform outside the identified supported Google Cloud repository is out of scope."
   },
   {
     "id": "developer-activity-daily-summary",
@@ -220,7 +220,7 @@
     "id": "devops-agent-maintenance-target-repo",
     "skill": "pi-agent-maintenance",
     "expected": "skip",
-    "prompt": "Update the payment service Helm values in k8s-deploy after I approve the patch.",
+    "prompt": "Update the example service Helm values in a target GitOps repository after I approve the patch.",
     "reason": "A product desired-state edit does not maintain the devops-pi-agent contract."
   },
   {

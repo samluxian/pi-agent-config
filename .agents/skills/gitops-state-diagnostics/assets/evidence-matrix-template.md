@@ -14,7 +14,7 @@
 | Source | Command / Path | What It Proves | Key Findings | Gaps / Risk |
 | --- | --- | --- | --- | --- |
 | service repo |  | image, CI, runtime env usage, dependency ownership |  |  |
-| k8s-deploy values |  | GitOps source values and env overlay intent |  |  |
+| GitOps repository values |  | GitOps source values and env overlay intent |  |  |
 | shared chart |  | supported schema, defaults, template behavior |  |  |
 | Helm render |  | manifest produced from repo inputs |  |  |
 | ArgoCD Application |  | repo path, revision, values files, sync/health |  |  |

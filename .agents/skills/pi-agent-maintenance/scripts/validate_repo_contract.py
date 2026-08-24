@@ -173,6 +173,16 @@ def main() -> None:
     for exclusion in skills_main_exclusions:
         if exclusion not in normalized_agents:
             errors.append(f"AGENTS.md missing skills-repository main exclusion: {exclusion}")
+    public_safety_rules = (
+        "Treat this skills repository as public source.",
+        "Never add company or client names",
+        "Use descriptive placeholders and reserved example domains.",
+        "machine-local terms file outside the repository",
+        "A clean current snapshot does not sanitize Git history.",
+    )
+    for rule in public_safety_rules:
+        if rule not in normalized_agents:
+            errors.append(f"AGENTS.md missing public repository safety rule: {rule}")
     for relative in (
         ".agents/skills/gitops-service-delivery/SKILL.md",
         ".agents/skills/kubernetes-platform-delivery/SKILL.md",
@@ -300,6 +310,15 @@ def main() -> None:
     ok, output = run([sys.executable, str(fixture_validator)], repo)
     if not ok:
         errors.append(f"invocation fixture validation failed: {output}")
+
+    public_safety_script = Path(__file__).parent / "check_public_safety.py"
+    public_safety_test = Path(__file__).parent / "tests" / "check_public_safety_test.py"
+    ok, output = run([sys.executable, str(public_safety_test)], repo)
+    if not ok:
+        errors.append(f"public repository safety test failed: {output}")
+    ok, output = run([sys.executable, str(public_safety_script), str(repo)], repo)
+    if not ok:
+        errors.append(f"public repository safety scan failed: {output}")
 
     retrospective_test = (
         skills_root

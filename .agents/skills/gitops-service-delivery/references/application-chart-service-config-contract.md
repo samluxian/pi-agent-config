@@ -1,8 +1,8 @@
-# Flex-App Service Configuration Contract
+# Application Chart Service Configuration Contract
 
-Use this contract for every service onboarded to or maintained in the
-`k8s-deploy`-style GitOps repository. Authserver is the golden structural
-reference only. Never copy its application values, secret references,
+Use this contract for every service onboarded to or maintained in the supported
+GitOps repository layout. Select one repository-local compliant service as a
+structural reference only. Never copy its application values, secret references,
 identities, endpoints, resources, probes, or environment decisions.
 
 ## Required And Optional Files
@@ -20,23 +20,22 @@ identities, endpoints, resources, probes, or environment decisions.
 
 | File | Requirement | Ownership |
 | --- | --- | --- |
-| `Chart.yaml` | required | flex-app dependency, alias, version, chart metadata, environment tags |
+| `Chart.yaml` | required | application chart dependency, alias, version, chart metadata, environment tags |
 | `values.yaml` | required | environment-independent deployment baseline and application config mount contract |
 | `values.<env>.yaml` | required only for an enabled environment | environment-specific deployment overrides and image tag |
 | `values.ignore.<env>.yaml` | optional; use instead of the enabled filename when intentionally disabled | offline preparation that bootstrap must not discover |
 | `app-config/values.<env>-<config-name>.yaml` | required for each enabled service environment | service-owned application/runtime configuration and secret references |
 | `app-config/values.<env>-common.yaml` | optional | application configuration proven to be shared by the intended service group |
 
-Do not require or create a common file for an independent service such as the
-golden Authserver shape. Empty placeholder common files add ownership ambiguity.
+Do not require or create a common file for an independent service. Empty
+placeholder common files add ownership ambiguity.
 
 ## Config Name And Discovery
 
 Derive `<config-name>` from the bootstrap template, never from assumption:
 
 - ordinary services commonly use the service directory basename
-- an established `aile-service-*` template may remove the
-  `aile-service-` prefix
+- an established repository template may transform a standard service prefix
 - a custom override or project template is authoritative when present
 
 An enabled `values.<env>.yaml` is a deployment switch because bootstrap globbing
@@ -144,7 +143,7 @@ than silent copying into the new structure.
 For every affected enabled environment, prove:
 
 1. required files exist and disabled environments remain undiscovered
-2. `Chart.yaml` pins the intended flex-app version and aliases
+2. `Chart.yaml` pins the intended application chart version and aliases
 3. application-config files contain no deployment-owned roots
 4. environment deployment overlays contain no application-config content
 5. bootstrap renders one Application with the intended path and value-file order

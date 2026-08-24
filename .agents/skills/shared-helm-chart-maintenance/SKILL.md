@@ -1,6 +1,6 @@
 ---
 name: shared-helm-chart-maintenance
-description: Maintain shared Helm chart APIs, schemas, templates, compatibility, or releases. Use for the flex-app adapter. Do not use for service values, wrapper upgrades, or other charts.
+description: Maintain shared Helm chart APIs, schemas, templates, compatibility, or releases. Use for a supported application-chart contract. Do not use for service values, wrapper upgrades, or unrelated charts.
 ---
 
 # Shared Helm Chart Maintenance
@@ -10,8 +10,8 @@ unless the requested change explicitly introduces and documents a migration.
 
 ## Supported Adapter
 
-This skill currently supports only the shared `flex-app` chart contract. Stop for
-another chart until its values, render, compatibility, and test adapter exists.
+This skill supports a shared application chart contract. Stop for another chart
+layout until its values, render, compatibility, and test adapter exists.
 
 ## Core Flow
 

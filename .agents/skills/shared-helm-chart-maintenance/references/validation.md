@@ -3,7 +3,7 @@
 Run the smallest gate set that proves every changed contract branch:
 
 - `git diff --check`
-- `implementation_flow.sh --changed-path charts/flex-app <helm-chart-repo>`
+- `implementation_flow.sh --changed-path charts/<chart-name> <chart-repository>`
 - `helm template` for every changed feature branch
 - a render-fail case for each new required or rejected input
 - default chart render plus at least one adopting-service render when ownership

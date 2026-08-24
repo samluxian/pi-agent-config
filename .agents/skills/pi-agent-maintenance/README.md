@@ -92,11 +92,23 @@ evidence／authority 邊界，以及 references/scripts 入口；`SKILL.md` 仍�
 
 Human-facing 行為、安裝方式或文件入口有變更時，要在同一個 patch 更新相關 README。
 
+## 公開內容安全
+
+修改 `AGENTS.md`、skills、extensions、scripts、fixtures、configuration 或文件時，先依
+[`references/public-repository-safety.md`](references/public-repository-safety.md) 泛化所有範例
+與 identifiers。私人 target evidence 不得成為 repository fixture 或操作 inventory。
+
+執行 `npm run test:public-safety`。組織專用名詞透過 repository 外的
+`PI_PUBLIC_SAFETY_TERMS_FILE` 提供；不要把 denylist 或命中的 term 寫入 repository、logs
+或 reviewer 結論。Generic scanner 無法辨識所有 proper nouns，因此 final reviewer 仍須做
+semantic inspection。
+
 ## Deterministic validation
 
 先執行固定 checks：
 
 ```bash
+npm run test:public-safety
 npm run test:contract
 npm run test:extensions
 npm run test:init-workspace
@@ -108,6 +120,7 @@ git diff --check
 
 | Command | 證明內容 |
 | --- | --- |
+| `npm run test:public-safety` | Current snapshot 的 private patterns 與 optional machine-local terms。 |
 | `npm run test:contract` | Skill metadata、README inventory、fixtures、extension registration 與 repository contracts。 |
 | `npm run test:extensions` | Extension hooks、commands、tools、bounds、failure 與 reset behavior。 |
 | `npm run test:init-workspace` | Symlink、extension reconciliation、dependency installation 與 readiness checks。 |

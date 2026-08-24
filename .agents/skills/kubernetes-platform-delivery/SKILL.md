@@ -34,7 +34,7 @@ state. Approval never covers adjacent services or unrelated cleanup.
 Read `references/keda-implementation.md` only when approved scope includes KEDA
 platform installation or prerequisites. Use `.agents/shared/gitops/scripts/`
 for repository preflight and compact render evidence when its helpers match.
-Use `$gitops-service-delivery` for service-owned flex-app wrappers and values, and
+Use `$gitops-service-delivery` for service-owned application-chart wrappers and values, and
 `$shared-helm-chart-maintenance` for shared chart behavior.
 
 ## Safety

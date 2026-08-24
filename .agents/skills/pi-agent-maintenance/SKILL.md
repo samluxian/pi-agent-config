@@ -15,6 +15,7 @@ only for this repository's agent contract, not ordinary delivery work.
 3. Read before writing:
    - `references/skill-design-contract.md` for skill structure and routing.
    - `references/surface-contracts.md` for ownership boundaries.
+   - `references/public-repository-safety.md` for public-safe examples and identifiers.
    - `references/regression-matrix.md` for required checks.
 4. Propose the bounded patch and wait for explicit approval.
 5. Apply the smallest coherent change; update README for human-facing behavior.
@@ -37,6 +38,7 @@ boundary in its description instead of adding a routing table to `AGENTS.md`.
 Run:
 
 ```bash
+python3 .agents/skills/pi-agent-maintenance/scripts/check_public_safety.py
 python3 .agents/skills/pi-agent-maintenance/scripts/validate_repo_contract.py
 npm run test:extensions
 git diff --check

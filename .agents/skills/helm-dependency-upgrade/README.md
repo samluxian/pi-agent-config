@@ -6,12 +6,12 @@ chart source、wrapper configuration 與 render evidence 放在一起評估。Ag
 
 ## 支援的 adapter
 
-目前只支援 `k8s-deploy` wrappers 升級 pinned `flex-app` dependency。其他 chart 或 wrapper
+目前只支援 wrappers 升級 pinned shared application-chart dependency。其他 chart 或 wrapper
 必須先建立 release、ownership、render 與 compatibility adapter。
 
 ## 何時使用
 
-- 評估 `flex-app` version upgrade。
+- 評估 application chart version upgrade。
 - 比較升級前後 selectors、labels、affinity、KSA/GSA、Service、PDB、HPA 或 KEDA。
 - 從一段 release interval 建立 migration plan。
 - 確認 wrapper values 與新 chart defaults 是否相容。
@@ -37,8 +37,8 @@ chart source、wrapper configuration 與 render evidence 放在一起評估。Ag
 
 - [`references/version-ownership-matrix.md`](references/version-ownership-matrix.md)：wrapper、chart、
   bootstrap 與 live ownership。
-- [`scripts/render_flex_app_upgrade_summary.sh`](scripts/render_flex_app_upgrade_summary.sh)：current/target render summary。
-- [`scripts/tests/render_flex_app_upgrade_summary_test.sh`](scripts/tests/render_flex_app_upgrade_summary_test.sh)：renderer regression fixture。
+- [`scripts/render_chart_upgrade_summary.sh`](scripts/render_chart_upgrade_summary.sh)：current/target render summary。
+- [`scripts/tests/render_chart_upgrade_summary_test.sh`](scripts/tests/render_chart_upgrade_summary_test.sh)：renderer regression fixture。
 
 ## 停止條件
 

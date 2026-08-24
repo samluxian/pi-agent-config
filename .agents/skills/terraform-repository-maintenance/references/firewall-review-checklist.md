@@ -1,11 +1,10 @@
 # Firewall Review Checklist
 
-Use for `newaile/infra-firewalls`, `newaile/ippbx`, and
-`newaile/windows-builder` changes.
+Use for Terraform roots that own shared or workload-specific firewall rules.
 
 ## Evidence to collect
 
-- Target project: application project or Shared VPC project (`aile-infra`).
+- Target project: verified application project or Shared VPC project.
 - Firewall name.
 - Direction: `INGRESS` or `EGRESS`.
 - Priority: lower number wins.

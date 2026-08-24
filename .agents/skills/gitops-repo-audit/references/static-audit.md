@@ -1,7 +1,7 @@
 # Static GitOps Audit
 
 Use this reference for read-only repo audits. Keep source-of-truth layers
-separate: app repo CI, `k8s-deploy` desired state, shared chart defaults,
+separate: application repo CI, GitOps desired state, shared chart defaults,
 bootstrap/App-of-Apps wiring, rendered manifests, ArgoCD live state, and runtime
 dependencies are different evidence sources.
 
@@ -10,7 +10,7 @@ dependencies are different evidence sources.
 Check service/env discovery without changing files:
 
 ```bash
-rg --files | rg '(^|/)(apps|newaile|aileai|infra)/[^/]+/values\.(dev|qa|uat|prod)\.yaml$'
+rg --files | rg '(^|/)(apps|services|platform|infra)/[^/]+/values\.(dev|qa|uat|prod)\.yaml$'
 rg --files | rg 'values\.ignore\.(dev|qa|uat|prod)\.yaml$'
 rg -n "targetRevision|repoURL|path:|valueFiles|releaseName|namespace" bootstrap .
 ```
@@ -26,11 +26,11 @@ Look for:
 
 ## Chart And Values Audit
 
-For Helm or `flex-app` services:
+For Helm-based services:
 
 ```bash
 rg --files | rg 'Chart.yaml|Chart.lock|values(\..*)?\.yaml$|templates/'
-rg -n "flex-app|repository:|version:|alias:|remoteRef|envFrom|serviceAccount|workloadIdentity|pdb|hpa|service:" .
+rg -n "dependencies:|repository:|version:|alias:|remoteRef|envFrom|serviceAccount|workloadIdentity|pdb|hpa|service:" .
 ```
 
 Look for:
@@ -51,7 +51,7 @@ audit identifies the risky surface.
 Inspect upstream service CI and downstream deployment templates separately:
 
 ```bash
-rg -n "update-k8s-deploy|TARGET_FOLDER|DEPLOY_ENV|K8S_DEPLOY_REF|CI_COMMIT_TAG|CI_COMMIT_REF_NAME|helm upgrade|trigger:" .gitlab-ci.yml .gitlab/ci
+rg -n "update-gitops|TARGET_FOLDER|DEPLOY_ENV|GITOPS_REF|CI_COMMIT_TAG|CI_COMMIT_REF_NAME|helm upgrade|trigger:" .gitlab-ci.yml .gitlab/ci
 rg -n "raw\\?ref=|repository/files|branch|values\\.\\$|NEW_TAG|image.tag|imageTag" .gitlab-ci.yml .gitlab/ci
 ```
 

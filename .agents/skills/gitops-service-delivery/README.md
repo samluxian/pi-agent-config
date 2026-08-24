@@ -5,7 +5,7 @@
 
 ## 支援的 adapter
 
-目前只支援 `k8s-deploy` 的 `flex-app` service layout。通用名稱不代表可以套用到任意 GitOps
+目前只支援本 skill 所定義的 Helm dependency-based service layout。通用名稱不代表可以套用到任意 GitOps
 repository；其他 layout 必須先定義 ownership、discovery、render 與 validation adapter。
 
 ## 何時使用
@@ -13,7 +13,7 @@ repository；其他 layout 必須先定義 ownership、discovery、render 與 va
 - 修改 service `values.yaml` 或 `values.<env>.yaml`。
 - 修改 `app-config/values.<env>-<config-name>.yaml`。
 - 調整 service discovery、value-file order 或環境 render。
-- 檢查 flex-app wrapper 的 service-owned configuration。
+- 檢查 application-chart wrapper 的 service-owned configuration。
 
 ## 不適用
 
@@ -34,13 +34,13 @@ repository；其他 layout 必須先定義 ownership、discovery、render 與 va
 
 ## 重要邊界
 
-Authserver 只能作為結構參考，不能提供其他服務的 identity、endpoint、secret reference、
+Repository-local compliant service 只能作為結構參考，不能提供其他服務的 identity、endpoint、secret reference、
 resources、probe、image 或環境啟用值。Secret-backed settings 只保存 reference，不讀取
 secret value。
 
 ## 入口
 
-- [`references/flex-app-service-config-contract.md`](references/flex-app-service-config-contract.md)：
+- [`references/application-chart-service-config-contract.md`](references/application-chart-service-config-contract.md)：
   file layout、values ownership 與 validation contract。
 - [`references/helm-alias-overlays.md`](references/helm-alias-overlays.md)：`stable`、`beta` 等 aliases。
 - [`scripts/check_service_config_contract.py`](scripts/check_service_config_contract.py)：contract validator。

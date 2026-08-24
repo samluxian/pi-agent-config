@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "test:public-safety": "python3 .agents/skills/pi-agent-maintenance/scripts/check_public_safety.py",
     "test:extensions": "node --import ./extensions/subagents/test-loader.mjs --test extensions/*/test.mjs",
     "test:init-workspace": "bash scripts/test-init-workspace.sh",
     "test:makefile": "bash scripts/test-makefile.sh",

@@ -1,11 +1,11 @@
 # IAM Review Checklist
 
-Use for `newaile/service-account-iam` and `newaile/user-access` changes.
+Use for service-account, Workload Identity, and human-access Terraform roots.
 
 ## Evidence to collect
 
 - Target service path and environment.
-- Exact project ID from `newaile/modules/defaults/main.tf`.
+- Exact project ID from the target repository's verified defaults source.
 - Terraform resource type:
   - `google_service_account`
   - `google_service_account_iam_member`
@@ -50,15 +50,15 @@ reviewer acknowledgement.
 
 ## Workload Identity member pattern
 
-Current service account IAM uses this pattern:
+A typical service account IAM member uses this shape:
 
 ```hcl
-member = "serviceAccount:${module.defaults.project_id}.svc.id.goog[newaile/${each.key}]"
+member = "serviceAccount:${module.defaults.project_id}.svc.id.goog[${var.namespace}/${each.key}]"
 ```
 
-Before adding a service, confirm the Kubernetes namespace and KSA name should be
-`newaile/<service-key>`. Do not infer namespace or KSA from naming alone if the
-user asks for deployment truth.
+Before adding a service, confirm the Kubernetes namespace and KSA name from the
+target repository and deployed identity contract. Do not infer either value from
+naming alone.
 
 ## Safer report format
 

@@ -10,7 +10,7 @@ Prints compact JSON-lines summaries for selected rendered resources.
 Requires: helm, yq (python-yq/jq compatible)
 
 Examples:
-  render_summary.sh --release app --chart ./newaile/aile-service-application \
+  render_summary.sh --release app --chart ./charts/application-chart \
     -f values.yaml -f values.dev.yaml --set global.envName=dev
 USAGE
 }

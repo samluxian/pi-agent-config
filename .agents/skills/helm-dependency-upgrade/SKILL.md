@@ -1,6 +1,6 @@
 ---
 name: helm-dependency-upgrade
-description: Assess Helm dependency upgrades from release notes, exact chart sources, renders, selectors, and globals. Use for the flex-app/k8s-deploy adapter. Do not use for chart authoring or other dependencies.
+description: Assess Helm dependency upgrades from release notes, exact chart sources, renders, selectors, and globals. Use for supported application-chart wrappers. Do not use for chart authoring or unrelated dependencies.
 ---
 
 # Helm Dependency Upgrade
@@ -10,8 +10,9 @@ wrapper. Release notes are inputs, not deployment truth.
 
 ## Supported Adapter
 
-This skill currently supports `k8s-deploy` wrappers pinned to `flex-app`. Stop for
-another dependency until its release, ownership, render, and compatibility adapter exists.
+This skill supports wrappers pinned to a shared application chart. Stop for
+another dependency layout until its release, ownership, render, and compatibility
+adapter exists.
 
 ## Upgrade Flow
 
@@ -24,7 +25,7 @@ another dependency until its release, ownership, render, and compatibility adapt
 4. Inspect wrapper chart metadata, aliases, values, app-of-apps inputs, CI handoff,
    and existing selector/resource assumptions.
 5. Render current and target effective values with
-   `scripts/render_flex_app_upgrade_summary.sh`. Use
+   `scripts/render_chart_upgrade_summary.sh`. Use
    `references/version-ownership-matrix.md` when ownership is unclear.
 6. Compare resource presence and the emitted spec fields. Check Deployment
    selectors, pod labels, affinity and KSA; Service selectors, type and ports;

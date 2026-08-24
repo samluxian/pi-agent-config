@@ -1,6 +1,6 @@
 # API And Values Contract
 
-Read this reference when designing or changing the public `flex-app` values API.
+Read this reference when designing or changing a supported shared chart values API.
 
 ## Ownership
 

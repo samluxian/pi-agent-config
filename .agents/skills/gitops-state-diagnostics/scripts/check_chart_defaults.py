@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Summarize flex-app render output for migration review.
+"""Summarize application chart render output for migration review.
 
 This script is read-only. It expects a rendered manifest from `helm template`
-and reports the chart defaults and runtime-facing resources that are easy to
-miss during legacy-to-flex-app migrations.
+and reports chart defaults and runtime-facing resources that are easy to miss
+during chart migrations.
 """
 
 from __future__ import annotations
@@ -118,7 +118,7 @@ def service_summaries(docs: list[dict[str, Any]]) -> list[str]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Check flex-app rendered defaults.")
+    parser = argparse.ArgumentParser(description="Check application chart rendered defaults.")
     parser.add_argument("--manifest", "-m", help="Rendered manifest path; defaults to stdin.")
     parser.add_argument("--release", "-r", required=True, help="Helm release name.")
     args = parser.parse_args()
@@ -143,7 +143,7 @@ def main() -> int:
     if pdb and "minAvailable" in pdb.get("spec", {}) and "maxUnavailable" in pdb.get("spec", {}):
         warnings.append("PDB renders both minAvailable and maxUnavailable.")
 
-    print("# flex-app Render Check")
+    print("# Application Chart Render Check")
     print()
     print(f"- release: {args.release}")
     print(f"- documents: {len(docs)}")

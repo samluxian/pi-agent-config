@@ -1,6 +1,6 @@
 # Helm Alias Overlays
 
-Use these rules when editing `k8s-deploy` service values split across dependency
+Use these rules when editing service values split across dependency
 aliases such as `common`, `stable`, and `beta`.
 
 - Treat `common` as the intersection: keep a value there only when both aliases

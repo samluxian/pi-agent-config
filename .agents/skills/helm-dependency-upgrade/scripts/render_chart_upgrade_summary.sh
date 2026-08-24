@@ -4,7 +4,7 @@ set -euo pipefail
 usage() {
   cat <<'USAGE' >&2
 Usage:
-  render_flex_app_upgrade_summary.sh <release> <chart-path> [helm template args...]
+  render_chart_upgrade_summary.sh <release> <chart-path> [helm template args...]
 
 Renders one effective chart input set and prints bounded spec fields for an
 upgrade diff. The summary covers workload selectors, affinity, KSA/GSA, Services,
@@ -34,7 +34,7 @@ for command in helm yq; do
   fi
 done
 
-out="$(mktemp /tmp/flex-app-upgrade-render.XXXXXX.yaml)"
+out="$(mktemp /tmp/chart-upgrade-render.XXXXXX.yaml)"
 trap 'rm -f "$out"' EXIT
 
 if ! helm template "$release" "$chart" "$@" >"$out"; then

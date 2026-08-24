@@ -5,12 +5,12 @@
 
 ## 支援的 adapter
 
-目前只支援 `tf-services` repository contract。通用名稱不代表支援任意 Terraform layout；
+目前只支援本 skill 所定義的 Terraform repository contract。通用名稱不代表支援任意 Terraform layout；
 其他 repository 必須先定義 root layout、backend、commands、ownership 與 review adapter。
 
 ## 何時使用
 
-- 解釋 `tf-services` root、variables、modules、resources、outputs 或 state addresses。
+- 解釋 supported repository root、variables、modules、resources、outputs 或 state addresses。
 - Review Terraform plan、replacement、destroy risk 或 unexpected drift。
 - 維護 GCP IAM、Workload Identity、network、VM、Secret Manager references 或 state handoff。
 - 在已批准 root/environment 內進行小範圍 Terraform 修改。
@@ -34,13 +34,13 @@
 
 ## 入口
 
-- [`references/repo-map.md`](references/repo-map.md)：`tf-services` layout、backend 與 ownership。
+- [`references/repo-map.md`](references/repo-map.md)：supported layout、backend 與 ownership。
 - [`references/beginner-runbook.md`](references/beginner-runbook.md)：plan-first 操作說明。
 - [`references/google-cloud-terraform-best-practices.md`](references/google-cloud-terraform-best-practices.md)：Google Cloud baseline。
 - [`references/state-handoffs-and-recovery.md`](references/state-handoffs-and-recovery.md)：import、state handoff、saved plan 與 partial failure。
 - [`references/iam-review-checklist.md`](references/iam-review-checklist.md)：IAM 與 Workload Identity review。
 - [`references/firewall-review-checklist.md`](references/firewall-review-checklist.md)：network/firewall review。
-- [`scripts/tf_services_preflight.sh`](scripts/tf_services_preflight.sh)：repository、roots、fmt 與 change preflight。
+- [`scripts/terraform_repository_preflight.sh`](scripts/terraform_repository_preflight.sh)：repository、roots、fmt 與 change preflight。
 
 ## Plan 與 secret 邊界
 

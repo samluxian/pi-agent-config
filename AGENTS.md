@@ -141,6 +141,23 @@ more proof.
   concrete conflict requires it.
 - Keep large raw output in files or pipes and quote only the minimal safe excerpt.
 
+## Public Repository Safety
+
+Treat this skills repository as public source. Never add company or client names,
+private project, repository, service, chart, environment, cluster, namespace,
+cloud, account, route, ticket, domain, URL, topology, or infrastructure
+identifiers to `AGENTS.md`, `.agents/skills/`, `extensions/`, scripts, fixtures,
+configuration, or documentation. Use descriptive placeholders and reserved
+example domains. Keep private target evidence in the active investigation; do
+not copy it into this repository.
+
+For maintenance changes, follow
+`.agents/skills/pi-agent-maintenance/references/public-repository-safety.md` and
+run `check_public_safety.py`. Organization-specific terms belong only in a
+machine-local terms file outside the repository. The scanner and final reviewer
+must not print those terms. A clean current snapshot does not sanitize Git
+history.
+
 ## Deployment and Secret Safety
 
 Assume GitOps is the deployment authority unless evidence proves otherwise:

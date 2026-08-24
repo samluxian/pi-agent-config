@@ -1,6 +1,6 @@
 ---
 name: gitops-service-delivery
-description: Deliver services through a GitOps adapter. Use for flex-app values, app-config, discovery, or renders in k8s-deploy. Do not use for charts, platform changes, or other layouts.
+description: Deliver services through a GitOps adapter. Use for service-owned Helm values, application config, discovery, or renders in a supported layout. Do not use for shared charts, platform changes, or other layouts.
 ---
 
 # GitOps Service Delivery
@@ -10,8 +10,9 @@ values to Argo CD discovery and rendered Kubernetes resources.
 
 ## Supported Adapter
 
-This skill currently supports only the `k8s-deploy` flex-app service layout. Stop
-for another layout until its ownership, discovery, render, and validation adapter exists.
+This skill supports the Helm dependency-based service layout described in
+`references/application-chart-service-config-contract.md`. Stop for another
+layout until its ownership, discovery, render, and validation adapter exists.
 
 ## Preconditions
 
@@ -19,14 +20,14 @@ for another layout until its ownership, discovery, render, and validation adapte
   environments, current chart version, and Argo CD project/discovery path.
 - For delivery files, stop on `main`, `master`, `release`, protected, or shared
   branches. Require exact approval before editing.
-- Treat the service's pinned flex-app dependency as its API; do not infer support
-  from the latest shared chart checkout.
+- Treat the service's pinned application chart dependency as its API; do not
+  infer support from the latest shared chart checkout.
 
 ## Service Contract
 
-Read `references/flex-app-service-config-contract.md` before proposing or
-implementing service configuration. Use Authserver as the structural reference,
-not as a source of service-specific values.
+Read `references/application-chart-service-config-contract.md` before proposing
+or implementing service configuration. Use a repository-local compliant service
+as the structural reference, not as a source of service-specific values.
 
 - Keep deployment baseline in `values.yaml`.
 - Keep environment deployment differences in `values.<env>.yaml`.
@@ -52,8 +53,8 @@ not as a source of service-specific values.
 6. Review the bounded diff and status. Stop if a chart, bootstrap, CI, IAM, or
    secret contract requires an unapproved change.
 
-Run `scripts/check_service_config_contract.py` for every affected enabled
-environment. Use `scripts/implementation_flow.sh` for fixed preflight, overlay,
+Run `scripts/check_service_config_contract.py --dependency <chart-name>` for
+every affected enabled environment. Use `scripts/implementation_flow.sh` for fixed preflight, overlay,
 render, and post-patch checks. Read `references/helm-alias-overlays.md` when
 aliases such as `stable` and `beta` coexist. Use `$helm-dependency-upgrade` for
 version changes and `$shared-helm-chart-maintenance` for shared chart API changes.

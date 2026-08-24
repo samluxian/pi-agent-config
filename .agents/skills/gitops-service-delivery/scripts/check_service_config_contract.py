@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the fixed flex-app service file and values ownership contract."""
+"""Validate a Helm-based service file and values ownership contract."""
 
 from __future__ import annotations
 
@@ -33,13 +33,13 @@ def common_mapping(data: dict[str, Any], path: Path, errors: list[str]) -> dict[
     return value
 
 
-def aliases(chart: dict[str, Any]) -> set[str]:
+def aliases(chart: dict[str, Any], dependency_name: str) -> set[str]:
     result: set[str] = set()
     dependencies = chart.get("dependencies")
     if not isinstance(dependencies, list):
         return result
     for dependency in dependencies:
-        if not isinstance(dependency, dict) or dependency.get("name") != "flex-app":
+        if not isinstance(dependency, dict) or dependency.get("name") != dependency_name:
             continue
         alias = dependency.get("alias") or dependency.get("name")
         if isinstance(alias, str):
@@ -69,8 +69,9 @@ def validate_app_config(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Check flex-app service configuration ownership.")
+    parser = argparse.ArgumentParser(description="Check Helm-based service configuration ownership.")
     parser.add_argument("--service", required=True, type=Path, help="Service chart directory")
+    parser.add_argument("--dependency", required=True, help="Expected application chart dependency name")
     parser.add_argument("--env", required=True, help="Enabled environment name")
     parser.add_argument("--app-config", required=True, type=Path, help="Service app-config values file")
     parser.add_argument("--common-app-config", type=Path, help="Optional shared app-config values file")
@@ -93,9 +94,11 @@ def main() -> int:
     base = load_mapping(base_path, errors)
     env = load_mapping(env_path, errors)
     app_config = load_mapping(args.app_config, errors)
-    chart_aliases = aliases(chart)
+    chart_aliases = aliases(chart, args.dependency)
     if not chart_aliases:
-        errors.append(f"Chart.yaml has no flex-app dependency alias: {chart_path}")
+        errors.append(
+            f"Chart.yaml has no {args.dependency} dependency alias: {chart_path}"
+        )
 
     base_common = common_mapping(base, base_path, errors)
     base_config = base_common.get("config")
@@ -124,8 +127,9 @@ def main() -> int:
         common_app_config = load_mapping(args.common_app_config, errors)
         validate_app_config(args.common_app_config, common_app_config, chart_aliases, errors)
 
-    print("# Flex-App Service Config Contract")
+    print("# Application Chart Service Config Contract")
     print(f"- service: {service}")
+    print(f"- dependency: {args.dependency}")
     print(f"- environment: {args.env}")
     print(f"- aliases: {', '.join(sorted(chart_aliases)) or 'none'}")
     print(f"- common app config: {args.common_app_config or 'not provided (optional)'}")

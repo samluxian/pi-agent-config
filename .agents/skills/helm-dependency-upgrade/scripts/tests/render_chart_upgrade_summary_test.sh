@@ -2,7 +2,7 @@
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-summary_script="${script_dir}/render_flex_app_upgrade_summary.sh"
+summary_script="${script_dir}/render_chart_upgrade_summary.sh"
 
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
@@ -150,4 +150,4 @@ if "$summary_script" demo "$tmp/missing" >"$tmp/missing.out" 2>"$tmp/missing.err
 fi
 grep -Fx "ERROR: chart path not found: $tmp/missing" "$tmp/missing.err" >/dev/null
 
-echo "render_flex_app_upgrade_summary_test: PASS"
+echo "render_chart_upgrade_summary_test: PASS"

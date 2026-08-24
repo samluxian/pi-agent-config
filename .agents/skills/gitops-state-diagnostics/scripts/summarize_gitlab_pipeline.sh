@@ -11,7 +11,7 @@ glab, then prints compact JSON. This script is read-only and intentionally does
 not print full job traces.
 
 Examples:
-  summarize_gitlab_pipeline.sh aile_cloud/newaile/backend/springcloud-aile 2560611322
+  summarize_gitlab_pipeline.sh <organization>/<application-repository> <pipeline-id>
 USAGE
 }
 
@@ -130,7 +130,7 @@ for failed in failed_trace_summaries:
             {
                 "level": "fail",
                 "check": "tag_format_rejected_in_pre_check",
-                "message": "Tag failed manage-tags.sh parsing before build or GitOps update. Expected {env}-vX.Y.Z or {env}-vX.Y.Z-build.",
+                "message": "Tag failed the repository tag parser before build or GitOps update. Expected {env}-vX.Y.Z or {env}-vX.Y.Z-build.",
             }
         )
     elif failed.get("stage") == "pre-task":
