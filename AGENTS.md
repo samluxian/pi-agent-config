@@ -154,8 +154,8 @@ not copy it into this repository.
 For maintenance changes, follow
 `.agents/skills/pi-agent-maintenance/references/public-repository-safety.md` and
 run `check_public_safety.py`. Organization-specific terms belong only in a
-machine-local terms file outside the repository. The scanner and final reviewer
-must not print those terms. A clean current snapshot does not sanitize Git
+machine-local terms file outside the repository. The scanner must not print those
+terms. A clean current snapshot does not sanitize Git
 history.
 
 ## Deployment and Secret Safety
@@ -185,15 +185,9 @@ Run the smallest validation that proves the intended behavior. A successful
 command without behavior evidence is insufficient. Prefer existing repository
 scripts and skill-owned deterministic helpers.
 
-After repository file mutations by the parent or a worker, invoke one fresh
-final reviewer per changed repository after its final edit and before claiming
-validation is complete. Reviewer executes bounded diff, render, plan, test, and
-validation commands so large raw output stays in its context. Only a semantic
-`pass` clears that repository's gate; partial, failed, timed-out, blocked, stale,
-or missing-verdict review remains a validation gap. Reuse a successful worker
-review that covers its final edit; do not duplicate it in the parent. A later
-edit invalidates only that repository's evidence. Parent retains reconciliation
-and final delivery judgment.
+After repository file mutations, the parent or approved worker runs the smallest
+validation that proves the final behavior and reports failures or skipped checks.
+The parent retains evidence reconciliation and final delivery judgment.
 
 After changes, report:
 

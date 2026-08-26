@@ -33,23 +33,13 @@ and removal gates.
   and failure path. Register every extension in package metadata and document
   workspace-local installation behavior.
 - A subprocess subagent is bounded execution, not delegated authority. Keep
-  planning, decisions, approvals, mutation authority, reconciliation, and final
-  delivery judgment in the parent. A worker may execute only an explicitly
-  approved isolated edit with exact file ownership. Reviewer may delegate
-  multi-file repository reading to one bounded single or parallel scout request,
-  but scout remains a leaf without subagent or command tools. Reviewer retains
-  validation planning, command execution, evidence reconciliation, finding
-  severity, and the semantic verdict. Reviewer has no write/edit tools. Keep the
-  outer reviewer and worker out of parallel mode. After final edits, require one
-  fresh final reviewer per changed repository. Only semantic `pass` clears that
-  repository; partial, failed, timed-out, blocked, stale, or missing-verdict
-  review remains a gap. Later edits invalidate only the matching repository.
-  Allowlist profiles and tools, pin model and thinking, cap tasks and concurrency,
-  expose role deadlines, propagate abort, bound reviewer conclusions, and test
-  repository scope, partial/final, semantic verdict, stale review, timeout, and
-  process failure without paid model calls. Test the reviewer-to-scout allowlist,
-  bounded single/parallel delegation, leaf-scout boundary, and reviewer-owned
-  verdict without paid model calls.
+  planning, decisions, approvals, mutation authority, validation, reconciliation,
+  and final delivery judgment in the parent. A worker may execute only an explicitly
+  approved isolated edit with exact file ownership and remains single-mode. Scouts
+  remain read-only leaf agents. Allowlist profiles and tools, pin model and thinking,
+  cap tasks and concurrency, expose role deadlines, propagate abort, and test
+  timeout, process failure, worker boundaries, and absence of completion-blocking
+  hooks without paid model calls.
 
 ## AGENTS And README Branch
 

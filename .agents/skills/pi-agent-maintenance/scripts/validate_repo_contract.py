@@ -153,7 +153,7 @@ def main() -> None:
         "Default to bounded read-only delegation when evidence acquisition is expected to produce large raw output or require multiple independent searches or reads.",
         "Keep simple known-path I/O in the parent.",
         "the orchestrator owns role selection, bounded prompts, concurrency, authority boundaries, and reconciliation.",
-        "After repository file mutations by the parent or a worker, invoke one fresh final reviewer per changed repository after its final edit and before claiming validation is complete.",
+        "After repository file mutations, the parent or approved worker runs the smallest validation that proves the final behavior and reports failures or skipped checks.",
     )
     for rule in orchestration_rules:
         if rule not in normalized_agents:
@@ -195,18 +195,18 @@ def main() -> None:
     normalized_terraform_skill = re.sub(
         r"\s+", " ", terraform_skill_path.read_text(encoding="utf-8")
     )
-    terraform_review_rules = (
-        "After the final repository edit, give a fresh reviewer every exact affected root/environment.",
+    terraform_validation_rules = (
+        "After the final edit, the parent or approved worker runs formatting, validation, and an unsaved remote-state plan",
         "Treat every unapproved source or legacy root as read-only evidence",
         "scripts/run-terraform.sh plan <service-path> <env>",
         "Require an add/change/destroy/replace summary and explicit unexpected-drift findings.",
-        "Accept Terraform `No changes.` or an explicit zero-action summary as no-op.",
+        "Accept `No changes.` or an explicit zero-action summary as no-op.",
         "Do not retry authentication or state-lock failures.",
         "Never save plan files or print sensitive state, plan output, or secrets.",
     )
-    for rule in terraform_review_rules:
+    for rule in terraform_validation_rules:
         if rule not in normalized_terraform_skill:
-            errors.append(f"Terraform maintenance skill missing reviewer-plan rule: {rule}")
+            errors.append(f"Terraform maintenance skill missing validation-plan rule: {rule}")
     if "user-operated plan" in normalized_terraform_skill:
         errors.append("Terraform maintenance skill must not delegate post-edit plan to the user")
 

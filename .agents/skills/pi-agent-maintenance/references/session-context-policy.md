@@ -44,16 +44,12 @@ Subagents are bounded delegation, not automatic execution for every skill. Use
 them by default when read-only acquisition requires multiple searches or reads,
 inspects several large sources, or would otherwise fill the parent context with
 replaceable raw output. Keep simple known-path I/O and tightly coupled analysis
-in the parent. Post-mutation review is the exception: after final edits, one fresh
-final reviewer per changed repository executes the smallest sufficient validation
-matrix and returns bounded findings. Only semantic `pass` clears that repository;
-partial evidence does not. A later edit invalidates only its repository review.
-Parent retains planning, decisions, approval context, mutation authority,
-evidence reconciliation, and final delivery judgment. Read-only agents collect
-bounded evidence. Reviewer has command execution but no write/edit tools, remains
-single-mode, and gets a visible deadline and heavy-unit budget. Worker may execute
-only an explicitly approved isolated edit with exact file ownership, remains
-single-mode, and invokes reviewer before returning. Every child uses its
+in the parent. After repository edits, the parent or approved worker executes the
+smallest sufficient validation matrix and returns bounded findings. Parent retains
+planning, decisions, approval context, mutation authority, evidence reconciliation,
+validation responsibility, and final delivery judgment. Read-only agents collect
+bounded evidence. Worker may execute only an explicitly approved isolated edit
+with exact file ownership and remains single-mode. Every child uses its
 configured model and thinking, receives no parent context implicitly, and must
 be given the paths, constraints, and required output needed for its task. Cap
 one read-only parallel request at four tasks and enforce a role-specific

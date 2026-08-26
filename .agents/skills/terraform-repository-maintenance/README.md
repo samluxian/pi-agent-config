@@ -30,7 +30,7 @@
 4. 分開官方 guidance、repository policy、current implementation 與 remote plan evidence。
 5. 修改前提出 exact files、plan expectation、IAM/network/state risk 與 validation。
 6. 保留 state addresses、`for_each` keys 與 infrastructure identifiers。
-7. 每個 affected root/environment 由 fresh reviewer 執行 fmt、validation 與 unsaved plan。
+7. 每個 affected root/environment 由 parent 或 approved worker 執行 fmt、validation 與 unsaved plan。
 
 ## 入口
 

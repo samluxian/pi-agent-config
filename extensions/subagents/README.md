@@ -105,8 +105,8 @@ Parallel mode 一次最多接受四項互相獨立的 read-only tasks：
 ```
 
 Extension 最多同時執行四個 read-only children，並按照輸入順序回傳結果，不受實際完成順序
-影響。`reviewer` 和 `worker` 只能使用 single mode，也不能與其他 execution-capable
-subagent call 重疊，避免驗證指令、暫存檔或 edits 互相干擾。
+影響。`worker` 只能使用 single mode，也不能與其他 subagent call 重疊，避免驗證指令、
+暫存檔或 edits 互相干擾。
 
 可在相鄰的 `config.json` 降低 concurrency；有效範圍是 1 到 4：
 
@@ -116,7 +116,7 @@ subagent call 重疊，避免驗證指令、暫存檔或 edits 互相干擾。
 }
 ```
 
-## 五種角色
+## 四種角色
 
 Extension 啟動時會讀取 [`agents/`](agents/) 下的 Markdown profiles。Profile 定義 role
 prompt、model、thinking level 與 exact tool allowlist。
@@ -126,23 +126,14 @@ prompt、model、thinking level 與 exact tool allowlist。
 | `scout` | `openai-codex/gpt-5.6-luna` | `read`, `grep`, `find`, `ls` | 讀取 local repository，整理檔案、caller 與結構。 |
 | `researcher` | `openai-codex/gpt-5.6-terra` | `web_search`, `fetch_content` | 搜尋外部資料並整理來源。 |
 | `environment-scout` | `openai-codex/gpt-5.6-luna` | `kubectl_inspect`, `gcloud_inspect` | 對明確指定的 Kubernetes 或 GCP 目標做 structured read-only inspection。 |
-| `reviewer` | `openai-codex/gpt-5.6-terra` | `read`, `grep`, `find`, `ls`, `safe_bash`, `subagent` | 透過 scout 讀取較大的 repository evidence，自行執行 validation commands 並產生 semantic verdict；沒有 `write` 或 `edit`。 |
 | `worker` | `openai-codex/gpt-5.6-terra` | `read`, `write`, `edit`, `safe_bash`, web tools, `subagent` | 只處理使用者已批准、repository 與 owned files 都明確的 isolated edit。 |
 
 `scout` 使用 `thinking: off`，讓 bounded repository lookup 以速度和成本為優先；其他角色維持
 `thinking: medium`。這個設定只關閉額外 thinking budget，不會移除 scout 的 read-only tools。
 
 `researcher` 與 `worker` 需要 web tools 時，extension 會明確載入 project-local
-`pi-web-access`。`environment-scout`、`reviewer` 與 `worker` 所需的 custom tools 也由
-extension 按 profile 加入，不依賴 child 自動載入 extensions。
-
-Reviewer 讀取多個檔案、大型 diff、callers、tests 或 contracts 時，預設委派給一個 scout，
-也可以在一次 parallel request 中啟動最多四個互相獨立的 scouts。Reviewer 仍可直接讀取
-已知的小檔案，或針對 scout finding 做窄範圍核對。Scout 沒有 `subagent` 或 command tool，
-不能再啟動另一層 scout，也不能執行 tests 或產生 reviewer verdict。Validation matrix、
-`safe_bash` commands、evidence reconciliation、finding severity 與 semantic verdict 都留在
-reviewer。Scout 的時間算在 reviewer 原本的四分鐘 evidence／command budget內；失敗或
-逾時要記錄為 gap，不得改成無界限重讀。
+`pi-web-access`。`environment-scout` 與 `worker` 所需的 custom tools 也由 extension 按
+profile 加入，不依賴 child 自動載入 extensions。
 
 ## Parent 和 child 的責任
 
@@ -191,9 +182,8 @@ Child 使用 JSON mode，stdout 會輸出一連串 events。Extension 解析這�
 文字和結構化 `details.results` 放進 tool result。Parent model 看到的是這份結果，不是 child
 完整 conversation。
 
-一般結果受 Pi 的 tool-output line／byte bounds 約束。Reviewer 結論另限制為 160 行和
-16 KiB，避免 validation logs 重新塞回 parent context。大型 raw output 應留在 reviewer
-process 或 tool 管理的 temp output，只回傳 finding。
+結果受 Pi 的 tool-output line／byte bounds 約束。大型 raw output 應留在 child process
+或 tool 管理的 temp output，只回傳 finding。
 
 ## Timeout、abort 與錯誤
 
@@ -201,50 +191,13 @@ process 或 tool 管理的 temp output，只回傳 finding。
 
 | Role | 最長時間 |
 | --- | --- |
-| `scout`, `researcher`, `environment-scout`, `reviewer` | 5 分鐘 |
+| `scout`, `researcher`, `environment-scout` | 5 分鐘 |
 | `worker` | 10 分鐘 |
 
 Parent 中止 tool call 或 child 超時時，extension 先送 `SIGTERM`，等待三秒後仍未結束才送
 `SIGKILL`。Spawn error、provider error、非零 exit code、timeout 與 abort 都會讓該 task
 標成 failed。Parallel mode 會保留每一項 task 的成功或失敗結果，不會因為其中一項失敗就
 假裝整批成功。
-
-## Repository review gate
-
-Subagents extension 也追蹤 repository 修改後是否完成獨立驗證。
-
-```text
-成功的 parent write/edit
-  ↓
-依 Git repository root 建立新的 pending generation
-  ↓
-啟動 fresh reviewer
-  ↓
-reviewer 執行 bounded checks 並輸出 ## Verdict
-  ↓
-只有 final + semantic pass + current generation 才清除 pending
-```
-
-以下結果都不會清除 gate：
-
-- `partial`；
-- `blocked`；
-- `fail`；
-- 缺少 semantic verdict；
-- timeout、abort 或 process failure；
-- review 後又修改檔案，導致結果 stale。
-
-Gate 依 Git repository root 分開記錄。後續 edit 只會使同一 repository 的舊 review 失效。
-Parent 準備結束但仍有 pending repository 時，extension 會列出 pending 狀態，並為同一狀態
-排入一次 bounded reviewer follow-up，不會無限重複。
-
-Worker 內部的成功 edit、write 或可能改檔的 `safe_bash` 也會建立 mutation state。Worker 必須
-在最後一次修改後啟動自己的 fresh final reviewer；沒有通過 review 時，即使 child process
-exit code 是 0，worker result 仍視為失敗。若 worker 已完成涵蓋最終版本的 review，parent
-可以直接整合，不必再跑一次相同 review。
-
-Review gate 是驗證護欄，不是程式正確性的證明。Reviewer task 仍須包含正確的 repository、
-changed paths、驗證矩陣和必要 target identifiers。
 
 ## 安裝與驗證
 

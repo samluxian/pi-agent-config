@@ -28,7 +28,7 @@ README。
 4. 提出 bounded patch，等待使用者明確批准。
 5. 只修改已批准的檔案，不整理無關內容。
 6. 執行能證明行為的最小 deterministic checks。
-7. 最後一次 edit 後，啟動 fresh reviewer 檢查完整 final diff。
+7. 檢查完整 final diff 並回報 validation gaps。
 
 使用者明確要求時，可以直接在本 repository 的 `main` branch 建立、修改、重新命名或刪除
 repository-owned source、tests、scripts、extensions、configuration 與 documentation。這個
@@ -73,8 +73,7 @@ skill，不要搬進 runtime code。
 - abort、timeout 與 subprocess cleanup 是否完整。
 
 Subagents extension 還要覆蓋 parent/child authority、role tool allowlist、single/parallel 限制、
-worker approval boundary、review generation、semantic verdict、stale review、timeout、abort 與
-process failure。
+worker approval boundary、completion-gate absence、timeout、abort 與 process failure。
 
 ## README 維護
 
@@ -100,7 +99,7 @@ Human-facing 行為、安裝方式或文件入口有變更時，要在同一個 
 
 執行 `npm run test:public-safety`。組織專用名詞透過 repository 外的
 `PI_PUBLIC_SAFETY_TERMS_FILE` 提供；不要把 denylist 或命中的 term 寫入 repository、logs
-或 reviewer 結論。Generic scanner 無法辨識所有 proper nouns，因此 final reviewer 仍須做
+或 validation 結論。Generic scanner 無法辨識所有 proper nouns，因此 parent 仍須做
 semantic inspection。
 
 ## Deterministic validation
@@ -131,8 +130,8 @@ git diff --check
 [`references/regression-matrix.md`](references/regression-matrix.md)。Unit tests 不應呼叫
 付費模型。
 
-Repository files 修改完成後，還要由 fresh reviewer 讀取 final diff，執行 bounded tests，並
-回傳 semantic `pass`。只有 command exit code 0 不足以取代 reviewer 判斷。
+Repository files 修改完成後，由 parent 或 approved worker 讀取 final diff 並執行 bounded
+tests。Command exit code 0 仍須搭配行為證據。
 
 ## Skill routing benchmark
 

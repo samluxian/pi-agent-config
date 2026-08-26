@@ -38,14 +38,13 @@ another layout until its backend, command, ownership, and review adapter exists.
 5. Apply the smallest approved change. During structural cleanup, preserve state
    addresses, `for_each` keys, and exact infrastructure identifiers. Never run
    `apply`, import, state mutation, workspace mutation, or remote Git operations.
-6. After the final repository edit, give a fresh reviewer every exact affected
-   root/environment. The reviewer must run formatting, affected-root validation,
-   and an unsaved remote-state plan with
-   `scripts/run-terraform.sh plan <service-path> <env>` for each pair. Require an
-   add/change/destroy/replace summary and explicit unexpected-drift findings.
-   Accept Terraform `No changes.` or an explicit zero-action summary as no-op.
-   Continue independent root plans after a root-local failure; stop related roots
-   on shared authentication, state-lock, backend, ownership, or safety failure.
+6. After the final edit, the parent or approved worker runs formatting, validation,
+   and an unsaved remote-state plan with `scripts/run-terraform.sh plan
+   <service-path> <env>` for every affected root/environment pair. Require an
+   add/change/destroy/replace summary and explicit unexpected-drift findings. Accept
+   `No changes.` or an explicit zero-action summary as no-op. Continue independent
+   root plans after a root-local failure; stop related roots on shared authentication,
+   state-lock, backend, ownership, or safety failure.
 
 Load deeper guidance only when needed:
 
