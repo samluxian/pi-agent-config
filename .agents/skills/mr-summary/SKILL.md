@@ -18,9 +18,8 @@ description: 依 repository evidence 撰寫繁體中文 MR 標題、描述、bra
    時，先問一個簡短問題，不得從檔名或 diff 猜測。
 4. 分開陳述事實與判斷。不得從意圖推論 runtime、deployment、IAM、CI 或
    compatibility 結果；跨 repository 變更須分清各 repository 的責任。
-5. 產出前讀取 `assets/mr-summary-template.md`，依固定順序填寫所有章節。
-   缺少 evidence 時標示「未提供」、「未執行」、「未評估」或「不適用」，
-   不得省略章節或虛構內容。
+5. 產出前讀取 `assets/mr-summary-template.md`，依固定順序填寫所有保留章節。
+   缺少 evidence 時標示「未提供」或「不適用」，不得虛構內容。
 6. 除非使用者要求分析，否則只回傳可直接使用的 MR 標題與內容。
 
 ## 語言與格式
@@ -29,8 +28,6 @@ description: 依 repository evidence 撰寫繁體中文 MR 標題、描述、bra
 - 程式碼、命令、路徑、URL、API、設定鍵、resource name、角色名稱、
   error message 與其他 technical identifier 保持原文。
 - 標題須簡短且具體；只有 evidence 存在時才加入 ticket ID。
-- 驗證章節只列實際完成的檢查，未執行項目須寫明原因或缺口。
-- Checklist 只能依 evidence 勾選；無法確認時維持未勾選。
 
 ## 安全與停止條件
 
@@ -44,9 +41,4 @@ credential、private key、`.env` 值或其他敏感資料。
 2. 關聯項目
 3. 背景與目的
 4. 變更內容
-5. 驗證結果
-6. 風險與影響
-7. 部署與回復
-8. Review 重點
-9. 視覺或輸出佐證
-10. 檢查清單
+5. Review 重點

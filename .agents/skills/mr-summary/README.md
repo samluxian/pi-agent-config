@@ -8,7 +8,7 @@
 
 - 已完成修改，需要整理 MR title 與 description。
 - 需要把多個 repositories 的責任與交付順序寫清楚。
-- 想把 validation results、風險與後續操作整理成 review-friendly 內容。
+- 想把變更範圍與 reviewer 需要確認的項目整理成 review-friendly 內容。
 
 ## 不適用
 
@@ -21,7 +21,7 @@
 1. 確認 target repository、comparison base、branch freshness、讀者與 ticket。
 2. 讀取 bounded status、changed-file summary、必要 diff hunks 與 validation evidence。
 3. 從 ticket、文件或使用者說明確認背景與目的。
-4. 分開寫 observed facts、設計判斷、風險與 validation gaps。
+4. 分開寫 observed facts 與設計判斷。
 5. 跨 repository 時，逐一標示 owner、相依順序與 handoff。
 6. 依固定模板產生 MR 標題與內容。
 
@@ -37,5 +37,6 @@
 
 ## 輸出
 
-預設只回傳可直接使用的台灣繁體中文 MR title 與 description。Commands、paths、resource
-names、版本與其他 technical identifiers 保持原文。
+預設只回傳可直接使用的台灣繁體中文 MR title 與 description，包含關聯項目、背景與目的、
+變更內容及 Review 重點。Commands、paths、resource names、版本與其他 technical identifiers
+保持原文。
