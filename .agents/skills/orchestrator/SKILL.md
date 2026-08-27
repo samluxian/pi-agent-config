@@ -47,9 +47,12 @@ blocker behavior. Tell the child to stop and report instead of widening scope.
    path, known fact, constraint, safety boundary, and validation expectation in
    each prompt.
 3. Run up to four independent read-only tasks in parallel. Keep worker in single
-   mode. Parent retains planning, approval, and final judgment.
-4. Do not re-scout facts already established. Use direct reads only for narrow
-   verification needed to reconcile or edit.
+   mode. Include every already-confirmed target identifier needed by the child.
+   Parent retains planning, approval, and final judgment.
+4. Do not re-scout facts already established. If a child reports that its
+   structured interface cannot expose a required narrow field, use a direct,
+   field-selected parent query for that field instead of delegating the same gap
+   again.
 5. Reconcile child results against primary evidence. Surface conflicts, stale
    evidence, and unsupported claims; do not average conclusions.
 6. After repository edits, the parent or approved worker executes the smallest

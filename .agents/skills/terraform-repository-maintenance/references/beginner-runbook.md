@@ -71,6 +71,25 @@ sensitive and invalidate them after configuration, state, provider, credential,
 or partial-apply changes. For imports, state handoffs, locks, or failed applies,
 follow `state-handoffs-and-recovery.md`.
 
+## Retire a Google Cloud Storage bucket
+
+Before proposing a bucket-removal apply, confirm the exact resource address,
+state owner, current `deletion_policy`, `force_destroy`, and whether objects
+must be retained. Stop if any of these facts are unknown.
+
+| Condition | Required action |
+| --- | --- |
+| `deletion_policy = "ABANDON"` | Do not remove the resource. An apply would release state ownership without deleting the live bucket. Keep the resource, set `deletion_policy = "DELETE"`, apply that in-place update, then generate a fresh plan. |
+| Bucket is expected to be empty | Keep `force_destroy = false`; independently confirm it is empty before reviewing the destroy plan. |
+| Bucket has objects and their deletion is explicitly approved | Keep the resource, set `force_destroy = true`, apply that in-place update, then generate a fresh plan before removing the resource. |
+| Bucket has objects that must be retained | Stop. Do not set `force_destroy = true` or remove the resource until the retention owner provides a separate cleanup or handoff plan. |
+
+Do not change a shared deletion setting if it also controls another bucket.
+After each policy update, require a fresh plan. The final destroy plan must name
+the exact bucket address and contain no unexpected changes. `force_destroy = true`
+allows Terraform to delete bucket objects; treat that as an irreversible,
+user-approved data deletion.
+
 ## Common tasks
 
 ### Add service account / Workload Identity access

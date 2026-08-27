@@ -67,8 +67,13 @@ Scanner 只回報類別與位置，不輸出 terms。完整規則與 Git history
 ├── devops-pi-agent/
 ├── gitops-repository/
 ├── chart-repository/
-└── application-repository/
+├── application-repository/
+└── docs/
 ```
+
+使用者要求調查或事故報告、但未指定路徑時，agent 預設寫入
+`<workspace-root>/docs/`，不會寫進 application 或其他 target repository。這個位置是
+user-owned work product，不屬於本 repository 的公開文件範圍。
 
 Initializer 不依賴固定的 workspace 名稱或使用者家目錄。
 

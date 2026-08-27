@@ -19,8 +19,8 @@ Identify the failing runtime edge with bounded, read-only evidence.
 4. Compare desired wiring, live reference/identity, control-plane status, and
    bounded runtime evidence without printing secret data.
 5. Separate immediate trigger, contributing source/design factor, and supported
-   fix surface. Map the running image to its deployed revision before source
-   inspection.
+   fix surface. Complete the running-image-to-deployed-revision mapping before
+   source inspection; do not inspect local source in parallel with that mapping.
 6. Stop at the first supported failing edge or next decisive check. Hand repository
    changes to the appropriate implementation workflow.
 

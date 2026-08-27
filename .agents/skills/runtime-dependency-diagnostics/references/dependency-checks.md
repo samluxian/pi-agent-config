@@ -110,6 +110,12 @@ gcloud memorystore instances list --project=<project> --location=<location>
 Use whichever command is supported by the installed cloud CLI and report missing
 CLI components as a validation gap.
 
+For historical Cloud Monitoring queries, first request a small `HEADERS` view for
+one known metric. Read the returned monitored-resource labels, then use the exact
+instance resource identifier in the bounded value query. An empty query with a
+short instance name is a filter-validation gap, not evidence that no metric data
+exists.
+
 ## Buckets
 
 Check bucket existence and IAM metadata only:

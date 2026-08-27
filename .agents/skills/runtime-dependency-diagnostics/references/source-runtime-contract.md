@@ -18,10 +18,12 @@ Enter source inspection only when at least one condition is supported:
 - the same deployed image/config fails consistently and lifecycle evidence does
   not support scheduling, image pull, admission, or missing resource references.
 
-Before reading source, map the Pod image tag or digest to the deployed pipeline
-and source revision. If that mapping cannot be proven, stop and report artifact
-provenance as the next narrow check. Do not substitute the current default
-branch for the deployed revision.
+Before reading source, complete a mapping from the Pod image tag or digest to the
+deployed pipeline and source revision. If the local checkout is not that exact
+revision, compare the relevant source blobs before using it as evidence. Do not
+inspect local source in parallel with this mapping. If the mapping cannot be
+proven, stop and report artifact provenance as the next narrow check; do not
+substitute the current default branch for the deployed revision.
 
 Do not enter this branch for a sufficient Kubernetes lifecycle, Argo CD drift,
 Helm render, image pull, admission, or missing Secret/ConfigMap reference cause.

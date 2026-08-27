@@ -94,6 +94,11 @@ Sibling repositories retain independent branches, remotes, histories, and dirty
 state. Do not convert them to submodules, subtrees, or a monorepo unless the user
 explicitly requests that repository-model change and accepts its impact.
 
+For a user-requested investigation or incident report, default to
+`<workspace-root>/docs/`. Treat that path as a user-owned work-product location,
+not skills-repository documentation; do not write the report into a target or
+service repository unless the user explicitly names that repository and path.
+
 Project-scoped skills live under `.agents/skills/<name>/`. `SKILL.md` contains
 the task boundary and core flow; deeper procedures belong in `references/`,
 repeatable checks in `scripts/`, reusable templates in `assets/`, and
@@ -140,6 +145,9 @@ more proof.
 - Move between evidence layers only when deployment truth, readiness, or a
   concrete conflict requires it.
 - Keep large raw output in files or pipes and quote only the minimal safe excerpt.
+- When truncating a command under `pipefail`, use a non-early-closing reader such
+  as `sed -n` or handle expected SIGPIPE explicitly; do not report that truncation
+  as a command failure.
 
 ## Public Repository Safety
 

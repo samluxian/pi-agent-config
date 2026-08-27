@@ -12,6 +12,7 @@
 
 - 解釋 supported repository root、variables、modules、resources、outputs 或 state addresses。
 - Review Terraform plan、replacement、destroy risk 或 unexpected drift。
+- 規劃 `google_storage_bucket` 的 retirement，確認 state policy、物件保留與 `force_destroy`。
 - 維護 GCP IAM、Workload Identity、network、VM、Secret Manager references 或 state handoff。
 - 在已批准 root/environment 內進行小範圍 Terraform 修改。
 
@@ -35,7 +36,7 @@
 ## 入口
 
 - [`references/repo-map.md`](references/repo-map.md)：supported layout、backend 與 ownership。
-- [`references/beginner-runbook.md`](references/beginner-runbook.md)：plan-first 操作說明。
+- [`references/beginner-runbook.md`](references/beginner-runbook.md)：plan-first 操作說明與 Google Cloud Storage bucket retirement preflight。
 - [`references/google-cloud-terraform-best-practices.md`](references/google-cloud-terraform-best-practices.md)：Google Cloud baseline。
 - [`references/state-handoffs-and-recovery.md`](references/state-handoffs-and-recovery.md)：import、state handoff、saved plan 與 partial failure。
 - [`references/iam-review-checklist.md`](references/iam-review-checklist.md)：IAM 與 Workload Identity review。
