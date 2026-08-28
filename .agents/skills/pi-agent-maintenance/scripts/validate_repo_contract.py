@@ -149,6 +149,14 @@ def main() -> None:
     commit_rule = "If repository files changed, include a suggested commit message."
     if commit_rule not in normalized_agents:
         errors.append("AGENTS.md must require a suggested commit message after file changes")
+    # Approval 可能跨越多輪；批准前取得的 repository 狀態不能作為修改前證據。
+    approval_refresh_rules = (
+        "After explicit approval and before any branch-safety decision or file edit",
+        "Do not reuse branch or status evidence gathered before approval.",
+    )
+    for rule in approval_refresh_rules:
+        if rule not in normalized_agents:
+            errors.append(f"AGENTS.md missing post-approval repository refresh rule: {rule}")
     orchestration_rules = (
         "Default to bounded read-only delegation when evidence acquisition is expected to produce large raw output or require multiple independent searches or reads.",
         "Keep simple known-path I/O in the parent.",

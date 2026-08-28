@@ -28,7 +28,7 @@ artifacts、caches 或 git-ignored temporary files，也不允許 agent commit�
 這些規則預設採用 human-in-the-loop 流程：
 
 ```text
-分析 → 提出修改範圍、驗證與風險 → 等待批准 → 修改 → 獨立驗證
+分析 → 提出修改範圍、驗證與風險 → 等待批准 → 重新檢查 target repo branch/status → 修改 → 獨立驗證
 ```
 
 Kubernetes、Argo CD、GitLab/GitHub、GCP 與 Git remotes 對 agent 維持唯讀。交付變更寫入

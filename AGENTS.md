@@ -60,8 +60,9 @@ when human-facing behavior changes, and never commit or push.
 
 ## Repository and Git Safety
 
-Before editing, identify the actual target repository and inspect its branch,
-working tree, unstaged changes, and staged changes.
+After explicit approval and before any branch-safety decision or file edit, re-inspect
+the actual target repository's current branch, working tree, unstaged changes, and
+staged changes. Do not reuse branch or status evidence gathered before approval.
 
 - A clean workspace or skills repository does not prove a target repo is clean.
 - Outside the explicit skills-repository maintenance exception above, do not edit
