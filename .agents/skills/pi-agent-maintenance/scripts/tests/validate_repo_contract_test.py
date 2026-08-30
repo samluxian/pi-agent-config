@@ -54,5 +54,19 @@ class MarkdownLinkTargetTest(unittest.TestCase):
         self.assertEqual(self.targets(content), {self.target})
 
 
+class WorkspaceReportOwnershipTest(unittest.TestCase):
+    def test_detects_complete_workspace_report_skeleton(self) -> None:
+        content = "Summary:\nValidation:\nRisk:\nNext step:\n"
+        self.assertTrue(VALIDATOR.repeats_workspace_report(content))
+
+    def test_allows_domain_specific_reporting(self) -> None:
+        content = "Compatibility:\nPlan evidence:\nUncertainty:\n"
+        self.assertFalse(VALIDATOR.repeats_workspace_report(content))
+
+    def test_requires_standalone_fields(self) -> None:
+        content = "Include Summary: Validation: Risk: and Next step: when needed.\n"
+        self.assertFalse(VALIDATOR.repeats_workspace_report(content))
+
+
 if __name__ == "__main__":
     unittest.main()

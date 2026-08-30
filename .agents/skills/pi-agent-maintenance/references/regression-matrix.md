@@ -8,7 +8,7 @@ first; add real prompt trials when routing behavior changes.
 | Model-invoked skill description | Concise positive/negative boundary; unique invoke and skip fixtures; fixture validator; representative same-model prompt trials |
 | Manual skill | `disable-model-invocation: true`; skill and root README `/skill:<name>` entries; no automatic invocation fixtures |
 | Skill README | Present for every active skill; root index links directly to it; links resolve; human-facing use/not-use, evidence/authority, and entry points do not duplicate the full agent contract |
-| Skill body/reference | Frontmatter valid; body within context budget; every pointer resolves; completion criteria remain checkable; no duplicated owner |
+| Skill body/reference | Frontmatter valid; body within context budget; every pointer resolves; completion criteria remain checkable; no duplicated owner or complete workspace report skeleton |
 | Context-window retrospective | Manual `/skill:context-window-retrospective` README entry with no automatic invocation fixtures; active-branch latest-compaction boundary; bounded metadata only; abandoned branch excluded; semantic reviewer verdict counts; no prompt, command output, diff, log, or secret content |
 | Developer activity summary | Collector defaults to `Asia/Taipei`, allows an explicit valid IANA timezone override, rejects unknown zones, and keeps local-day boundaries; output contract starts with an action/result/work item rather than a personal pronoun |
 | Workspace Makefile façade | Default goal is help; workspace targets delegate exact arguments to `scripts/init-workspace.sh`; `WORKSPACE_ROOT` defaults to the repository parent and supports paths with spaces; direct script CLI remains documented and unchanged |

@@ -26,7 +26,7 @@ files only when they reduce repeated reasoning or provide deterministic behavior
 - Skill description: automatic invocation boundary; state positive and negative
   scope in one concise line.
 - `SKILL.md`: selected task's core flow, stop conditions, reference pointers, and
-  output contract.
+  domain-specific reporting additions. Universal report fields stay in `AGENTS.md`.
 - `references/`: optional deep procedures loaded only for a concrete need.
 - `scripts/`: deterministic checks and repeated data reduction.
 - `README.md`: human-facing inventory and manual invocation instructions.
@@ -61,7 +61,7 @@ A normal `SKILL.md` should remain below 85 lines and contain only:
 2. bounded workflow
 3. safety/stop conditions
 4. pointers to deeper references or scripts
-5. concise output contract
+5. domain-specific reporting additions without the workspace report skeleton
 
 Move command catalogs, troubleshooting matrices, examples, and domain background
 to support files. A line limit is a review signal, not permission to compress
@@ -72,7 +72,7 @@ multiple unrelated rules into dense prose.
 Automatic skills require positive and negative invocation fixtures. Prefer one
 fixture per meaningful boundary; add more only for a known collision.
 
-After the final edit, run public safety, the structural contract helper, and
+Maintenance fixed checks are public safety, the structural contract helper, and
 `git diff --check`. Select additional regression-matrix tests only for changed
 surfaces; skill-body changes do not require extension tests. Run the paid
 invocation benchmark only after automatic descriptions change and the user

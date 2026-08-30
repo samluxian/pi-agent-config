@@ -49,8 +49,9 @@ Plan 只針對 task 內列出的 exact root/environment。Authentication 或 sta
 重試。輸出只保留 add/change/destroy/replace summary 與 unexpected drift，不列印 sensitive plan、
 state、credentials 或 secret values。
 
-## 輸出
+## Domain evidence
 
-輸出包含修改或 finding、plan summary、fmt/validate/plan evidence、IAM/network/state/replacement
-風險、validation gaps 與一個使用者操作。`No changes.` 或明確 zero-action summary 才能支持
+Workspace report 需列出每個 affected root/service/environment、fmt/validate/plan status、
+add/change/destroy/replace counts、unexpected drift、important unknowns，以及 IAM、network、
+state、replacement 與 runtime findings。`No changes.` 或明確 zero-action summary 才能支持
 no-op 結論。

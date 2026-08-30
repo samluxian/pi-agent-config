@@ -38,7 +38,7 @@ Platform approval 不會自動涵蓋相鄰服務、shared chart API、IAM 或 li
 - [`../../shared/gitops/scripts/`](../../shared/gitops/scripts/)：共用 repository preflight 與
   compact Helm render helpers。
 
-## 輸出
+## Domain evidence
 
-輸出包含 platform files、intended behavior、validation、bootstrap/IAM/CI/runtime risk、commit
-message 建議與一個下一步。部署本身仍由既有 MR、CI 與 GitOps reconciliation 完成。
+Workspace report 需補充 affected platform files、bootstrap、infrastructure、IAM、CI、
+compatibility 與 runtime findings。部署本身仍由既有 MR、CI 與 GitOps reconciliation 完成。

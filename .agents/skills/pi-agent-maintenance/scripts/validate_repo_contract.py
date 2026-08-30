@@ -22,6 +22,14 @@ def run(command: list[str], cwd: Path) -> tuple[bool, str]:
     return completed.returncode == 0, completed.stdout.strip()
 
 
+def repeats_workspace_report(text: str) -> bool:
+    fields = ("Summary:", "Validation:", "Risk:", "Next step:")
+    return all(
+        re.search(rf"^{re.escape(field)}\s*$", text, flags=re.MULTILINE)
+        for field in fields
+    )
+
+
 def markdown_visible_text(text: str) -> str:
     visible: list[str] = []
     fence_character: str | None = None
@@ -210,7 +218,7 @@ def main() -> None:
         r"\s+", " ", terraform_skill_path.read_text(encoding="utf-8")
     )
     terraform_validation_rules = (
-        "After the final edit, the parent or approved worker runs formatting, validation, and an unsaved remote-state plan",
+        "For every affected root/environment pair, the parent or approved worker runs formatting, validation, and an unsaved remote-state plan",
         "Treat every unapproved source or legacy root as read-only evidence",
         "scripts/run-terraform.sh plan <service-path> <env>",
         "Require an add/change/destroy/replace summary and explicit unexpected-drift findings.",
@@ -259,9 +267,14 @@ def main() -> None:
             continue
         name, description, disabled = parsed
         skill_names.add(skill_dir.name)
-        skill_lines = len(skill_file.read_text(encoding="utf-8").splitlines())
+        skill_text = skill_file.read_text(encoding="utf-8")
+        skill_lines = len(skill_text.splitlines())
         if skill_lines > 85:
             errors.append(f"SKILL.md context budget exceeded: {skill_dir.name} has {skill_lines} lines")
+        if repeats_workspace_report(skill_text):
+            errors.append(
+                f"SKILL.md duplicates the workspace report skeleton: {skill_dir.name}"
+            )
         if len(description) > 320:
             errors.append(f"skill description too long: {skill_dir.name} has {len(description)} characters")
         if name != skill_dir.name:

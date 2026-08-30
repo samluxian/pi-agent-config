@@ -41,7 +41,8 @@ tree、確認 approval scope 並保留無關的使用者變更。
 新增或修改 skill 前，先讀
 [`references/skill-design-contract.md`](references/skill-design-contract.md)。主要限制如下：
 
-- `SKILL.md` 只保留 task boundary、核心流程、停止條件、references 和 output contract。
+- `SKILL.md` 只保留 task boundary、核心流程、停止條件、references 與 domain-specific
+  reporting additions；通用 report fields 由 `AGENTS.md` 統一管理。
 - 深層說明移到 `references/`，重複檢查移到 `scripts/`。
 - Automatic skill description 要同時寫清楚適用範圍與最近的排除範圍。
 - Manual skill 要設定 `disable-model-invocation: true`，並在 root README 保留

@@ -35,7 +35,7 @@ boundary in its description instead of adding a routing table to `AGENTS.md`.
 
 ## Validation
 
-After the final edit, always run:
+Required fixed checks:
 
 ```bash
 python3 .agents/skills/pi-agent-maintenance/scripts/check_public_safety.py
@@ -46,25 +46,13 @@ git diff --check
 The contract helper covers structural contracts and invocation fixtures. Select
 additional tests from `references/regression-matrix.md` only for changed surfaces;
 for example, run `npm run test:extensions` when extension runtime, package
-registration, or its harness changed. Do not rerun successful checks unless files
-or relevant tool state changed.
+registration, or its harness changed.
 
 Run `scripts/run_invocation_benchmark.py` only when automatic routing changed
 and the user has confirmed provider, model, authentication, and paid-test budget.
 Keep benchmark artifacts under git-ignored `tmp/`.
 
-## Output
+## Domain Reporting
 
-```text
-Summary:
-- Contract or behavior changed
-
-Validation:
-- Deterministic checks and benchmark status
-
-Risk:
-- Routing, compatibility, safety, or documentation risk
-
-Next step:
-- One concrete user action
-```
+In the workspace report, include routing, compatibility, safety, documentation,
+context-budget, deterministic-check, and benchmark findings that apply.

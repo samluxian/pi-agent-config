@@ -47,7 +47,7 @@ secret value。
 - [`scripts/implementation_flow.sh`](scripts/implementation_flow.sh)：preflight、overlay、render 與 post-patch checks。
 - [`scripts/post_patch_review.sh`](scripts/post_patch_review.sh)：bounded final diff review helper。
 
-## 輸出
+## Domain evidence
 
-輸出包含實際修改、contract/discovery/render validation、風險與一個使用者操作。Live
-deployment 仍交由既有 GitOps 流程完成。
+Workspace report 需補充 affected service files、contract/discovery/render、configuration
+ownership、CI 與 compatibility findings。Live deployment 仍交由既有 GitOps 流程完成。

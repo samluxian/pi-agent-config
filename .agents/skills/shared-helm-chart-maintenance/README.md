@@ -46,7 +46,7 @@ Release notes 是 intent evidence，不是 deployment truth。Compatibility clai
 exact source、effective values、render 與適用的 consumer evidence；不能只靠 commit title 或
 lint success 宣稱安全。
 
-## 輸出
+## Domain evidence
 
-輸出包含 contract change、defaults/consumer/migration status、validation、KEDA/app-of-apps/
-rollout risk 與一個下一步。
+Workspace report 需補充 defaults、consumers、migration、breaking-change、chart API、KEDA、
+app-of-apps、rollout 與 compatibility findings。

@@ -48,9 +48,8 @@ as the structural reference, not as a source of service-specific values.
    risk.
 4. Apply only the approved change. Preserve disabled environments as
    `values.ignore.<env>.yaml` and never enable an environment by assumption.
-5. After the final edit, run the repository adapter once for syntax, artifacts,
-   discovery, effective value order, and one render per affected environment.
-   Do not rerun it on an unchanged repository state.
+5. Validate syntax, artifacts, discovery, effective value order, and one
+   behavior-proving render per affected environment with the repository adapter.
 6. Review the bounded diff and status. Stop if a chart, bootstrap, CI, IAM, or
    secret contract requires an unapproved change.
 
@@ -65,18 +64,7 @@ Never read or expose secret values or invent deployment identifiers. Secret-back
 settings contain references only and remain in the approved application-config
 surface.
 
-## Output
+## Domain Reporting
 
-```text
-Summary:
-- Service files and delivery behavior changed
-
-Validation:
-- Contract, discovery, render, and skipped checks
-
-Risk:
-- Deployment, config ownership, CI, compatibility, or runtime risk
-
-Next step:
-- One concrete user action
-```
+In the workspace report, identify affected service files and include contract,
+discovery, render, configuration-ownership, CI, and compatibility findings.

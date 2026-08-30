@@ -38,9 +38,9 @@ another layout until its backend, command, ownership, and review adapter exists.
 5. Apply the smallest approved change. During structural cleanup, preserve state
    addresses, `for_each` keys, and exact infrastructure identifiers. Never run
    `apply`, import, state mutation, workspace mutation, or remote Git operations.
-6. After the final edit, the parent or approved worker runs formatting, validation,
-   and an unsaved remote-state plan with `scripts/run-terraform.sh plan
-   <service-path> <env>` for every affected root/environment pair. Require an
+6. For every affected root/environment pair, the parent or approved worker runs
+   formatting, validation, and an unsaved remote-state plan with
+   `scripts/run-terraform.sh plan <service-path> <env>`. Require an
    add/change/destroy/replace summary and explicit unexpected-drift findings. Accept
    `No changes.` or an explicit zero-action summary as no-op. Continue independent
    root plans after a root-local failure; stop related roots on shared authentication,
@@ -64,21 +64,8 @@ partial apply, credential request, unexpected replacement/destruction, broad IAM
 or a plan that exceeds approved scope. Do not retry authentication or state-lock
 failures. Never save plan files or print sensitive state, plan output, or secrets.
 
-## Output
+## Domain Reporting
 
-```text
-Summary:
-- Root/service/environment and intended change or finding
-
-Plan evidence:
-- Add/change/destroy/replace summary and important unknowns
-
-Validation:
-- fmt, validate, plan status, and gaps
-
-Risk:
-- IAM, network, state, replacement, and runtime risk
-
-Next step:
-- One user-operated command or review action
-```
+In the workspace report, name every affected root/service/environment and include
+fmt/validate/plan status, add/change/destroy/replace counts, unexpected drift,
+important unknowns, and IAM, network, state, replacement, and runtime findings.

@@ -26,9 +26,8 @@ state. Approval never covers adjacent services or unrelated cleanup.
 3. Propose the exact patch. Ask again if evidence changes component, environment,
    IAM, CI, or bootstrap scope.
 4. Apply surgical edits only.
-5. After the final edit, validate once with syntax, bootstrap/discovery behavior,
-   one relevant render or deterministic check, and final bounded diff/status.
-   Do not rerun successful checks on an unchanged repository state.
+5. Validate syntax, bootstrap/discovery behavior, one relevant render or
+   deterministic check, and final bounded diff/status.
 6. Stop if validation exposes a service configuration, shared chart API, live
    mutation, or unapproved prerequisite change.
 
@@ -43,18 +42,7 @@ Use `$gitops-service-delivery` for service-owned application-chart wrappers and 
 Do not invent environments, namespaces, identities, endpoints, versions, or
 branches.
 
-## Output
+## Domain Reporting
 
-```text
-Summary:
-- Platform files and intended behavior changed
-
-Validation:
-- Commands, results, and skipped checks
-
-Risk:
-- Bootstrap, infrastructure, IAM, CI, compatibility, or runtime risk
-
-Next step:
-- One concrete user action
-```
+In the workspace report, identify affected platform files and include bootstrap,
+infrastructure, IAM, CI, compatibility, and runtime findings.

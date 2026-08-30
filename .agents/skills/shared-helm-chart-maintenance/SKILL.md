@@ -29,9 +29,8 @@ layout until its values, render, compatibility, and test adapter exists.
    rendered behavior. Surface conflicts rather than guessing intent.
 5. Propose exact files, compatibility impact, migration, validation, and release
    implications.
-6. Apply the smallest approved contract change. After the final edit, validate
-   affected profiles and representative consumers once; do not rerun successful
-   checks on an unchanged repository state.
+6. Apply the smallest approved contract change and validate affected profiles
+   and representative consumers.
 
 For release notes, derive claims from the exact tag diff and validation evidence.
 Separate new capability, behavior change, breaking change, migration, and known
@@ -42,21 +41,7 @@ limitations. Do not advertise unverified compatibility.
 Stop and ask when the target version/tag, ownership surface, expected default,
 consumer compatibility, or release boundary is unresolved.
 
-## Output
+## Domain Reporting
 
-```text
-Summary:
-- Shared chart contract or release-note change
-
-Compatibility:
-- Defaults, consumers, migration, and breaking-change status
-
-Validation:
-- Lint, schema, render, tests, and gaps
-
-Risk:
-- Chart API, KEDA, app-of-apps, or rollout risk
-
-Next step:
-- One concrete action
-```
+In the workspace report, include defaults, consumers, migration, breaking-change,
+chart API, KEDA, app-of-apps, rollout, and compatibility findings.
