@@ -205,14 +205,6 @@ def main() -> None:
     for rule in public_safety_rules:
         if rule not in normalized_agents:
             errors.append(f"AGENTS.md missing public repository safety rule: {rule}")
-    for relative in (
-        ".agents/skills/gitops-service-delivery/SKILL.md",
-        ".agents/skills/kubernetes-platform-delivery/SKILL.md",
-        ".agents/skills/pi-agent-maintenance/SKILL.md",
-    ):
-        if "Commit message:" not in (repo / relative).read_text(encoding="utf-8"):
-            errors.append(f"skill output contract missing commit message: {relative}")
-
     terraform_skill_path = skills_root / "terraform-repository-maintenance" / "SKILL.md"
     normalized_terraform_skill = re.sub(
         r"\s+", " ", terraform_skill_path.read_text(encoding="utf-8")

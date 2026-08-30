@@ -77,9 +77,6 @@ Validation:
 Risk:
 - Deployment, config ownership, CI, compatibility, or runtime risk
 
-Commit message:
-- Suggested concise message
-
 Next step:
 - One concrete user action
 ```

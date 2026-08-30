@@ -49,5 +49,5 @@ secret value。
 
 ## 輸出
 
-輸出包含實際修改、contract/discovery/render validation、風險、commit message 建議與一個
-使用者操作。Live deployment 仍交由既有 GitOps 流程完成。
+輸出包含實際修改、contract/discovery/render validation、風險與一個使用者操作。Live
+deployment 仍交由既有 GitOps 流程完成。
