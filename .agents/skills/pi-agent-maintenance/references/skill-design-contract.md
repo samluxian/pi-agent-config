@@ -72,13 +72,8 @@ multiple unrelated rules into dense prose.
 Automatic skills require positive and negative invocation fixtures. Prefer one
 fixture per meaningful boundary; add more only for a known collision.
 
-Before completion, run:
-
-```bash
-python3 .agents/skills/pi-agent-maintenance/scripts/validate_repo_contract.py
-npm run test:extensions
-git diff --check
-```
-
-Run the paid invocation benchmark only after automatic descriptions change and
-the user confirms provider, model, authentication, and budget.
+After the final edit, run public safety, the structural contract helper, and
+`git diff --check`. Select additional regression-matrix tests only for changed
+surfaces; skill-body changes do not require extension tests. Run the paid
+invocation benchmark only after automatic descriptions change and the user
+confirms provider, model, authentication, and budget.

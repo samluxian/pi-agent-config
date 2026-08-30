@@ -26,8 +26,9 @@ state. Approval never covers adjacent services or unrelated cleanup.
 3. Propose the exact patch. Ask again if evidence changes component, environment,
    IAM, CI, or bootstrap scope.
 4. Apply surgical edits only.
-5. Validate syntax, bootstrap/discovery behavior, one relevant render or
-   deterministic check, and final bounded diff/status.
+5. After the final edit, validate once with syntax, bootstrap/discovery behavior,
+   one relevant render or deterministic check, and final bounded diff/status.
+   Do not rerun successful checks on an unchanged repository state.
 6. Stop if validation exposes a service configuration, shared chart API, live
    mutation, or unapproved prerequisite change.
 

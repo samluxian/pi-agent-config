@@ -48,16 +48,16 @@ as the structural reference, not as a source of service-specific values.
    risk.
 4. Apply only the approved change. Preserve disabled environments as
    `values.ignore.<env>.yaml` and never enable an environment by assumption.
-5. Validate syntax, dependency artifacts, bootstrap discovery, effective
-   value-file order, and one behavior-proving render per affected environment.
+5. After the final edit, run the repository adapter once for syntax, artifacts,
+   discovery, effective value order, and one render per affected environment.
+   Do not rerun it on an unchanged repository state.
 6. Review the bounded diff and status. Stop if a chart, bootstrap, CI, IAM, or
    secret contract requires an unapproved change.
 
-Run `scripts/check_service_config_contract.py --dependency <chart-name>` for
-every affected enabled environment. Use `scripts/implementation_flow.sh` for fixed preflight, overlay,
-render, and post-patch checks. Read `references/helm-alias-overlays.md` when
-aliases such as `stable` and `beta` coexist. Use `$helm-dependency-upgrade` for
-version changes and `$shared-helm-chart-maintenance` for shared chart API changes.
+Run `scripts/check_service_config_contract.py --dependency <chart-name>` for every
+affected enabled environment and `scripts/implementation_flow.sh` for fixed checks.
+Read `references/helm-alias-overlays.md` for aliases; use `$helm-dependency-upgrade`
+for version changes and `$shared-helm-chart-maintenance` for shared chart APIs.
 
 ## Safety
 

@@ -166,6 +166,20 @@ def main() -> None:
     for rule in orchestration_rules:
         if rule not in normalized_agents:
             errors.append(f"AGENTS.md missing cross-skill orchestration rule: {rule}")
+    validation_efficiency_rules = (
+        "Classify post-edit validation by behavior and blast radius, not line count",
+        "Do not run post-edit validation when no repository files changed.",
+        "run the smallest release-level checks once after the final edit.",
+        "Do not rerun the same successful check when repository and relevant external state are unchanged.",
+        "Never let this table weaken its mandatory gate.",
+        "Prefer one existing repository or skill-owned deterministic helper over several model-directed commands",
+    )
+    for rule in validation_efficiency_rules:
+        if rule not in normalized_agents:
+            errors.append(f"AGENTS.md missing validation-efficiency rule: {rule}")
+    for tier in ("`V0`", "`V1`", "`V2`", "`V3`"):
+        if tier not in agents_text:
+            errors.append(f"AGENTS.md missing validation tier: {tier}")
     skills_main_rule = (
         "when explicitly requested, any repository-owned source, test, script, "
         "extension, configuration, or documentation file may be created, edited, "
@@ -308,68 +322,33 @@ def main() -> None:
         if extension_name not in readme:
             errors.append(f"README does not name extension: {extension_name}")
 
+    parsed_configs: dict[str, object] = {}
     for config_file in sorted((repo / "config").glob("*.json")):
         try:
-            json.loads(config_file.read_text(encoding="utf-8"))
+            parsed_configs[config_file.name] = json.loads(
+                config_file.read_text(encoding="utf-8")
+            )
         except json.JSONDecodeError as exc:
             errors.append(f"invalid JSON {config_file.relative_to(repo)}: {exc}")
+
+    settings_baseline = parsed_configs.get("pi-settings-baseline.json")
+    if not isinstance(settings_baseline, dict):
+        errors.append("missing Pi settings baseline")
+    else:
+        if settings_baseline.get("defaultThinkingLevel") != "low":
+            errors.append("Pi settings baseline must default thinking to low")
+        if settings_baseline.get("showCacheMissNotices") is not True:
+            errors.append("Pi settings baseline must expose prompt-cache misses")
 
     fixture_validator = repo / ".agents" / "shared" / "skill-quality" / "scripts" / "validate_invocation_fixtures.py"
     ok, output = run([sys.executable, str(fixture_validator)], repo)
     if not ok:
         errors.append(f"invocation fixture validation failed: {output}")
 
-    public_safety_script = Path(__file__).parent / "check_public_safety.py"
-    public_safety_test = Path(__file__).parent / "tests" / "check_public_safety_test.py"
-    ok, output = run([sys.executable, str(public_safety_test)], repo)
-    if not ok:
-        errors.append(f"public repository safety test failed: {output}")
-    ok, output = run([sys.executable, str(public_safety_script), str(repo)], repo)
-    if not ok:
-        errors.append(f"public repository safety scan failed: {output}")
-
-    retrospective_test = (
-        skills_root
-        / "context-window-retrospective"
-        / "scripts"
-        / "tests"
-        / "summarize_session_metrics_test.py"
+    extension_tests = sorted(
+        str(path.relative_to(repo))
+        for path in (repo / "extensions").glob("*/test.mjs")
     )
-    ok, output = run([sys.executable, str(retrospective_test)], repo)
-    if not ok:
-        errors.append(f"context-window retrospective metrics test failed: {output}")
-
-    contract_test = Path(__file__).parent / "tests" / "validate_repo_contract_test.py"
-    ok, output = run([sys.executable, str(contract_test)], repo)
-    if not ok:
-        errors.append(f"repository contract validator test failed: {output}")
-
-    developer_activity_test = (
-        skills_root / "developer-activity-summary" / "scripts" / "test_collect_activity.py"
-    )
-    ok, output = run([sys.executable, str(developer_activity_test)], repo)
-    if not ok:
-        errors.append(f"developer activity collector test failed: {output}")
-
-    makefile_test = repo / "scripts" / "test-makefile.sh"
-    ok, output = run(["bash", str(makefile_test)], repo)
-    if not ok:
-        errors.append(f"workspace Makefile test failed: {output}")
-
-    ok, output = run(["git", "diff", "--check"], repo)
-    if not ok:
-        errors.append(f"git diff --check failed: {output}")
-
-    extension_tests = sorted(str(path.relative_to(repo)) for path in (repo / "extensions").glob("*/test.mjs"))
-    if extension_tests:
-        test_command = ["node"]
-        subagent_loader = repo / "extensions" / "subagents" / "test-loader.mjs"
-        if subagent_loader.is_file():
-            test_command.extend(["--import", f"./{subagent_loader.relative_to(repo)}"])
-        test_command.extend(["--test", *extension_tests])
-        ok, output = run(test_command, repo)
-        if not ok:
-            errors.append(f"extension tests failed: {output}")
 
     if errors:
         for error in errors:

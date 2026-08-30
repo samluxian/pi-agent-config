@@ -8,6 +8,7 @@
     "test:init-workspace": "bash scripts/test-init-workspace.sh",
     "test:makefile": "bash scripts/test-makefile.sh",
     "test:contract": "python3 .agents/skills/pi-agent-maintenance/scripts/validate_repo_contract.py",
+    "test:contract-unit": "python3 .agents/skills/pi-agent-maintenance/scripts/tests/validate_repo_contract_test.py",
     "benchmark:invocation": "python3 .agents/skills/pi-agent-maintenance/scripts/run_invocation_benchmark.py"
   },
   "keywords": ["pi-package"],

@@ -194,6 +194,32 @@ session 要執行：
 /reload
 ```
 
+## Token 與驗證成本
+
+[`config/pi-settings-baseline.json`](config/pi-settings-baseline.json) 把 routine work 的
+thinking 預設設為 `low`，並顯示明顯的 prompt-cache miss。Pi 的 project settings 會覆蓋
+全域設定；要在既有 workspace 採用最小設定，可把以下 keys 合併進
+`<workspace-root>/.pi/settings.json`，不要覆蓋原有 packages 或個人選項：
+
+```json
+{
+  "defaultThinkingLevel": "low",
+  "showCacheMissNotices": true
+}
+```
+
+Initializer 不會自動覆蓋既有 project settings。當工作出現跨 repository 衝突、不熟悉的
+API 行為或無法界定的 blast radius 時，再用 `Shift+Tab` 把目前 session 提升到 `medium`；
+`high` 留給 `medium` 仍無法收斂的高風險設計判斷。
+
+Post-edit validation 依行為和風險分成 V0–V3。純文件只跑文件檢查；結構化設定跑 parser、
+schema 與 changed-file checks；部署、CI、Helm values 或 application config 跑 affected
+behavior/render；Terraform、IAM、network、shared chart API、resource ownership 與 security
+保留完整 affected-root gate。Domain skill 可以提高等級，不能降低其 mandatory checks。
+Agent 只在檔案變更後、final edit 完成時執行一次最小充分的 release-level validation；如果
+repository 與相關 external state 沒變，不重跑相同的成功檢查。已有 repository 或
+skill-owned deterministic helper 時，優先使用單一 bounded helper，避免拆成多輪 tool calls。
+
 ## Extension 文件
 
 根目錄 README 只列入口；每個 extension 的目的、運作流程與限制放在自己的目錄：

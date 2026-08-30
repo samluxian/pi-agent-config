@@ -20,11 +20,10 @@ in project-scoped skills, not this always-loaded file.
 
 ## Communication
 
-- Lead with the answer, recommendation, or completed result.
-- Keep identifiers, commands, uncertainty, and safety warnings precise.
-- Use short headings for analysis and numbered steps for multiple actions.
-- State the current step during multi-turn work and end with one concrete next
-  action when work remains.
+- Lead with the answer, action, or result; keep identifiers, uncertainty, and
+  safety warnings precise.
+- Use short headings and numbered steps when they improve navigation.
+- During multi-turn work, state the current step and end with one next action.
 - Explain errors as symptom, likely cause, and next check or fix.
 - For risky DevOps operations, recommend one user-operated action and explain the
   effect and avoided risk.
@@ -83,39 +82,30 @@ staged changes. Do not reuse branch or status evidence gathered before approval.
 
 Use these terms consistently:
 
-- `<workspace-root>`: the opened workspace; `AGENTS.md` and `.agents/skills` may
-  be symlinks into the skills repository.
-- `<skills-repo>`: the repository owning this contract, skills, shared helpers,
-  README, and session notes.
-- `<target-repo>`: the product, deployment, chart, or infrastructure repository
-  being inspected or changed.
+- `<workspace-root>`: the opened workspace; contract paths may symlink to skills.
+- `<skills-repo>`: owner of this contract, skills, helpers, and documentation.
+- `<target-repo>`: product, deployment, chart, or infrastructure under work.
 
-Treat the skills repository as workspace tooling, not a product monorepo.
-Sibling repositories retain independent branches, remotes, histories, and dirty
-state. Do not convert them to submodules, subtrees, or a monorepo unless the user
-explicitly requests that repository-model change and accepts its impact.
+The skills repository is workspace tooling, not a monorepo. Sibling repositories
+keep independent branches, remotes, histories, and dirty state. Do not combine
+them unless the user explicitly requests and accepts that repository-model change.
 
-For a user-requested investigation or incident report, default to
-`<workspace-root>/docs/`. Treat that path as a user-owned work-product location,
-not skills-repository documentation; do not write the report into a target or
-service repository unless the user explicitly names that repository and path.
+Write unspecified investigation or incident reports to `<workspace-root>/docs/`,
+a user-owned work-product path. Use a target repository only when the user names
+that repository and path.
 
-Project-scoped skills live under `.agents/skills/<name>/`. `SKILL.md` contains
-the task boundary and core flow; deeper procedures belong in `references/`,
-repeatable checks in `scripts/`, reusable templates in `assets/`, and
-byte-identical cross-skill helpers in `.agents/shared/`.
-
-Use the narrowest matching skill. Treat its description as the routing boundary.
-Do not duplicate detailed skill routing or workflow in this file.
+Project skills live in `.agents/skills/<name>/`: keep core flow in `SKILL.md`,
+deep procedure in `references/`, repeatable checks in `scripts/`, templates in
+`assets/`, and byte-identical shared helpers in `.agents/shared/`. Use the
+narrowest matching skill and do not duplicate its workflow here.
 
 Default to bounded read-only delegation when evidence acquisition is expected to
 produce large raw output or require multiple independent searches or reads. Also
-delegate when the user explicitly requests it or a selected skill requires
-independent validation. Load `.agents/skills/orchestrator/SKILL.md` before calling
-a subagent. Keep simple known-path I/O in the parent. The domain skill retains
-task-specific evidence and stop conditions; the orchestrator owns role selection,
+delegate on explicit request or skill-required independent validation. Load the
+orchestrator skill first. Keep simple known-path I/O in the parent. The domain
+skill retains evidence and stop conditions; the orchestrator owns role selection,
 bounded prompts, concurrency, authority boundaries, and reconciliation. Do not
-copy the orchestration workflow into domain skills.
+copy its workflow into domain skills.
 
 ## Evidence and Context
 
@@ -130,73 +120,68 @@ conflict, surface the conflict before editing. For live incidents, inspect sourc
 only after mapping the running image to its deployed revision. Separate the
 immediate trigger, contributing design factor, and supported fix surface.
 
-Use this default evidence budget unless the task requires more:
+Use this evidence budget unless a concrete mismatch or readiness claim needs more:
 
 1. Repository branch/status or the supplied diagnostic packet.
 2. Target desired-state or render summary.
 3. Target live/resource summary.
 
-Stop unless a concrete mismatch, missing field, error, or readiness claim needs
-more proof.
-
-- Analyze a user-provided diagnostic packet before reading more files or systems.
-- Prefer narrow commands expected to return under 120 lines.
-- Summarize large renders, manifests, diffs, traces, logs, ConfigMaps, and CRDs;
-  do not print them in full unless required for a named finding.
-- Move between evidence layers only when deployment truth, readiness, or a
-  concrete conflict requires it.
-- Keep large raw output in files or pipes and quote only the minimal safe excerpt.
-- When truncating a command under `pipefail`, use a non-early-closing reader such
-  as `sed -n` or handle expected SIGPIPE explicitly; do not report that truncation
-  as a command failure.
+Analyze supplied diagnostics first. Prefer commands under 120 lines and move to
+another evidence layer only when deployment truth or a conflict requires it.
+Summarize large renders, manifests, diffs, traces, logs, ConfigMaps, and CRDs;
+keep raw output out of context and quote only the needed excerpt. Under `pipefail`,
+truncate with a non-early-closing reader such as `sed -n`, or handle expected
+SIGPIPE explicitly.
 
 ## Public Repository Safety
 
-Treat this skills repository as public source. Never add company or client names,
-private project, repository, service, chart, environment, cluster, namespace,
-cloud, account, route, ticket, domain, URL, topology, or infrastructure
-identifiers to `AGENTS.md`, `.agents/skills/`, `extensions/`, scripts, fixtures,
-configuration, or documentation. Use descriptive placeholders and reserved
-example domains. Keep private target evidence in the active investigation; do
-not copy it into this repository.
+Treat this skills repository as public source. Never add company or client names
+or private infrastructure identifiers to repository files. Use descriptive
+placeholders and reserved example domains. Keep private target evidence in the
+active investigation.
 
-For maintenance changes, follow
-`.agents/skills/pi-agent-maintenance/references/public-repository-safety.md` and
-run `check_public_safety.py`. Organization-specific terms belong only in a
-machine-local terms file outside the repository. The scanner must not print those
-terms. A clean current snapshot does not sanitize Git
-history.
+For maintenance, follow the public-safety reference and run
+`check_public_safety.py`. Organization-specific terms belong only in a
+machine-local terms file outside the repository; the scanner must not print
+those terms. A clean current snapshot does not sanitize Git history.
 
 ## Deployment and Secret Safety
 
 Assume GitOps is the deployment authority unless evidence proves otherwise:
+`Git change -> MR -> merge -> Argo CD reconcile`. Do not run mutating `kubectl`,
+`helm`, or `argocd` operations.
 
-```text
-Git change -> MR -> merge -> Argo CD reconcile
-```
-
-Do not directly run mutating `kubectl`, `helm`, or `argocd` operations.
-
-- Never modify or expose secrets, credentials, kubeconfigs, private keys, `.env`
-  files, or generated credential files.
+- Never modify, expose, decode, print, copy, or read secrets, credentials,
+  kubeconfigs, private keys, `.env` files, or generated credential files.
 - Never hardcode sensitive values or move them into ConfigMaps.
-- Do not decode, print, copy, or read secret values.
-- The git-ignored `tmp/` directory may hold user-controlled temporary secret
-  output only when explicitly requested. Provide commands but do not run them or
-  read the resulting files.
+- Git-ignored `tmp/` may hold user-controlled temporary secret output only when
+  explicitly requested. Provide commands but do not run or read them.
 - Prefer least-privilege IAM; never suggest broad Owner or Editor roles.
-- Do not infer Redis, Pub/Sub, OTEL, Secret Manager, Workload Identity, or API
-  usage from names alone. Verify the relevant evidence layer.
+- Verify the relevant evidence layer instead of inferring dependencies from names.
 
 ## Validation and Reporting
 
-Run the smallest validation that proves the intended behavior. A successful
-command without behavior evidence is insufficient. Prefer existing repository
-scripts and skill-owned deterministic helpers.
+Classify post-edit validation by behavior and blast radius, not line count:
 
-After repository file mutations, the parent or approved worker runs the smallest
-validation that proves the final behavior and reports failures or skipped checks.
-The parent retains evidence reconciliation and final delivery judgment.
+- `V0` documentation or comments: diff, formatting, links, or documentation checks.
+- `V1` local structured configuration: parser, schema, and changed-file checks.
+- `V2` deploy, CI, Helm values, or application configuration: affected render,
+  discovery, pipeline, or behavior checks.
+- `V3` Terraform, IAM, network, shared chart APIs, resource ownership, or security:
+  every mandatory affected-root plan, compatibility, or policy gate.
+
+A domain skill or repository adapter may escalate the tier. Never let this table
+weaken its mandatory gate. Do not run post-edit validation when no repository
+files changed. During edits, run only checks needed to unblock the work; run the
+smallest release-level checks once after the final edit. Do not rerun the same
+successful check when repository and relevant external state are unchanged.
+
+Prefer one existing repository or skill-owned deterministic helper over several
+model-directed commands, and keep its result bounded. A successful command
+without behavior evidence is insufficient. After repository file mutations, the
+parent or approved worker runs the smallest validation that proves the final
+behavior and reports failures or skipped checks. The parent retains evidence
+reconciliation and final delivery judgment.
 
 After changes, report:
 
@@ -219,12 +204,9 @@ commit message. For branch-ready delivery work, also report validation gaps.
 
 ## Continuous Improvement and Handoff
 
-When an investigation reveals a reusable lesson, propose exactly one: update an
-existing skill, create a new skill, write a session note, or make no skill
-change. Do not edit skills without explicit approval. State the triggering
-lesson, target, exact proposed change, value, and overfitting risk.
+For a reusable lesson, propose exactly one skill update, new skill, session note,
+or no change. Do not edit skills without explicit approval; state the trigger,
+target, exact change, value, and overfitting risk.
 
-For pause, completion, or later resume, record a concise note under
-`docs/session-notes/` when requested or operationally useful. Never include
-secrets, credentials, private keys, `.env` values, long logs, full manifests, or
-full diffs.
+When a handoff is useful or requested, write a concise `docs/session-notes/`
+entry without secrets, credentials, `.env` values, long logs, manifests, or diffs.

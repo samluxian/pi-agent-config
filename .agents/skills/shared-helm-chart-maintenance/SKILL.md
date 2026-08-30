@@ -29,8 +29,9 @@ layout until its values, render, compatibility, and test adapter exists.
    rendered behavior. Surface conflicts rather than guessing intent.
 5. Propose exact files, compatibility impact, migration, validation, and release
    implications.
-6. Apply the smallest approved contract change and validate affected profiles and
-   representative consumers.
+6. Apply the smallest approved contract change. After the final edit, validate
+   affected profiles and representative consumers once; do not rerun successful
+   checks on an unchanged repository state.
 
 For release notes, derive claims from the exact tag diff and validation evidence.
 Separate new capability, behavior change, breaking change, migration, and known

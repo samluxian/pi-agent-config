@@ -104,31 +104,29 @@ semantic inspection。
 
 ## Deterministic validation
 
-先執行固定 checks：
+Final edit 完成後固定執行三個 bounded checks：
 
 ```bash
 npm run test:public-safety
 npm run test:contract
-npm run test:extensions
-npm run test:init-workspace
-npm run test:makefile
 git diff --check
 ```
 
-各指令的用途：
+`test:contract` 只檢查 skill metadata、context budgets、README links、settings baseline、
+extension registration、always-on contract 與 invocation fixtures，不再順便執行所有元件測試。
+再依 changed surface 選一列 targeted test：
 
-| Command | 證明內容 |
+| Changed surface | Targeted command |
 | --- | --- |
-| `npm run test:public-safety` | Current snapshot 的 private patterns 與 optional machine-local terms。 |
-| `npm run test:contract` | Skill metadata、README inventory、fixtures、extension registration 與 repository contracts。 |
-| `npm run test:extensions` | Extension hooks、commands、tools、bounds、failure 與 reset behavior。 |
-| `npm run test:init-workspace` | Symlink、extension reconciliation、dependency installation 與 readiness checks。 |
-| `npm run test:makefile` | Makefile help、default goal、workspace root override 與 initializer argument delegation。 |
-| `git diff --check` | Trailing whitespace、衝突標記與 whitespace errors。 |
+| Contract validator implementation | `npm run test:contract-unit` |
+| Extension runtime、package registration 或 harness | `npm run test:extensions` |
+| Workspace initializer | `npm run test:init-workspace` |
+| Makefile façade | `npm run test:makefile` |
+| 其他 skill script | 該 skill regression-matrix 列指定的 test |
 
-依 changed surface 加上更小的 targeted test。完整對照表在
-[`references/regression-matrix.md`](references/regression-matrix.md)。Unit tests 不應呼叫
-付費模型。
+完整對照表在 [`references/regression-matrix.md`](references/regression-matrix.md)。不要因為
+README 或不相關 skill 改動而重跑 extensions、initializer 與所有 script tests。Repository
+state 沒變時沿用成功結果；失敗時才執行更窄的診斷指令。Unit tests 不應呼叫付費模型。
 
 Repository files 修改完成後，由 parent 或 approved worker 讀取 final diff 並執行 bounded
 tests。Command exit code 0 仍須搭配行為證據。
