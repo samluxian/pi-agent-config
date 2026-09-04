@@ -32,7 +32,8 @@ artifacts、caches 或 git-ignored temporary files，也不允許 agent commit�
 ```
 
 Kubernetes、Argo CD、GitLab/GitHub、GCP 與 Git remotes 對 agent 維持唯讀。交付變更寫入
-repository 的 desired state，再走原有 MR、CI 與 GitOps 流程。完整規則以
+repository 的 desired state，再走原有 MR、CI 與 GitOps 流程。Agent回報基礎設施時間時，會標示來源時區，
+並在已知使用者時區時先換算再比較或估計；未知時則明確保留UTC並詢問。完整規則以
 [`AGENTS.md`](AGENTS.md) 為準。
 
 ## 公開內容安全

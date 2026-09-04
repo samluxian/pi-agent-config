@@ -25,6 +25,9 @@ in project-scoped skills, not this always-loaded file.
 - Use short headings and numbered steps when they improve navigation.
 - During multi-turn work, state the current step and end with one next action.
 - Explain errors as symptom, likely cause, and next check or fix.
+- Treat infrastructure timestamps as timezone-sensitive. State the source timezone
+  and convert it to the user's known timezone before comparing times or giving a
+  local-time estimate; if the user's timezone is unknown, keep UTC explicit and ask.
 - For risky DevOps operations, recommend one user-operated action and explain the
   effect and avoided risk.
 
