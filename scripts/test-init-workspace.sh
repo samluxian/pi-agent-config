@@ -74,8 +74,8 @@ printf '%s\n' 'unwanted' > "$extensions_destination/unwanted/index.ts"
 printf '%s\n' 'standalone' > "$extensions_destination/standalone.ts"
 check_output="$(run_init --check)"
 grep -Fq 'Pi extension (alpha): drifted' <<<"$check_output"
-grep -Fq 'Pi extension (standalone.ts): unwanted' <<<"$check_output"
-grep -Fq 'Pi extension (unwanted): unwanted' <<<"$check_output"
+grep -Fq 'Pi extension (standalone.ts): unmanaged (preserved)' <<<"$check_output"
+grep -Fq 'Pi extension (unwanted): unmanaged (preserved)' <<<"$check_output"
 grep -Fq 'Pi package (pi-web-access@0.23.0): ready' <<<"$check_output"
 
 rm -rf -- "$workspace_root/.pi/npm/node_modules/pi-web-access"
@@ -85,13 +85,33 @@ grep -Fq 'Pi package (pi-web-access@0.23.0): drifted' <<<"$check_output"
 run_init >/dev/null
 cmp -s -- "$fixture_repo/extensions/alpha/index.ts" \
   "$extensions_destination/alpha/index.ts"
-[[ ! -e "$extensions_destination/standalone.ts" ]]
-[[ ! -e "$extensions_destination/unwanted" ]]
+[[ -f "$extensions_destination/standalone.ts" ]]
+[[ -f "$extensions_destination/unwanted/index.ts" ]]
+[[ -f "$workspace_root/.pi/pi-agent-config-managed.json" ]]
+MANIFEST="$workspace_root/.pi/pi-agent-config-managed.json" node <<'NODE'
+const fs = require("node:fs");
+const manifest = JSON.parse(fs.readFileSync(process.env.MANIFEST, "utf8"));
+if (manifest.version !== 1) process.exit(1);
+if (JSON.stringify(manifest.extensions) !== JSON.stringify(["alpha"])) process.exit(1);
+NODE
 
 mv -- "$fixture_repo/extensions/alpha" "$fixture_repo/extensions/beta"
 run_init >/dev/null
 [[ ! -e "$extensions_destination/alpha" ]]
 cmp -s -- "$fixture_repo/extensions/beta/index.ts" \
   "$extensions_destination/beta/index.ts"
+[[ -f "$extensions_destination/standalone.ts" ]]
+[[ -f "$extensions_destination/unwanted/index.ts" ]]
 
-printf '%s\n' 'init-workspace reconciliation: ok'
+# Refuse unmanaged contract paths before removing any managed content.
+unmanaged_workspace="$tmp_dir/unmanaged-workspace"
+mkdir -p "$unmanaged_workspace/.agents"
+printf '%s\n' 'user contract' > "$unmanaged_workspace/AGENTS.md"
+if PATH="$fake_bin:$PATH" "$fixture_repo/scripts/init-workspace.sh" \
+  --workspace-root "$unmanaged_workspace" --no-pi-local >/dev/null 2>&1; then
+  echo "FAIL: unmanaged AGENTS.md should block initialization" >&2
+  exit 1
+fi
+grep -Fq 'user contract' "$unmanaged_workspace/AGENTS.md"
+
+printf '%s\n' 'init-workspace rebuild with ownership: ok'

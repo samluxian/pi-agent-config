@@ -12,6 +12,8 @@ in project-scoped skills, not this always-loaded file.
 - Ask one short question before widening ambiguous scope.
 - Make the smallest change that solves the request. Do not refactor, reformat,
   rename, reorder, or clean up unrelated content.
+- Design shared behavior as small modules with one owner. Reuse an existing
+  contract or helper instead of duplicating rules, parsing, or workflow logic.
 - Match repository conventions and surface conflicts instead of blending them.
 - Never invent environment names, namespaces, clusters, releases, versions,
   service accounts, project IDs, endpoints, topics, branches, or credentials.
@@ -93,9 +95,10 @@ The skills repository is workspace tooling, not a monorepo. Sibling repositories
 keep independent branches, remotes, histories, and dirty state. Do not combine
 them unless the user explicitly requests and accepts that repository-model change.
 
-Write unspecified investigation or incident reports to `<workspace-root>/docs/`,
-a user-owned work-product path. Use a target repository only when the user names
-that repository and path.
+Write all specifications and unspecified investigation or incident reports to
+`<workspace-root>/docs/`, a user-owned work-product path. A specification must
+not be written inside a target repository unless the user explicitly names that
+repository and path.
 
 Project skills live in `.agents/skills/<name>/`: keep core flow in `SKILL.md`,
 deep procedure in `references/`, repeatable checks in `scripts/`, templates in

@@ -6,7 +6,8 @@ usage() {
   cat <<'EOF'
 Usage: scripts/init-workspace.sh [--workspace-root <path>] [--no-pi-local] [--check]
 
-Create relative symlinks for the workspace contract and project-scoped skills:
+Rebuild the managed workspace contract, skills, extensions, and dependencies.
+Unknown extensions are preserved; unmanaged contract paths stop installation.
 
   <workspace-root>/AGENTS.md       -> <skills-repo>/AGENTS.md
   <workspace-root>/.agents/skills -> <skills-repo>/.agents/skills
@@ -87,6 +88,7 @@ pi_dir="$workspace_root/.pi"
 pi_settings="$pi_dir/settings.json"
 extensions_source="$skills_repo/extensions"
 extensions_destination="$pi_dir/extensions"
+managed_manifest="$pi_dir/pi-agent-config-managed.json"
 dependencies_manifest="$skills_repo/package.json"
 web_access_package="npm:pi-web-access@0.23.0"
 web_access_destination="$pi_dir/npm/node_modules/pi-web-access"
@@ -108,25 +110,74 @@ is_desired_extension() {
   local candidate="$1"
   local extension_name
   for extension_name in "${extension_names[@]}"; do
-    if [[ "$candidate" == "$extension_name" ]]; then
-      return 0
-    fi
+    [[ "$candidate" == "$extension_name" ]] && return 0
   done
   return 1
 }
 
-find_unwanted_extensions() {
+load_managed_extensions() {
+  [[ -f "$managed_manifest" ]] || {
+    # First upgrade from the legacy installer: current source names are the only
+    # extension paths we may safely claim. Unknown workspace extensions remain.
+    printf '%s\n' "${extension_names[@]}"
+    return 0
+  }
+  MANAGED_MANIFEST="$managed_manifest" node <<'NODE'
+const fs = require("node:fs");
+const manifestPath = process.env.MANAGED_MANIFEST;
+let manifest;
+try {
+  manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+} catch {
+  console.error(`error: invalid managed manifest: ${manifestPath}`);
+  process.exit(1);
+}
+if (manifest.version !== 1 || !Array.isArray(manifest.extensions)) {
+  console.error(`error: unsupported managed manifest: ${manifestPath}`);
+  process.exit(1);
+}
+for (const name of manifest.extensions) {
+  if (typeof name !== "string" || !/^[A-Za-z0-9._-]+$/.test(name) || name === "." || name === "..") {
+    console.error(`error: unsafe extension name in managed manifest: ${manifestPath}`);
+    process.exit(1);
+  }
+  console.log(name);
+}
+NODE
+}
+
+managed_extensions_output="$(load_managed_extensions)"
+mapfile -t managed_extension_names < <(printf '%s' "$managed_extensions_output")
+
+is_managed_extension() {
+  local candidate="$1"
+  local extension_name
+  for extension_name in "${managed_extension_names[@]}"; do
+    [[ "$candidate" == "$extension_name" ]] && return 0
+  done
+  return 1
+}
+
+find_unmanaged_extensions() {
   local candidate
   [[ -d "$extensions_destination" ]] || return 0
   while IFS= read -r candidate; do
-    if ! is_desired_extension "$candidate"; then
-      printf '%s\n' "$candidate"
-    fi
+    is_managed_extension "$candidate" || printf '%s\n' "$candidate"
   done < <(
     find "$extensions_destination" -mindepth 1 -maxdepth 1 \
       \( \( -type d -o -type l \) ! -name node_modules \
       -o -type f \( -name '*.ts' -o -name '*.js' \) \) -printf '%f\n' | sort
   )
+}
+
+write_managed_manifest() {
+  local temporary_manifest="${managed_manifest}.tmp"
+  MANAGED_MANIFEST="$temporary_manifest" EXTENSION_NAMES="$(printf '%s\n' "${extension_names[@]}")" node <<'NODE'
+const fs = require("node:fs");
+const names = process.env.EXTENSION_NAMES.split("\n").filter(Boolean).sort();
+fs.writeFileSync(process.env.MANAGED_MANIFEST, `${JSON.stringify({ version: 1, extensions: names }, null, 2)}\n`);
+NODE
+  mv -- "$temporary_manifest" "$managed_manifest"
 }
 
 web_access_status() {
@@ -178,8 +229,8 @@ if $check_only; then
     fi
   done
   while IFS= read -r extension_name; do
-    echo "Pi extension ($extension_name): unwanted"
-  done < <(find_unwanted_extensions)
+    echo "Pi extension ($extension_name): unmanaged (preserved)"
+  done < <(find_unmanaged_extensions)
   if [[ -f "$extensions_destination/package.json" ]] && cmp -s -- "$dependencies_manifest" "$extensions_destination/package.json"; then
     echo "Pi extension manifest: ready"
   else
@@ -232,11 +283,6 @@ create_link() {
   local source="$2"
   local relative_source
 
-  if [[ -L "$destination" ]]; then
-    echo "already initialized: $destination -> $(readlink -- "$destination")"
-    return 0
-  fi
-
   relative_source="$(realpath --relative-to="$(dirname -- "$destination")" "$source")"
   ln -s -- "$relative_source" "$destination"
   echo "initialized: $destination -> $relative_source"
@@ -246,6 +292,10 @@ if [[ ! -d "$agents_dir" ]]; then
   mkdir -- "$agents_dir"
 fi
 
+# Preflight above proves both paths are either absent or managed links. Rebuild
+# them on every install so the result never depends on stale symlink text.
+[[ -L "$agents_destination" ]] && rm -- "$agents_destination"
+[[ -L "$skills_destination" ]] && rm -- "$skills_destination"
 create_link "$agents_destination" "$agents_source"
 create_link "$skills_destination" "$skills_source"
 
@@ -261,30 +311,27 @@ if $pi_local; then
     exit 1
   fi
 
-  while IFS= read -r extension_name; do
-    extension_destination="$extensions_destination/$extension_name"
-    rm -rf -- "$extension_destination"
-    echo "Pi extension removed (not in source): $extension_destination"
-  done < <(find_unwanted_extensions)
+  # Remove only paths recorded as managed, plus current source names for the
+  # first upgrade from the legacy installer. Unknown extensions are preserved.
+  printf '%s\n' "${managed_extension_names[@]}" "${extension_names[@]}" | sort -u |
+    while IFS= read -r extension_name; do
+      [[ -n "$extension_name" ]] || continue
+      extension_destination="$extensions_destination/$extension_name"
+      if [[ -e "$extension_destination" || -L "$extension_destination" ]]; then
+        rm -rf -- "$extension_destination"
+        echo "Pi extension removed for reinstall: $extension_destination"
+      fi
+    done
 
   for extension_name in "${extension_names[@]}"; do
     extension_source="$extensions_source/$extension_name"
     extension_destination="$extensions_destination/$extension_name"
-    if [[ -d "$extension_destination" ]] && diff -qr -- "$extension_source" "$extension_destination" >/dev/null; then
-      echo "Pi extension ready: $extension_destination"
-      continue
-    fi
-
-    if [[ -e "$extension_destination" || -L "$extension_destination" ]]; then
-      rm -rf -- "$extension_destination"
-      cp -a -- "$extension_source" "$extension_destination"
-      echo "Pi extension updated: $extension_destination"
-    else
-      cp -a -- "$extension_source" "$extension_destination"
-      echo "Pi extension installed: $extension_destination"
-    fi
+    cp -a -- "$extension_source" "$extension_destination"
+    echo "Pi extension installed: $extension_destination"
   done
 
+  rm -rf -- "$extensions_destination/node_modules"
+  rm -f -- "$extensions_destination/package.json" "$extensions_destination/package-lock.json"
   cp -- "$dependencies_manifest" "$extensions_destination/package.json"
   (cd "$extensions_destination" && npm install --omit=dev --omit=peer)
   echo "Pi extension dependencies installed: $extensions_destination/node_modules"
@@ -319,4 +366,6 @@ NODE
     exit 1
   fi
   echo "Pi package ready: $web_access_package"
+  write_managed_manifest
+  echo "Pi managed manifest written: $managed_manifest"
 fi

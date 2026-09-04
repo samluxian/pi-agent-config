@@ -72,9 +72,10 @@ Scanner 只回報類別與位置，不輸出 terms。完整規則與 Git history
 └── docs/
 ```
 
-使用者要求調查或事故報告、但未指定路徑時，agent 預設寫入
-`<workspace-root>/docs/`，不會寫進 application 或其他 target repository。這個位置是
-user-owned work product，不屬於本 repository 的公開文件範圍。
+Agent 產出的規格文件一律預設寫入 `<workspace-root>/docs/`。使用者未指定路徑的調查或
+事故報告也寫在同一位置，不會寫進 application 或其他 target repository。只有使用者明確
+指定 target repository 與路徑時，規格文件才能寫入該 repository。`<workspace-root>/docs/`
+是 user-owned work product，不屬於本 repository 的公開文件範圍。
 
 Initializer 不依賴固定的 workspace 名稱或使用者家目錄。
 
@@ -130,10 +131,12 @@ Initializer 會建立或協調以下 workspace-local 資源：
 <workspace-root>/.pi/npm/node_modules/pi-web-access
 ```
 
-`AGENTS.md` 與 `.agents/skills` 是指向本 repository canonical files 的相對 symlink。
-Extensions 則複製到 workspace 的 `.pi/extensions`：安裝缺少的 extension、更新已有差異的
-copy，並移除本 repository 不再提供的 workspace-local extension。腳本也會安裝 extension
-dependencies 與 pinned `npm:pi-web-access@0.23.0` project package。
+每次執行 initializer 都會重建 `AGENTS.md` 與 `.agents/skills` 相對 symlink，並重新安裝
+本 repository 管理的 extensions。`<workspace-root>/.pi/pi-agent-config-managed.json` 記錄上一版
+安裝的 extension 名稱；initializer 只刪除這份 manifest 與目前 source 列出的 extension，其他
+使用者自建 extension 會保留。若 `AGENTS.md` 或 `.agents/skills` 是一般檔案、目錄，或指向其他
+來源的 symlink，initializer 會在清除前停止。腳本也會重建 extension dependencies，並安裝
+pinned `npm:pi-web-access@0.23.0` project package。
 
 Initializer 不管理 global Pi extensions 或 `~/.pi/agent/extensions`。
 
@@ -175,7 +178,7 @@ make workspace-check WORKSPACE_ROOT=<workspace-root>
 
 - `AGENTS.md` 與 skills symlink 是否存在；
 - Pi executable 的位置；
-- 每個 extension 是 `ready`、`missing`、`drifted` 或 `unwanted`；
+- 每個受管理 extension 是 `ready`、`missing` 或 `drifted`；未受管理的 extension 顯示為 `unmanaged (preserved)`；
 - extension manifest 與 dependencies 狀態；
 - `pi-web-access@0.23.0` 是否已安裝並註冊。
 
