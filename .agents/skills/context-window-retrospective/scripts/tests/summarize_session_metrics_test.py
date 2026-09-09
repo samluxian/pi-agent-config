@@ -109,8 +109,47 @@ def main() -> None:
     assert metrics["reviewers"]["totalDurationMs"] == 1200
     assert metrics["reviewers"]["totalToolCount"] == 4
     assert metrics["reviewers"]["verdicts"] == {"blocked": 1}
+    assert metrics["initiativeSignals"] == {
+        "assistantTurnsWithoutTools": 0,
+        "userFollowupsAfterToollessAssistant": 0,
+        "toolResumptionsAfterFollowup": 0,
+        "interpretation": "review-candidates-not-proof",
+    }
     assert "abandoned" not in MODULE.render_text(metrics)
-    print("OK: bounded active-window metrics fixture")
+
+    initiative_entries = [
+        {
+            "type": "message",
+            "id": "i1",
+            "parentId": None,
+            "message": {"role": "assistant", "content": [{"type": "text", "text": "ask user"}]},
+        },
+        {
+            "type": "message",
+            "id": "i2",
+            "parentId": "i1",
+            "message": {"role": "user", "content": "follow up"},
+        },
+        {
+            "type": "message",
+            "id": "i3",
+            "parentId": "i2",
+            "message": {
+                "role": "assistant",
+                "content": [{"type": "toolCall", "name": "bash", "arguments": {}}],
+            },
+        },
+    ]
+    initiative_metrics = MODULE.summarize(initiative_entries)
+    assert initiative_metrics["initiativeSignals"] == {
+        "assistantTurnsWithoutTools": 1,
+        "userFollowupsAfterToollessAssistant": 1,
+        "toolResumptionsAfterFollowup": 1,
+        "interpretation": "review-candidates-not-proof",
+    }
+    assert "ask user" not in MODULE.render_text(initiative_metrics)
+    assert "follow up" not in MODULE.render_text(initiative_metrics)
+    print("OK: bounded active-window and initiative-signal fixtures")
 
 
 if __name__ == "__main__":

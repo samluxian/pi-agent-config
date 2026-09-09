@@ -37,6 +37,20 @@ Compare required evidence with executed checks. Count repeated or timed-out work
 but do not call all elapsed time waste. Distinguish a necessary correction from
 a preventable retry. Do not rank people or infer productivity from tool counts.
 
+## Initiative Gaps
+
+Use the visible conversation to identify work that required avoidable user prompting:
+
+- the agent asked for an identifier available from safe context discovery
+- the agent stopped while a permitted decisive read-only check remained
+- the user had to request live, pipeline, state, or validation evidence already in scope
+- the agent described a check instead of executing it with an available tool
+
+Treat metric-only follow-up signals as review candidates, not proof. Do not count
+approval, mutation handoff, missing authentication, secret boundaries, ambiguous
+scope, or a failed decisive check as passivity. Name the exact owning rule, skill,
+extension, or parent decision that caused a supported gap.
+
 ## Optimization Plan
 
 Prioritize `P0` correctness/safety, `P1` latency/context cost, then `P2`
@@ -52,10 +66,10 @@ Summary:
 - Work completed and remaining gaps
 
 Metrics:
-- Window boundary, reviewer duration/tools/verdicts, retries, and unavailable data
+- Window boundary, reviewer duration/tools/verdicts, retries, follow-up signals, and unavailable data
 
 Findings:
-- Required checks, excessive checks, mistakes, and root causes
+- Required checks, excessive checks, mistakes, initiative gaps, and root causes
 
 Optimization plan:
 - P0/P1/P2 change, owner, validation, benefit, and risk

@@ -87,6 +87,7 @@ def summarize(entries: list[dict[str, Any]]) -> dict[str, Any]:
     tool_results: Counter[str] = Counter()
     tool_errors = 0
     reviewer_records: list[dict[str, Any]] = []
+    conversation_turns: list[dict[str, Any]] = []
 
     for entry in window:
         if entry.get("type") != "message":
@@ -98,14 +99,19 @@ def summarize(entries: list[dict[str, Any]]) -> dict[str, Any]:
         if isinstance(role, str):
             message_counts[role] += 1
 
+        assistant_has_tool = False
         if role == "assistant":
             content = message.get("content")
             if isinstance(content, list):
                 for part in content:
                     if isinstance(part, dict) and part.get("type") == "toolCall":
+                        assistant_has_tool = True
                         name = part.get("name")
                         if isinstance(name, str):
                             tool_calls[name] += 1
+
+        if role in {"user", "assistant"}:
+            conversation_turns.append({"role": role, "hasTool": assistant_has_tool})
 
         if role != "toolResult":
             continue
@@ -142,6 +148,25 @@ def summarize(entries: list[dict[str, Any]]) -> dict[str, Any]:
                 }
             )
 
+    assistant_turns_without_tools = sum(
+        turn["role"] == "assistant" and not turn["hasTool"]
+        for turn in conversation_turns
+    )
+    user_followups_after_toolless_assistant = sum(
+        conversation_turns[index]["role"] == "user"
+        and conversation_turns[index - 1]["role"] == "assistant"
+        and not conversation_turns[index - 1]["hasTool"]
+        for index in range(1, len(conversation_turns))
+    )
+    tool_resumptions_after_followup = sum(
+        conversation_turns[index]["role"] == "assistant"
+        and conversation_turns[index]["hasTool"]
+        and conversation_turns[index - 1]["role"] == "user"
+        and conversation_turns[index - 2]["role"] == "assistant"
+        and not conversation_turns[index - 2]["hasTool"]
+        for index in range(2, len(conversation_turns))
+    )
+
     verdicts = Counter(record["verdict"] for record in reviewer_records)
     return {
         "window": {
@@ -156,6 +181,12 @@ def summarize(entries: list[dict[str, Any]]) -> dict[str, Any]:
         "toolCalls": dict(sorted(tool_calls.items())),
         "toolResults": dict(sorted(tool_results.items())),
         "toolErrors": tool_errors,
+        "initiativeSignals": {
+            "assistantTurnsWithoutTools": assistant_turns_without_tools,
+            "userFollowupsAfterToollessAssistant": user_followups_after_toolless_assistant,
+            "toolResumptionsAfterFollowup": tool_resumptions_after_followup,
+            "interpretation": "review-candidates-not-proof",
+        },
         "reviewers": {
             "count": len(reviewer_records),
             "totalDurationMs": sum(record["durationMs"] for record in reviewer_records),
@@ -171,6 +202,7 @@ def summarize(entries: list[dict[str, Any]]) -> dict[str, Any]:
 def render_text(metrics: dict[str, Any]) -> str:
     window = metrics["window"]
     reviewers = metrics["reviewers"]
+    initiative = metrics["initiativeSignals"]
     duration_seconds = reviewers["totalDurationMs"] / 1000
     lines = [
         f"window_mode={window['mode']}",
@@ -180,6 +212,7 @@ def render_text(metrics: dict[str, Any]) -> str:
         f"tool_calls={json.dumps(metrics['toolCalls'], sort_keys=True)}",
         f"tool_results={json.dumps(metrics['toolResults'], sort_keys=True)}",
         f"tool_errors={metrics['toolErrors']}",
+        f"initiative_signals={json.dumps(initiative, sort_keys=True)}",
         f"reviewer_count={reviewers['count']}",
         f"reviewer_duration_seconds={duration_seconds:.1f}",
         f"reviewer_tool_count={reviewers['totalToolCount']}",

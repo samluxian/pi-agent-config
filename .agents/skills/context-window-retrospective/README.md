@@ -1,7 +1,8 @@
 # Context Window Retrospective
 
-這個 skill 用有限的 session metrics 回顧目前 Pi context window，找出重複讀取、無效重試、
-過量驗證或錯誤決策，再整理成可執行的改善計畫。Agent 執行規則以
+這個 skill 用有限的 session metrics 與目前可見對話回顧 Pi context window，找出重複讀取、
+無效重試、過量驗證、錯誤決策，以及需要使用者提醒才繼續的 initiative gap，再整理成可執行
+的改善計畫。Agent 執行規則以
 [`SKILL.md`](SKILL.md) 為準。
 
 ## 何時使用
@@ -29,14 +30,17 @@
 2. 只統計 checkpoint 之後的 session entries。
 3. 從 session file 取得 tool、subagent、reviewer、retry 與 token 等 bounded metrics。
 4. 對照可見對話、最後 repository 狀態與 reviewer conclusions。
-5. 把問題分類為 task outcome、parent planning、reviewer、skill 或 extension。
-6. 依 correctness/safety、context/latency、便利性排序改善項目。
+5. 檢查 Agent 是否反問可安全查得的 identifier、提早停止，或等使用者提醒才讀取 live、pipeline、state 或 validation evidence。
+6. 排除必要 approval、mutation handoff、缺少 authentication、secret boundary 與真實 scope ambiguity，避免把安全停點誤判成被動。
+7. 把問題分類為 task outcome、parent planning、reviewer、skill 或 extension。
+8. 依 correctness/safety、context/latency、便利性排序改善項目。
 
 ## 資料邊界
 
-Metrics script 只輸出 counts 與有限的 reviewer metadata，不輸出 message text、prompts、
-commands、diffs、logs 或 secret values。缺少 session file 或無法證明因果時，結果必須標示
-為 gap，而不是猜測。
+Metrics script 只輸出 counts、有限的 reviewer metadata，以及不含內容的 follow-up signals；
+不輸出 message text、prompts、commands、diffs、logs 或 secret values。Follow-up signal 只用來
+定位需要語意 review 的回合，不能單獨證明 Agent 被動。缺少 session file 或無法證明因果時，
+結果必須標示為 gap，而不是猜測。
 
 ## 工具入口
 
