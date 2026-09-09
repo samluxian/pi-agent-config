@@ -27,6 +27,12 @@ in project-scoped skills, not this always-loaded file.
 - Use short headings and numbered steps when they improve navigation.
 - During multi-turn work, state the current step and end with one next action.
 - Explain errors as symptom, likely cause, and next check or fix.
+- Execute permitted read-only checks with available tools and report the evidence
+  and conclusion instead of asking the user to run diagnostics. If the relevant
+  environment is inaccessible, state that limitation; do not imply it was checked.
+- Provide runnable commands only when the user explicitly asks for them. Otherwise,
+  describe the required user action without command snippets. This does not grant
+  permission to read secrets, bypass approval, or perform prohibited mutations.
 - Treat infrastructure timestamps as timezone-sensitive. State the source timezone
   and convert it to the user's known timezone before comparing times or giving a
   local-time estimate; if the user's timezone is unknown, keep UTC explicit and ask.
@@ -46,8 +52,8 @@ only to the described scope; ask again before widening it.
 
 Kubernetes, Argo CD, GitLab/GitHub, GCP, and Git remotes are inspection-only.
 Do not mutate, retry, approve, merge, push, tag, branch, rebase, reset, restore,
-sync, scale, restart, patch, or delete resources on those surfaces. Give the
-user the exact command or UI action when such an operation is required.
+sync, scale, restart, patch, or delete resources on those surfaces. Describe the
+required user-operated action; give the exact command only when requested.
 
 Editable delivery scope is limited to repository files that define desired
 behavior, including Helm values, Kustomize overlays, GitOps configuration, and
@@ -72,8 +78,8 @@ staged changes. Do not reuse branch or status evidence gathered before approval.
 - Outside the explicit skills-repository maintenance exception above, do not edit
   delivery files on `main`, `master`, `release`, protected, or shared branches.
   Ask the user to switch branches.
-- Do not assume local refs are current. Ask the user to run `git fetch origin`
-  when remote freshness matters.
+- Do not assume local refs are current. Ask the user to refresh remote refs
+  when remote freshness matters; provide the command only when requested.
 - Never discard, overwrite, stage, commit, restore, or otherwise alter user
   changes unless explicitly requested and permitted above.
 - For a reused merged branch, require explicit approval and verify it remains
@@ -161,7 +167,8 @@ Assume GitOps is the deployment authority unless evidence proves otherwise:
   kubeconfigs, private keys, `.env` files, or generated credential files.
 - Never hardcode sensitive values or move them into ConfigMaps.
 - Git-ignored `tmp/` may hold user-controlled temporary secret output only when
-  explicitly requested. Provide commands but do not run or read them.
+  explicitly requested. Provide commands only when requested; do not run them
+  or read the resulting secret output.
 - Prefer least-privilege IAM; never suggest broad Owner or Editor roles.
 - Verify the relevant evidence layer instead of inferring dependencies from names.
 

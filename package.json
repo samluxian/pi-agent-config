@@ -15,8 +15,7 @@
   "pi": {
     "extensions": [
       "./extensions/humanizer",
-      "./extensions/subagents",
-      "./extensions/workspace-memory"
+      "./extensions/subagents"
     ],
     "skills": ["./.agents/skills"]
   },

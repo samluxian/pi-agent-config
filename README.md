@@ -36,6 +36,10 @@ repository 的 desired state，再走原有 MR、CI 與 GitOps 流程。Agent回
 並在已知使用者時區時先換算再比較或估計；未知時則明確保留UTC並詢問。完整規則以
 [`AGENTS.md`](AGENTS.md) 為準。
 
+Agent 會直接執行工具可存取且規則允許的唯讀檢查，整理證據並給出結論，不把診斷工作
+交回使用者。無法存取目標環境時會明確說明限制。只有使用者明確要求時才提供操作命令；
+需要使用者處理的操作則先說明動作與原因。機密禁讀、修改核准及遠端唯讀限制不變。
+
 ## 公開內容安全
 
 本 repository 的 `AGENTS.md`、skills、extensions、scripts、fixtures、configuration 與文件
@@ -232,7 +236,6 @@ skill-owned deterministic helper 時，優先使用單一 bounded helper，避�
 | --- | --- |
 | `humanizer` | [`extensions/humanizer/README.md`](extensions/humanizer/README.md) |
 | `subagents` | [`extensions/subagents/README.md`](extensions/subagents/README.md) |
-| `workspace-memory` | [`extensions/workspace-memory/README.md`](extensions/workspace-memory/README.md) |
 
 ## Skill 入口
 
