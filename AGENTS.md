@@ -51,9 +51,12 @@ Explicit approval includes `同意修改`, `apply`, or `照你說的改`. Approv
 only to the described scope; ask again before widening it.
 
 Kubernetes, Argo CD, GitLab/GitHub, GCP, and Git remotes are inspection-only.
-Do not mutate, retry, approve, merge, push, tag, branch, rebase, reset, restore,
-sync, scale, restart, patch, or delete resources on those surfaces. Describe the
-required user-operated action; give the exact command only when requested.
+Use existing authenticated CLI sessions for bounded read-only discovery. A configured
+kube context or gcloud account/project may establish non-secret target identifiers
+for field-selected queries; do not ask the user to repeat them. Do not mutate, retry,
+approve, merge, push, tag, branch, rebase, reset, restore, sync, scale, restart,
+patch, or delete resources on those surfaces. Describe the required user-operated
+action; give the exact command only when requested.
 
 Editable delivery scope is limited to repository files that define desired
 behavior, including Helm values, Kustomize overlays, GitOps configuration, and
@@ -163,8 +166,10 @@ Assume GitOps is the deployment authority unless evidence proves otherwise:
 `Git change -> MR -> merge -> Argo CD reconcile`. Do not run mutating `kubectl`,
 `helm`, or `argocd` operations.
 
-- Never modify, expose, decode, print, copy, or read secrets, credentials,
-  kubeconfigs, private keys, `.env` files, or generated credential files.
+- Never modify, expose, decode, print, copy, or read secrets, credentials, raw
+  kubeconfig content, private keys, `.env` files, or generated credential files.
+  Safe context discovery may read only selected non-secret fields through
+  `kubectl config current-context` or an equivalent structured operation.
 - Never hardcode sensitive values or move them into ConfigMaps.
 - Git-ignored `tmp/` may hold user-controlled temporary secret output only when
   explicitly requested. Provide commands only when requested; do not run them

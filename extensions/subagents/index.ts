@@ -795,7 +795,7 @@ export default function (pi: ExtensionAPI) {
 			"Use direct read/fetch tool calls for simple known-path I/O instead of subagent.",
 			"Use subagent by default when read-only evidence acquisition requires multiple searches or reads, covers several large sources, or would fill the parent context with replaceable raw output. Also use it for explicit delegation requests.",
 			"Keep planning, decisions, approval context, evidence reconciliation, validation responsibility, and final delivery judgment in the parent.",
-			"Scout, researcher, and environment-scout are read-only. Environment-scout may use only structured kubectl/gcloud inspection for explicitly named targets. Use worker only after explicit user approval and exact file ownership; never delegate mutation of remotes, infrastructure, cloud, secrets, or Git.",
+			"Scout, researcher, and environment-scout are read-only. Environment-scout may use structured kubectl/gcloud context discovery, then inspect only explicit or safely discovered targets. Use worker only after explicit user approval and exact file ownership; never delegate mutation of remotes, infrastructure, cloud, secrets, or Git.",
 			"Worker is single-mode only. Use at most four parallel read-only tasks and include all paths, constraints, and required output because subagents receive no parent-session context.",
 		],
 		parameters: Type.Object({

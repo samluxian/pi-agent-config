@@ -45,6 +45,11 @@ another layout until its backend, command, ownership, and review adapter exists.
    `No changes.` or an explicit zero-action summary as no-op. Continue independent
    root plans after a root-local failure; stop related roots on shared authentication,
    state-lock, backend, ownership, or safety failure.
+7. When an MR or pipeline identifier is available, inspect the actual GitLab
+   pipeline with the existing `gitops-state-diagnostics` pipeline summarizer.
+   Report its status, commit SHA, plan job status, import/add/change/destroy/replace
+   counts, warnings, errors, and unexpected drift separately from the local plan.
+   Never retry a job, trigger a pipeline, approve, merge, or apply.
 
 Load deeper guidance only when needed:
 
@@ -67,5 +72,7 @@ failures. Never save plan files or print sensitive state, plan output, or secret
 ## Domain Reporting
 
 In the workspace report, name every affected root/service/environment and include
-fmt/validate/plan status, add/change/destroy/replace counts, unexpected drift,
+fmt/validate/local-plan status, add/change/destroy/replace counts, unexpected drift,
 important unknowns, and IAM, network, state, replacement, and runtime findings.
+When GitLab pipeline evidence exists, also name its pipeline/job status and SHA,
+and state whether its plan agrees with the local plan.

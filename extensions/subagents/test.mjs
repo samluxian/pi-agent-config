@@ -108,6 +108,8 @@ test("loads three read-only profiles plus the Terra medium worker", () => {
   assert.equal(agents.get("environment-scout").model, "openai-codex/gpt-5.6-luna");
   assert.equal(agents.get("environment-scout").thinking, "medium");
   assert.deepEqual(agents.get("environment-scout").tools, ["kubectl_inspect", "gcloud_inspect"]);
+  assert.match(agents.get("environment-scout").systemPrompt, /use the existing kube context and authenticated gcloud configuration/);
+  assert.match(agents.get("environment-scout").systemPrompt, /Never retrieve Secret or ConfigMap contents, tokens, credentials/);
   assert.equal(agents.get("worker").model, "openai-codex/gpt-5.6-terra");
   assert.equal(agents.get("worker").thinking, "medium");
   assert.deepEqual(agents.get("worker").tools, ["read", "write", "edit", "safe_bash", "web_search", "fetch_content", "subagent"]);
@@ -256,6 +258,16 @@ test("allows a worker to complete after an approved edit without a reviewer", as
 });
 
 test("builds only fixed read-only kubectl and gcloud argv", () => {
+  assert.deepEqual(buildKubectlCommands({ operation: "current_context" }), [{
+    label: "current context",
+    command: "kubectl",
+    args: ["config", "current-context"],
+  }]);
+  assert.deepEqual(buildGcloudCommands({ operation: "active_context" }), [{
+    label: "active gcloud context",
+    command: "gcloud",
+    args: ["config", "list", "account,core/project", "--format=json"],
+  }]);
   assert.deepEqual(buildKubectlCommands({ operation: "pods", namespace: "apps", selector: "app=api" }), [{
     label: "pods",
     command: "kubectl",

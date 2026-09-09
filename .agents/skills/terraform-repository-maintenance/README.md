@@ -31,7 +31,8 @@
 4. 分開官方 guidance、repository policy、current implementation 與 remote plan evidence。
 5. 修改前提出 exact files、plan expectation、IAM/network/state risk 與 validation。
 6. 保留 state addresses、`for_each` keys 與 infrastructure identifiers。
-7. 每個 affected root/environment 由 parent 或 approved worker 執行 fmt、validation 與 unsaved plan。
+7. 每個 affected root/environment 由 parent 或 approved worker 執行 fmt、validation 與 unsaved local plan。
+8. MR 或 pipeline identifier 已知時，讀取實際 GitLab pipeline 與 plan job，分開回報 CI plan 和 local plan；不會 retry、trigger、approve、merge 或 apply。
 
 ## 入口
 
@@ -51,7 +52,8 @@ state、credentials 或 secret values。
 
 ## Domain evidence
 
-Workspace report 需列出每個 affected root/service/environment、fmt/validate/plan status、
+Workspace report 需列出每個 affected root/service/environment、fmt/validate/local-plan status、
 add/change/destroy/replace counts、unexpected drift、important unknowns，以及 IAM、network、
-state、replacement 與 runtime findings。`No changes.` 或明確 zero-action summary 才能支持
-no-op 結論。
+state、replacement 與 runtime findings。GitLab pipeline evidence 存在時，也會列出 pipeline、
+plan job、commit SHA，並比對 CI plan 與 local plan。`No changes.` 或明確 zero-action summary
+才能支持 no-op 結論。

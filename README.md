@@ -37,8 +37,12 @@ repository 的 desired state，再走原有 MR、CI 與 GitOps 流程。Agent回
 [`AGENTS.md`](AGENTS.md) 為準。
 
 Agent 會直接執行工具可存取且規則允許的唯讀檢查，整理證據並給出結論，不把診斷工作
-交回使用者。無法存取目標環境時會明確說明限制。只有使用者明確要求時才提供操作命令；
-需要使用者處理的操作則先說明動作與原因。機密禁讀、修改核准及遠端唯讀限制不變。
+交回使用者。它可以先從既有 kube context 或 authenticated gcloud configuration 取得非敏感
+context、account 與 project identifiers，再執行具名、欄位化且有輸出上限的資源查詢；不會
+讀取 raw kubeconfig、token 或 credential。Terraform MR 或 pipeline identifier 已知時，Agent
+也會讀取實際 pipeline 與 plan job，分開回報 CI plan 和 local plan。無法存取目標環境時會
+明確說明限制。只有使用者明確要求時才提供操作命令；需要使用者處理的操作則先說明動作
+與原因。機密禁讀、修改核准及遠端唯讀限制不變。
 
 ## 公開內容安全
 

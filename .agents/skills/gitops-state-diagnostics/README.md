@@ -43,7 +43,8 @@ field、mismatch 或 readiness claim 出現時擴大。
 
 - [`references/troubleshooting-matrix.md`](references/troubleshooting-matrix.md)：依 symptom 選擇最小 probe。
 - [`scripts/diagnostics_flow.sh`](scripts/diagnostics_flow.sh)：固定 repository、Helm、manifest、
-  pipeline、Argo CD 與 Workload Identity 摘要入口。
+  pipeline、Argo CD 與 Workload Identity 摘要入口。Pipeline 摘要會讀取 plan job 的 bounded
+  trace，回報 commit SHA、job status、import/add/change/destroy/replace counts 與警告／錯誤。
 - [`assets/evidence-matrix-template.md`](assets/evidence-matrix-template.md)：expected/actual evidence 表。
 - [`assets/render-checklist-template.md`](assets/render-checklist-template.md)：render 檢查清單。
 - [`../../shared/gitops/scripts/`](../../shared/gitops/scripts/)：共用 repository preflight 與 Helm render helpers。

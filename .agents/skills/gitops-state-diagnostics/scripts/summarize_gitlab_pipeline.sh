@@ -6,9 +6,9 @@ usage() {
 Usage:
   summarize_gitlab_pipeline.sh <project-path> <pipeline-id>
 
-Reads GitLab pipeline metadata, jobs, and failed-job trace key lines through
-glab, then prints compact JSON. This script is read-only and intentionally does
-not print full job traces.
+Reads GitLab pipeline metadata, jobs, Terraform plan summaries, and failed-job
+trace key lines through glab, then prints compact JSON. This script is read-only
+and intentionally does not print full job traces.
 
 Examples:
   summarize_gitlab_pipeline.sh <organization>/<application-repository> <pipeline-id>
@@ -68,6 +68,10 @@ KEY_RE = re.compile(
     r"MATCHED_TARGET_FOLDERS|No services|No GitOps target|helm upgrade|"
     r"imageTag|buildSelectedImages|SUCCESS)"
 )
+PLAN_RE = re.compile(r"(Plan:\s|No changes\.|Warning:|Error:|must be replaced)")
+PLAN_COUNTS_RE = re.compile(
+    r"Plan:\s*(?:(\d+) to import,\s*)?(\d+) to add,\s*(\d+) to change,\s*(\d+) to destroy"
+)
 SECRET_RE = re.compile(r"(token|password|secret|credential|authorization|private[_-]?key)", re.I)
 
 
@@ -79,7 +83,7 @@ def safe_line(line: str) -> str:
     return line[:300]
 
 
-def trace_key_lines(job_id: int) -> list[dict[str, str | int]]:
+def trace_key_lines(job_id: int, pattern: re.Pattern[str] = KEY_RE, limit: int = 80) -> list[dict[str, str | int]]:
     trace_path = trace_dir / f"{job_id}.log"
     try:
         trace = subprocess.check_output(
@@ -92,9 +96,27 @@ def trace_key_lines(job_id: int) -> list[dict[str, str | int]]:
     trace_path.write_text(trace)
     out = []
     for number, line in enumerate(trace.splitlines(), start=1):
-        if KEY_RE.search(line):
+        if pattern.search(line):
             out.append({"line": number, "text": safe_line(line)})
-    return out[-80:]
+    return out[-limit:]
+
+
+def terraform_plan_summary(lines: list[dict[str, str | int]]) -> dict[str, int] | None:
+    texts = [str(line["text"]) for line in lines]
+    for text in reversed(texts):
+        match = PLAN_COUNTS_RE.search(text)
+        if match:
+            imported, added, changed, destroyed = match.groups()
+            return {
+                "import": int(imported or 0),
+                "add": int(added),
+                "change": int(changed),
+                "destroy": int(destroyed),
+                "replace": sum("must be replaced" in item for item in texts),
+            }
+    if any("No changes." in text for text in texts):
+        return {"import": 0, "add": 0, "change": 0, "destroy": 0, "replace": 0}
+    return None
 
 
 failed_jobs = [job for job in jobs if job.get("status") == "failed"]
@@ -119,6 +141,25 @@ for job in failed_jobs[:5]:
             "name": job.get("name"),
             "stage": job.get("stage"),
             "key_lines": trace_key_lines(job["id"]),
+        }
+    )
+
+plan_trace_summaries = []
+plan_jobs = [
+    job for job in jobs
+    if job.get("stage") == "plan" or re.search(r"(^|[:_-])plan([:_-]|$)", str(job.get("name", "")), re.I)
+]
+for job in plan_jobs[:10]:
+    key_lines = trace_key_lines(job["id"], PLAN_RE, 40)
+    plan_trace_summaries.append(
+        {
+            "id": job.get("id"),
+            "name": job.get("name"),
+            "stage": job.get("stage"),
+            "status": job.get("status"),
+            "commit_sha": (job.get("commit") or {}).get("id"),
+            "counts": terraform_plan_summary(key_lines),
+            "key_lines": key_lines,
         }
     )
 
@@ -161,6 +202,7 @@ output = {
         "web_url": pipeline.get("web_url"),
     },
     "jobs": job_summaries,
+    "plan_traces": plan_trace_summaries,
     "failed_traces": failed_trace_summaries,
     "findings": findings,
 }
