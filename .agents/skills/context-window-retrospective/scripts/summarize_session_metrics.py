@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Summarize bounded workflow metrics for the active post-compaction window."""
+"""Summarize bounded workflow and usage metrics for the active context window."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ import json
 import os
 import re
 import sys
-from collections import Counter
+from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
 
@@ -16,6 +16,8 @@ from typing import Any
 VERDICT_PATTERN = re.compile(
     r"^## Verdict\s*\n\s*-\s*`?(pass|fail|blocked)`?", re.IGNORECASE | re.MULTILINE
 )
+USAGE_FIELDS = ("input", "output", "cacheRead", "cacheWrite", "reasoning", "totalTokens")
+MAX_GROUP_RECORDS = 50
 
 
 def load_entries(session_file: Path) -> list[dict[str, Any]]:
@@ -73,12 +75,57 @@ def reviewer_verdict(result: dict[str, Any]) -> str:
     return "missing"
 
 
+def add_usage(target: Counter[str], usage: Any) -> bool:
+    if not isinstance(usage, dict):
+        target["missingUsage"] += 1
+        return False
+    target["usageRecords"] += 1
+    for field in USAGE_FIELDS:
+        value = usage.get(field)
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            target[field] += value
+    cost = usage.get("cost")
+    if isinstance(cost, dict):
+        total = cost.get("total")
+        if isinstance(total, (int, float)) and not isinstance(total, bool):
+            target["costTotal"] += total
+    return True
+
+
+def text_volume(content: Any) -> tuple[int, int]:
+    if isinstance(content, str):
+        return len(content.encode("utf-8")), 0
+    if not isinstance(content, list):
+        return 0, 0
+    text_bytes = 0
+    image_parts = 0
+    for part in content:
+        if not isinstance(part, dict):
+            continue
+        if part.get("type") == "text" and isinstance(part.get("text"), str):
+            text_bytes += len(part["text"].encode("utf-8"))
+        elif part.get("type") == "image":
+            image_parts += 1
+    return text_bytes, image_parts
+
+
+def usage_groups(
+    records: dict[tuple[str, ...], Counter[str]], labels: tuple[str, ...]
+) -> tuple[list[dict[str, Any]], int]:
+    output: list[dict[str, Any]] = []
+    for key in sorted(records):
+        row = {label: value for label, value in zip(labels, key)}
+        row.update(dict(sorted(records[key].items())))
+        output.append(row)
+    return output[:MAX_GROUP_RECORDS], max(0, len(output) - MAX_GROUP_RECORDS)
+
+
 def summarize(entries: list[dict[str, Any]]) -> dict[str, Any]:
     branch = active_branch(entries)
-    compaction_index = max(
-        (index for index, entry in enumerate(branch) if entry.get("type") == "compaction"),
-        default=-1,
-    )
+    compaction_indexes = [
+        index for index, entry in enumerate(branch) if entry.get("type") == "compaction"
+    ]
+    compaction_index = compaction_indexes[-1] if compaction_indexes else -1
     checkpoint = branch[compaction_index] if compaction_index >= 0 else None
     window = branch[compaction_index + 1 :]
 
@@ -88,10 +135,24 @@ def summarize(entries: list[dict[str, Any]]) -> dict[str, Any]:
     tool_errors = 0
     reviewer_records: list[dict[str, Any]] = []
     conversation_turns: list[dict[str, Any]] = []
+    parent_usage: dict[tuple[str, str, str], Counter[str]] = defaultdict(Counter)
+    subagent_usage: dict[tuple[str, str], Counter[str]] = defaultdict(Counter)
+    tool_result_volume: dict[str, Counter[str]] = defaultdict(Counter)
+    usage_missing_fields: Counter[str] = Counter()
+    thinking_level = "unrecorded-session-default"
 
-    for entry in window:
-        if entry.get("type") != "message":
+    checkpoint_usage: Counter[str] = Counter()
+    if checkpoint is not None and checkpoint.get("usage") is not None:
+        add_usage(checkpoint_usage, checkpoint.get("usage"))
+
+    for index, entry in enumerate(branch):
+        entry_type = entry.get("type")
+        if entry_type == "thinking_level_change":
+            value = entry.get("thinkingLevel")
+            thinking_level = value if isinstance(value, str) else "unknown"
+        if index <= compaction_index or entry_type != "message":
             continue
+
         message = entry.get("message")
         if not isinstance(message, dict):
             continue
@@ -109,6 +170,19 @@ def summarize(entries: list[dict[str, Any]]) -> dict[str, Any]:
                         name = part.get("name")
                         if isinstance(name, str):
                             tool_calls[name] += 1
+            provider = message.get("provider")
+            model = message.get("model")
+            key = (
+                provider if isinstance(provider, str) else "unknown",
+                model if isinstance(model, str) else "unknown",
+                thinking_level,
+            )
+            usage = message.get("usage")
+            if add_usage(parent_usage[key], usage):
+                if not isinstance(usage.get("reasoning"), (int, float)):
+                    usage_missing_fields["parentReasoning"] += 1
+            else:
+                usage_missing_fields["parentUsage"] += 1
 
         if role in {"user", "assistant"}:
             conversation_turns.append({"role": role, "hasTool": assistant_has_tool})
@@ -116,19 +190,39 @@ def summarize(entries: list[dict[str, Any]]) -> dict[str, Any]:
         if role != "toolResult":
             continue
         tool_name = message.get("toolName")
-        if isinstance(tool_name, str):
-            tool_results[tool_name] += 1
+        tool_name = tool_name if isinstance(tool_name, str) else "unknown"
+        tool_results[tool_name] += 1
         if message.get("isError") is True:
             tool_errors += 1
+
+        byte_count, image_parts = text_volume(message.get("content"))
+        volume = tool_result_volume[tool_name]
+        volume["results"] += 1
+        volume["textBytes"] += byte_count
+        volume["maxResultTextBytes"] = max(volume["maxResultTextBytes"], byte_count)
+        volume["imageParts"] += image_parts
+
         if tool_name != "subagent":
             continue
-
         details = message.get("details")
         results = details.get("results") if isinstance(details, dict) else None
         if not isinstance(results, list):
             continue
         for result in results:
-            if not isinstance(result, dict) or result.get("agent") != "reviewer":
+            if not isinstance(result, dict):
+                continue
+            agent = result.get("agent")
+            model = result.get("model")
+            child_key = (
+                agent if isinstance(agent, str) else "unknown",
+                model if isinstance(model, str) else "unknown",
+            )
+            subagent_usage[child_key]["results"] += 1
+            usage = result.get("usage")
+            if not add_usage(subagent_usage[child_key], usage):
+                usage_missing_fields["subagentUsage"] += 1
+
+            if result.get("agent") != "reviewer":
                 continue
             progress = result.get("progress")
             progress = progress if isinstance(progress, dict) else {}
@@ -167,6 +261,15 @@ def summarize(entries: list[dict[str, Any]]) -> dict[str, Any]:
         for index in range(2, len(conversation_turns))
     )
 
+    parent_rows, parent_truncated = usage_groups(
+        parent_usage, ("provider", "model", "thinkingLevel")
+    )
+    child_rows, child_truncated = usage_groups(
+        subagent_usage, ("agent", "model")
+    )
+    volume_rows, volume_truncated = usage_groups(
+        {(name,): values for name, values in tool_result_volume.items()}, ("tool",)
+    )
     verdicts = Counter(record["verdict"] for record in reviewer_records)
     return {
         "window": {
@@ -176,11 +279,31 @@ def summarize(entries: list[dict[str, Any]]) -> dict[str, Any]:
             "tokensBefore": checkpoint.get("tokensBefore") if checkpoint else None,
             "activeBranchEntries": len(branch),
             "windowEntries": len(window),
+            "activePathCompactions": len(compaction_indexes),
+            "checkpointUsage": dict(sorted(checkpoint_usage.items())),
         },
         "messages": dict(sorted(message_counts.items())),
         "toolCalls": dict(sorted(tool_calls.items())),
         "toolResults": dict(sorted(tool_results.items())),
         "toolErrors": tool_errors,
+        "toolResultVolume": {
+            "unit": "UTF-8 text bytes, not tokens; image payload bytes excluded",
+            "records": volume_rows,
+            "recordsTruncated": volume_truncated,
+        },
+        "usage": {
+            "parentByModelThinking": parent_rows,
+            "parentRecordsTruncated": parent_truncated,
+            "subagentsByAgentModel": child_rows,
+            "subagentRecordsTruncated": child_truncated,
+            "missingFields": dict(sorted(usage_missing_fields.items())),
+            "semantics": [
+                "reasoning is a reported subset of output; do not add it to totalTokens",
+                "cacheRead is reported separately from uncached input",
+                "parent and subagent records are separate; do not sum duplicate nested tool usage",
+                "provider-reported usage is not a verified invoice",
+            ],
+        },
         "initiativeSignals": {
             "assistantTurnsWithoutTools": assistant_turns_without_tools,
             "userFollowupsAfterToollessAssistant": user_followups_after_toolless_assistant,
@@ -193,8 +316,8 @@ def summarize(entries: list[dict[str, Any]]) -> dict[str, Any]:
             "totalToolCount": sum(record["toolCount"] for record in reviewer_records),
             "timedOut": sum(1 for record in reviewer_records if record["timedOut"]),
             "verdicts": dict(sorted(verdicts.items())),
-            "records": reviewer_records[:50],
-            "recordsTruncated": max(0, len(reviewer_records) - 50),
+            "records": reviewer_records[:MAX_GROUP_RECORDS],
+            "recordsTruncated": max(0, len(reviewer_records) - MAX_GROUP_RECORDS),
         },
     }
 
@@ -203,15 +326,23 @@ def render_text(metrics: dict[str, Any]) -> str:
     window = metrics["window"]
     reviewers = metrics["reviewers"]
     initiative = metrics["initiativeSignals"]
+    usage = metrics["usage"]
     duration_seconds = reviewers["totalDurationMs"] / 1000
     lines = [
         f"window_mode={window['mode']}",
         f"checkpoint_id={window['checkpointId'] or 'none'}",
         f"window_entries={window['windowEntries']}",
+        f"active_path_compactions={window['activePathCompactions']}",
+        f"checkpoint_usage={json.dumps(window['checkpointUsage'], sort_keys=True)}",
         f"messages={json.dumps(metrics['messages'], sort_keys=True)}",
         f"tool_calls={json.dumps(metrics['toolCalls'], sort_keys=True)}",
         f"tool_results={json.dumps(metrics['toolResults'], sort_keys=True)}",
         f"tool_errors={metrics['toolErrors']}",
+        f"tool_result_volume={json.dumps(metrics['toolResultVolume'], sort_keys=True)}",
+        f"parent_usage={json.dumps(usage['parentByModelThinking'], sort_keys=True)}",
+        f"subagent_usage={json.dumps(usage['subagentsByAgentModel'], sort_keys=True)}",
+        f"usage_missing_fields={json.dumps(usage['missingFields'], sort_keys=True)}",
+        f"usage_semantics={json.dumps(usage['semantics'], sort_keys=True)}",
         f"initiative_signals={json.dumps(initiative, sort_keys=True)}",
         f"reviewer_count={reviewers['count']}",
         f"reviewer_duration_seconds={duration_seconds:.1f}",

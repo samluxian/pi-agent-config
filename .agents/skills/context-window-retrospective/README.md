@@ -28,24 +28,29 @@
 
 1. 以 active branch 最近一次 compaction 作為 checkpoint。
 2. 只統計 checkpoint 之後的 session entries。
-3. 從 session file 取得 tool、subagent、reviewer、retry 與 token 等 bounded metrics。
-4. 對照可見對話、最後 repository 狀態與 reviewer conclusions。
-5. 檢查 Agent 是否反問可安全查得的 identifier、提早停止，或等使用者提醒才讀取 live、pipeline、state 或 validation evidence。
-6. 排除必要 approval、mutation handoff、缺少 authentication、secret boundary 與真實 scope ambiguity，避免把安全停點誤判成被動。
-7. 把問題分類為 task outcome、parent planning、reviewer、skill 或 extension。
-8. 依 correctness/safety、context/latency、便利性排序改善項目。
+3. 從 session file 取得 tool、subagent、reviewer 與 usage 等 bounded metrics。
+4. 將 parent usage 依 model／thinking 分組，並分開 uncached input、cache read、output 與其中的 reasoning；subagent 另列，避免重複加總。
+5. 統計各 tool result 的 UTF-8 文字 bytes，作為 context volume 指標，不把 bytes 當 tokens 或費用。
+6. 對照可見對話、最後 repository 狀態與 reviewer conclusions。
+7. 檢查 Agent 是否反問可安全查得的 identifier、提早停止，或等使用者提醒才讀取 live、pipeline、state 或 validation evidence。
+8. 排除必要 approval、mutation handoff、缺少 authentication、secret boundary 與真實 scope ambiguity，避免把安全停點誤判成被動。
+9. 把問題分類為 task outcome、parent planning、reviewer、skill 或 extension。
+10. 依 correctness/safety、context/latency、便利性排序改善項目。
 
 ## 資料邊界
 
-Metrics script 只輸出 counts、有限的 reviewer metadata，以及不含內容的 follow-up signals；
-不輸出 message text、prompts、commands、diffs、logs 或 secret values。Follow-up signal 只用來
-定位需要語意 review 的回合，不能單獨證明 Agent 被動。缺少 session file 或無法證明因果時，
-結果必須標示為 gap，而不是猜測。
+Metrics script 只輸出 counts、model/thinking usage 分組、cache／output／reasoning 欄位、
+subagent usage、tool-result 文字 bytes、有限的 reviewer metadata，以及不含內容的 follow-up
+signals；不輸出 message text、prompts、commands、diffs、logs 或 secret values。
+
+`reasoning` 是 `output` 的子集，不能重複加總；tool bytes 不是 tokenizer 結果；provider usage
+不是經核對的帳單。Follow-up signal 只用來定位需要語意 review 的回合，不能單獨證明 Agent
+被動。缺少 session file、usage 欄位或可比較基準時，結果必須標示為 gap，而不是猜測。
 
 ## 工具入口
 
 - [`scripts/summarize_session_metrics.py`](scripts/summarize_session_metrics.py)：整理目前 active
-  context window 的 bounded metrics。
+  context window 的 bounded workflow、usage、cache 與 tool-volume metrics。
 
 先查看參數：
 

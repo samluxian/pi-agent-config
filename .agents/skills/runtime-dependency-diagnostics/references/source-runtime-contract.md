@@ -70,6 +70,44 @@ the first timeout without retry is a contributing source-design factor. A
 healthy sibling using the same image/config weakens a global source or config
 claim but does not prove the design is resilient.
 
+## Counterfactual And Evidence Grade
+
+Before assigning incident causality, compare the leading explanation with the
+smallest aligned baseline that could falsify it. Prefer, in order:
+
+1. the same Pod before and after the failure boundary;
+2. a healthy sibling with the same image and rendered configuration;
+3. the last-known-good artifact under comparable runtime conditions;
+4. single-Pod versus concurrent startup when concurrency is the claim.
+
+Keep these evidence grades distinct:
+
+- `observed`: a timestamped state, event, metric, stack, or explicit log field;
+- `source-proven design factor`: exact delivered code has the behavior, but its
+  role in this incident is not yet established;
+- `supported incident cause`: aligned runtime evidence names the failing call or
+  edge and the baseline does not falsify it;
+- `inconclusive`: one decisive runtime or provenance artifact is still missing.
+
+Apply these falsification rules:
+
+- A candidate event that starts after the first failure cannot be its initial
+  trigger; it may remain a measured or unmeasured contributing factor.
+- A last log line identifies the last emitted message, not the blocked thread.
+  Require a stack, span, bounded operation timing, or equivalent evidence before
+  naming the blocking call.
+- A source-only diff can reject a source-change claim. It does not prove resolved
+  dependency, image content, or runtime configuration equality.
+- Pod `Running` but unready before readiness starts is not readiness-failure
+  evidence. Compare Pod/container age with probe timing and events.
+- Operation counts are not throughput, concurrency, lock, or overload evidence.
+  Deployment duration is not Pod startup duration unless its stages are
+  decomposed.
+
+When the source proves a risky design but runtime causality remains
+`inconclusive`, report both facts. Do not erase the design defect and do not
+promote it to the incident root cause.
+
 ## Stop Condition
 
 Stop when one classification and fix surface are supported. If evidence is

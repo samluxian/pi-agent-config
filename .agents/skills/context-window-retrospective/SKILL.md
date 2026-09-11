@@ -6,18 +6,18 @@ disable-model-invocation: true
 
 # Context Window Retrospective
 
-Analyze how the current active context window completed its work. Separate
-outcomes from workflow quality. Produce an evidence-backed improvement plan; do
-not implement the plan in the same task without separate approval.
+Analyze how the active context window completed its work. Separate outcomes from
+workflow quality. Propose improvements; do not implement them without approval.
 
 ## Evidence Boundary
 
 1. Treat the latest active-branch compaction as the context-window checkpoint.
    Use its summary only as inherited state. Analyze entries after that checkpoint.
 2. If `PI_SESSION_FILE` exists, run `scripts/summarize_session_metrics.py`
-   resolved against this skill directory. The script returns counts and bounded
-   reviewer metadata. It does not return
-   prompts, command output, message text, diffs, logs, or secret values.
+   resolved against this skill directory. The script returns counts, bounded
+   reviewer metadata, usage grouped by parent model/thinking and child
+   agent/model, and tool-result text bytes. It does not return prompts, command
+   output, message text, diffs, logs, or secret values.
 3. Reconcile metrics with the visible conversation, final repository status, and
    reviewer conclusions. Label missing session data or ambiguous causality.
 4. Do not inspect abandoned branches, raw secret-bearing output, full session
@@ -36,6 +36,11 @@ Classify each finding by its owner:
 Compare required evidence with executed checks. Count repeated or timed-out work,
 but do not call all elapsed time waste. Distinguish a necessary correction from
 a preventable retry. Do not rank people or infer productivity from tool counts.
+
+Interpret usage without double counting: `reasoning` is part of `output`;
+`cacheRead`, uncached `input`, parent, and subagent usage remain separate. Tool-result UTF-8 bytes indicate context volume, not model
+tokens or billed cost. Missing provider fields are gaps, not zero usage. Do not
+attribute total tokens to thinking level without a comparable same-task baseline.
 
 ## Initiative Gaps
 
@@ -66,7 +71,8 @@ Summary:
 - Work completed and remaining gaps
 
 Metrics:
-- Window boundary, reviewer duration/tools/verdicts, retries, follow-up signals, and unavailable data
+- Window boundary, model/thinking usage, cache, reasoning subset, child usage,
+  tool-result volume, reviewer duration/tools/verdicts, follow-up signals, and gaps
 
 Findings:
 - Required checks, excessive checks, mistakes, initiative gaps, and root causes
