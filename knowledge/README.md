@@ -22,10 +22,18 @@ INDEX.md
 
 Available topics:
 
+- [`ci-pipelines`](topics/ci-pipelines/INDEX.md) covers runner capacity, critical-section serialization, parallel jobs, and retry boundaries.
+- [`cloud-identity`](topics/cloud-identity/INDEX.md) covers GKE workload identity, IAM authorization, and service account key replacement.
+- [`gitops-delivery`](topics/gitops-delivery/INDEX.md) covers CI handoffs, immutable artifact references, desired-state changes, status RBAC, and GitOps reconciliation ownership.
+- [`helm-contracts`](topics/helm-contracts/INDEX.md) covers shared values, schemas, templates, dependencies, and rendered-resource compatibility.
+- [`kubernetes-delivery`](topics/kubernetes-delivery/INDEX.md) covers migration Job ordering and stateful workload rollout behavior.
+- [`kubernetes-scaling`](topics/kubernetes-scaling/INDEX.md) covers HPA/KEDA ownership, scale targets, multi-signal scaling, and replica-writer conflicts.
 - [`llm-agents`](topics/llm-agents/INDEX.md) covers agent knowledge retrieval,
   context use, and note design.
+- [`logging-observability`](topics/logging-observability/INDEX.md) covers Cloud Logging routing, exclusions, sampling, and diagnostic evidence.
 - [`runtime-diagnostics`](topics/runtime-diagnostics/INDEX.md) covers runtime
   evidence, causality, and behavior-level fix validation.
+- [`terraform-state`](topics/terraform-state/INDEX.md) covers resource addresses, imports, state ownership handoffs, and migration validation.
 
 ## Agent Lookup
 
