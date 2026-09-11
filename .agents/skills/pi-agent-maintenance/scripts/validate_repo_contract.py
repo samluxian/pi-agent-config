@@ -204,6 +204,25 @@ def main() -> None:
     for exclusion in skills_main_exclusions:
         if exclusion not in normalized_agents:
             errors.append(f"AGENTS.md missing skills-repository main exclusion: {exclusion}")
+    presentation_main_rules = (
+        "Presentation-repository maintenance is a second narrow exception",
+        "when the user explicitly names one presentation target repository and approves direct edits on its current `main` or `master` branch",
+        "tracked slide source, speaker notes, documentation, and slide assets may be edited there.",
+        "Re-inspect the repository and require a clean tree",
+        "apply the exception only to the named repository and approved scope.",
+    )
+    for rule in presentation_main_rules:
+        if rule not in normalized_agents:
+            errors.append(f"AGENTS.md missing presentation-repository main rule: {rule}")
+    presentation_main_exclusions = (
+        "It excludes product, deployment, chart, infrastructure, and other target repositories",
+        "dependencies, lockfiles, build or runtime configuration, generated or git-ignored files",
+        "secrets and credentials",
+        "all Git or remote mutations",
+    )
+    for exclusion in presentation_main_exclusions:
+        if exclusion not in normalized_agents:
+            errors.append(f"AGENTS.md missing presentation-repository main exclusion: {exclusion}")
     public_safety_rules = (
         "Treat this skills repository as public source.",
         "Never add company or client names",
@@ -254,6 +273,19 @@ def main() -> None:
     for rule in readme_main_rules:
         if rule not in normalized_readme:
             errors.append(f"README missing skills-repository main rule: {rule}")
+    readme_presentation_rules = (
+        "投影片 repository 另有窄範圍例外",
+        "使用者明確指定一個 presentation target repository",
+        "核准直接修改目前的 `main` 或 `master` branch",
+        "乾淨工作樹中修改 tracked slide source、speaker notes、documentation 與 slide assets",
+        "例外只適用於指定 repository 和核准範圍",
+        "不包含產品、部署、chart、infrastructure 或其他 target repositories",
+        "依賴、lockfiles、build/runtime configuration、generated/git-ignored files、secrets、credentials",
+        "Git 或 remote 操作",
+    )
+    for rule in readme_presentation_rules:
+        if rule not in normalized_readme:
+            errors.append(f"README missing presentation-repository main rule: {rule}")
     root_readme_targets = markdown_link_targets(readme_path)
     if "knowledge/README.md" not in root_readme_targets:
         errors.append("README missing knowledge/README.md wiki entry")

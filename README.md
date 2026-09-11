@@ -12,7 +12,14 @@ GitOps、Helm chart 與 infrastructure repositories 仍保有各自的 Git histo
 或刪除 repository-owned source、tests、scripts、extensions、configuration 與 documentation。
 這個例外不延伸到 sibling/target repositories，不涵蓋 secrets、credentials、generated
 artifacts、caches 或 git-ignored temporary files，也不允許 agent commit、push、修改 Git
-或操作 remotes。完整 authority boundary 以 [`AGENTS.md`](AGENTS.md) 為準。
+或操作 remotes。
+
+投影片 repository 另有窄範圍例外：使用者明確指定一個 presentation target repository，
+並核准直接修改目前的 `main` 或 `master` branch 後，agent 可以在乾淨工作樹中修改 tracked
+slide source、speaker notes、documentation 與 slide assets。例外只適用於指定 repository
+和核准範圍，不包含產品、部署、chart、infrastructure 或其他 target repositories，也不包含
+依賴、lockfiles、build/runtime configuration、generated/git-ignored files、secrets、credentials、
+Git 或 remote 操作。完整 authority boundary 以 [`AGENTS.md`](AGENTS.md) 為準。
 
 ## Repository 定位
 

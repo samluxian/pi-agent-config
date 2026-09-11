@@ -61,14 +61,14 @@ Editable delivery scope is limited to repository files that define desired
 behavior, including Helm values, Kustomize overlays, GitOps configuration, and
 CI pipeline files.
 
-Skills-repository maintenance is the exception: when explicitly requested, any
-repository-owned source, test, script, extension, configuration, or documentation
-file may be created, edited, renamed, or deleted on this skills repository's
-`main` branch. This exception does not apply to sibling or target repositories,
-secrets, credentials, generated artifacts, caches, or git-ignored temporary
-files, and it never permits Git or remote mutations. Inspect status first, keep
-the change bounded, preserve unrelated user changes, update the relevant README
-when human-facing behavior changes, and never commit or push.
+Skills-repository maintenance is the exception: when explicitly requested, any repository-owned source, test, script, extension, configuration, or documentation
+file may be created, edited, renamed, or deleted on this skills repository's `main` branch. This exception does not apply to sibling or target repositories,
+secrets, credentials, generated artifacts, caches, or git-ignored temporary files, and it never permits Git or remote mutations. Inspect status first, keep the
+change bounded, preserve unrelated user changes, update the relevant README when human-facing behavior changes, and never commit or push.
+
+Presentation-repository maintenance is a second narrow exception: when the user explicitly names one presentation target repository and approves direct edits on its current `main` or `master` branch,
+tracked slide source, speaker notes, documentation, and slide assets may be edited there. Re-inspect the repository and require a clean tree; apply the exception only to the named repository and approved scope.
+It excludes product, deployment, chart, infrastructure, and other target repositories; dependencies, lockfiles, build or runtime configuration, generated or git-ignored files; secrets and credentials; and all Git or remote mutations.
 
 ## Repository and Git Safety
 
@@ -77,7 +77,7 @@ the actual target repository's current branch, working tree, unstaged changes, a
 staged changes. Do not reuse branch or status evidence gathered before approval.
 
 - A clean workspace or skills repository does not prove a target repo is clean.
-- Outside the explicit skills-repository maintenance exception above, do not edit
+- Outside the explicit skills-repository and presentation-repository maintenance exceptions above, do not edit
   delivery files on `main`, `master`, `release`, protected, or shared branches.
   Ask the user to switch branches.
 - Do not assume local refs are current. Ask the user to refresh remote refs
