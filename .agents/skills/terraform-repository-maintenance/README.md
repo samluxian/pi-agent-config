@@ -32,7 +32,9 @@
 5. 修改前提出 exact files、plan expectation、IAM/network/state risk 與 validation。
 6. 保留 state addresses、`for_each` keys 與 infrastructure identifiers。
 7. 每個 affected root/environment 由 parent 或 approved worker 執行 fmt、validation 與 unsaved local plan。
-8. MR 或 pipeline identifier 已知時，讀取實際 GitLab pipeline 與 plan job，分開回報 CI plan 和 local plan；不會 retry、trigger、approve、merge 或 apply。
+8. Resource rename 或 immutable-field replacement 會檢查 active references 與 `+/-`、`-/+` 執行順序；不安全的 destroy-first plan 會停止。
+9. Plan evidence 只保留 resource address、action order、decision fields、warnings/errors 與 action summary。
+10. MR 或 pipeline identifier 已知時，讀取實際 GitLab pipeline 與 plan job，分開回報 CI plan 和 local plan；不會 retry、trigger、approve、merge 或 apply。
 
 ## 入口
 
@@ -40,9 +42,11 @@
 - [`references/beginner-runbook.md`](references/beginner-runbook.md)：plan-first 操作說明與 Google Cloud Storage bucket retirement preflight。
 - [`references/google-cloud-terraform-best-practices.md`](references/google-cloud-terraform-best-practices.md)：Google Cloud baseline。
 - [`references/state-handoffs-and-recovery.md`](references/state-handoffs-and-recovery.md)：import、state handoff、saved plan 與 partial failure。
+- [`references/plan-replacement-review.md`](references/plan-replacement-review.md)：replacement ordering、active references 與 compact plan evidence。
 - [`references/iam-review-checklist.md`](references/iam-review-checklist.md)：IAM 與 Workload Identity review。
 - [`references/firewall-review-checklist.md`](references/firewall-review-checklist.md)：network/firewall review。
 - [`scripts/terraform_repository_preflight.sh`](scripts/terraform_repository_preflight.sh)：repository、roots、fmt 與 change preflight。
+- [`scripts/summarize_terraform_plan.py`](scripts/summarize_terraform_plan.py)：將文字 plan 壓縮成 bounded replacement evidence。
 
 ## Plan 與 secret 邊界
 

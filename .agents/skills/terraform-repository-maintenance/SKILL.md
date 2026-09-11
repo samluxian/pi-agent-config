@@ -26,8 +26,10 @@ another layout until its backend, command, ownership, and review adapter exists.
    `references/google-cloud-terraform-best-practices.md` and keep official
    guidance, repository policy, and current implementation separate.
 3. Trace variables -> locals -> modules/resources -> outputs and state address.
-   Apply the repo map's root, file, and configuration-ownership conventions by
-   default. Keep a deviation only when concrete same-family evidence requires it.
+   For renames or immutable-field replacements, read
+   `references/plan-replacement-review.md`, inventory each active reference, and
+   require a safe replacement order before recommending apply. Apply the repo
+   map's root, file, and configuration-ownership conventions by default. Keep a deviation only when concrete same-family evidence requires it.
    Explain unknown values and replacement risk without guessing provider behavior.
    Write Terraform README prose, section headings, and generated input/output
    descriptions in Traditional Chinese; preserve commands and identifiers.
@@ -40,7 +42,10 @@ another layout until its backend, command, ownership, and review adapter exists.
    `apply`, import, state mutation, workspace mutation, or remote Git operations.
 6. For every affected root/environment pair, the parent or approved worker runs
    formatting, validation, and an unsaved remote-state plan with
-   `scripts/run-terraform.sh plan <service-path> <env>`. Require an
+   `scripts/run-terraform.sh plan <service-path> <env>`. Keep plan evidence to
+   resource addresses, action order, decision fields, warnings/errors, and the
+   add/change/destroy/replace summary. Use
+   `scripts/summarize_terraform_plan.py` for text plans. Require an
    add/change/destroy/replace summary and explicit unexpected-drift findings. Accept
    `No changes.` or an explicit zero-action summary as no-op. Continue independent
    root plans after a root-local failure; stop related roots on shared authentication,
