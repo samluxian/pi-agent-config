@@ -143,6 +143,7 @@ def main() -> None:
     agents_path = repo / "AGENTS.md"
     readme_path = repo / "README.md"
     package_path = repo / "package.json"
+    knowledge_readme_path = repo / "knowledge" / "README.md"
     if not all((skills_root.is_dir(), agents_path.is_file(), readme_path.is_file(), package_path.is_file())):
         print(f"ERROR: not a devops-pi-agent repository: {repo}", file=sys.stderr)
         raise SystemExit(1)
@@ -213,6 +214,14 @@ def main() -> None:
     for rule in public_safety_rules:
         if rule not in normalized_agents:
             errors.append(f"AGENTS.md missing public repository safety rule: {rule}")
+    wiki_rules = (
+        "Before external research, run the bounded `.agents/skills/llm-wiki/scripts/wiki.py find` for relevant precedent",
+        "read only matched notes and treat them as prior knowledge, not current-state proof.",
+        "Write `knowledge/` content in English and apply its pinned No AI Slop writing contract.",
+    )
+    for rule in wiki_rules:
+        if rule not in normalized_agents:
+            errors.append(f"AGENTS.md missing LLM wiki rule: {rule}")
     terraform_skill_path = skills_root / "terraform-repository-maintenance" / "SKILL.md"
     normalized_terraform_skill = re.sub(
         r"\s+", " ", terraform_skill_path.read_text(encoding="utf-8")
@@ -246,6 +255,18 @@ def main() -> None:
         if rule not in normalized_readme:
             errors.append(f"README missing skills-repository main rule: {rule}")
     root_readme_targets = markdown_link_targets(readme_path)
+    if "knowledge/README.md" not in root_readme_targets:
+        errors.append("README missing knowledge/README.md wiki entry")
+    if not knowledge_readme_path.is_file():
+        errors.append("missing knowledge/README.md")
+    wiki_files = (
+        repo / "knowledge" / "INDEX.md",
+        skills_root / "llm-wiki" / "scripts" / "wiki.py",
+        skills_root / "llm-wiki" / "references" / "writing-style.md",
+    )
+    for wiki_file in wiki_files:
+        if not wiki_file.is_file():
+            errors.append(f"missing LLM wiki contract file: {wiki_file.relative_to(repo)}")
     skill_names: set[str] = set()
     model_invoked: set[str] = set()
     model_description_chars = 0

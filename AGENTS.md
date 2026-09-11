@@ -1,8 +1,7 @@
 # AGENTS.md - DevOps Workspace Contract
 
-This repository provides portable workspace guidance. Prioritize correctness,
-safety, reproducibility, and small reviewable changes. Detailed procedures belong
-in project-scoped skills, not this always-loaded file.
+This repository provides portable workspace guidance. Keep changes safe, correct, reproducible, and small.
+Put detailed procedures in project-scoped skills, not this always-loaded file.
 
 ## Core Rules
 
@@ -100,9 +99,8 @@ Use these terms consistently:
 - `<skills-repo>`: owner of this contract, skills, helpers, and documentation.
 - `<target-repo>`: product, deployment, chart, or infrastructure under work.
 
-The skills repository is workspace tooling, not a monorepo. Sibling repositories
-keep independent branches, remotes, histories, and dirty state. Do not combine
-them unless the user explicitly requests and accepts that repository-model change.
+The skills repository is workspace tooling, not a monorepo. Sibling repositories keep separate branches,
+remotes, histories, and dirty state; combine them only if the user explicitly requests and accepts the change.
 
 Write all specifications and unspecified investigation or incident reports to
 `<workspace-root>/docs/`, a user-owned work-product path. A specification must
@@ -141,12 +139,14 @@ Use this evidence budget unless a concrete mismatch or readiness claim needs mor
 2. Target desired-state or render summary.
 3. Target live/resource summary.
 
-Analyze supplied diagnostics first. Prefer commands under 120 lines and move to
-another evidence layer only when deployment truth or a conflict requires it.
-Summarize large renders, manifests, diffs, traces, logs, ConfigMaps, and CRDs;
-keep raw output out of context and quote only the needed excerpt. Under `pipefail`,
-truncate with a non-early-closing reader such as `sed -n`, or handle expected
-SIGPIPE explicitly.
+Analyze supplied diagnostics first. Before external research, run the bounded
+`.agents/skills/llm-wiki/scripts/wiki.py find` for relevant precedent; read only matched
+notes and treat them as prior knowledge, not current-state proof. Write `knowledge/`
+content in English and apply its pinned No AI Slop writing contract. Prefer commands
+under 120 lines and move to another evidence layer only when deployment truth or a
+conflict requires it. Summarize large renders, manifests, diffs, traces, logs, ConfigMaps,
+and CRDs; keep raw output out of context and quote only the needed excerpt. Under
+`pipefail`, use `sed -n` or another non-early-closing reader, or handle expected SIGPIPE explicitly.
 
 ## Public Repository Safety
 

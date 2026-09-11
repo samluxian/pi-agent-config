@@ -1,0 +1,32 @@
+[
+  {
+    "id": "markdown-progressive-disclosure",
+    "query": "markdown progressive disclosure context window",
+    "topic": "llm-agents",
+    "note": "bounded-markdown-knowledge-retrieval"
+  },
+  {
+    "id": "wiki-aliases",
+    "query": "llm wiki note search",
+    "topic": "llm-agents",
+    "note": "bounded-markdown-knowledge-retrieval"
+  },
+  {
+    "id": "startup-restart-symptoms",
+    "query": "pod liveness restart connection refused",
+    "topic": "runtime-diagnostics",
+    "note": "synthetic-startup-restart-causality"
+  },
+  {
+    "id": "startup-technology-terms",
+    "query": "mongodb actuator slow startup",
+    "topic": "runtime-diagnostics",
+    "note": "synthetic-startup-restart-causality"
+  },
+  {
+    "id": "explicit-no-match",
+    "query": "quantum compiler theorem",
+    "topic": null,
+    "note": null
+  }
+]

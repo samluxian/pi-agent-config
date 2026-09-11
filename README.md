@@ -22,6 +22,7 @@ artifacts、caches 或 git-ignored temporary files，也不允許 agent commit�
 | --- | --- |
 | [`AGENTS.md`](AGENTS.md) | 每輪都要遵守的安全、approval、workspace 與 evidence 規則。 |
 | [`.agents/skills/`](.agents/skills/) | Pi 依工作類型載入的專用流程。 |
+| [`knowledge/`](knowledge/README.md) | Agent 先查 index、再按需讀取的純 Markdown LLM wiki。 |
 | [`extensions/`](extensions/) | 在 Pi runtime 中註冊事件、指令或工具的程式。 |
 | [`scripts/`](scripts/) | Workspace 初始化與 deterministic checks。 |
 
@@ -66,6 +67,18 @@ PI_PUBLIC_SAFETY_TERMS_FILE=/path/outside/repository/private-terms.txt \
 
 Scanner 只回報類別與位置，不輸出 terms。完整規則與 Git history 限制見
 [public repository safety contract](.agents/skills/pi-agent-maintenance/references/public-repository-safety.md)。
+
+## LLM Wiki
+
+[`knowledge/README.md`](knowledge/README.md) 是純 Markdown 知識庫入口。Agent 會先查 compact
+keyword indexes，只讀取命中的 topic index 與最多三篇 notes；wiki 不會整批放進 system prompt
+或 context。所有 wiki 內容與 note templates 使用英文，寫完後依 pinned
+[No AI Slop writing contract](.agents/skills/llm-wiki/references/writing-style.md) 編修。這個檢查不能
+刪除技術細節、證據等級或不確定性。
+
+查詢由 workspace contract 自動要求，不必載入 skill。新增或維護筆記時，明確使用
+`/skill:llm-wiki`。Wiki 只提供 prior knowledge；目前 artifact、configuration、deployment 與
+runtime state 仍須用對應 evidence layer 驗證。
 
 ## Workspace 配置
 
@@ -253,6 +266,7 @@ skill-owned deterministic helper 時，優先使用單一 bounded helper，避�
 - [`.agents/skills/gitops-state-diagnostics/README.md`](.agents/skills/gitops-state-diagnostics/README.md)
 - [`.agents/skills/helm-dependency-upgrade/README.md`](.agents/skills/helm-dependency-upgrade/README.md)
 - [`.agents/skills/kubernetes-platform-delivery/README.md`](.agents/skills/kubernetes-platform-delivery/README.md)
+- [`.agents/skills/llm-wiki/README.md`](.agents/skills/llm-wiki/README.md) — 手動使用 `/skill:llm-wiki`
 - [`.agents/skills/mr-summary/README.md`](.agents/skills/mr-summary/README.md)
 - [`.agents/skills/orchestrator/README.md`](.agents/skills/orchestrator/README.md)
 - [`.agents/skills/pi-agent-maintenance/README.md`](.agents/skills/pi-agent-maintenance/README.md)
