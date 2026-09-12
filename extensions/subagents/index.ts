@@ -185,44 +185,44 @@ const CUSTOM_TOOL_EXTENSIONS: Record<string, string> = {
 
 // ── Agent Discovery & Registration ────────────────────────────────────
 
+function parseAgentList(value: string | undefined): string[] | undefined {
+	const agents = value?.split(",").map((agent) => agent.trim()).filter(Boolean);
+	return agents?.length ? agents : undefined;
+}
+
+function parseAgentProfile(filePath: string): AgentConfig {
+	const content = fs.readFileSync(filePath, "utf-8");
+	const { frontmatter, body } = parseFrontmatter<Record<string, string>>(content);
+	const name = frontmatter.name;
+	const thinking = frontmatter.thinking as ThinkingLevel | undefined;
+	if (!name || !frontmatter.description || !frontmatter.model || !thinking || !THINKING_LEVELS.has(thinking)) {
+		throw new Error(`Invalid subagent profile: ${filePath}. name, description, model, and thinking are required.`);
+	}
+	if (!ALLOWED_AGENT_NAMES.has(name)) {
+		throw new Error(`Unsupported subagent profile: ${name}. Allowed agents: scout, researcher, environment-scout, worker.`);
+	}
+	const subagentAgents = parseAgentList(frontmatter.subagent_agents);
+	return {
+		name,
+		description: frontmatter.description,
+		tools: parseAgentList(frontmatter.tools) ?? [],
+		model: frontmatter.model,
+		thinking,
+		systemPrompt: body,
+		filePath,
+		...(subagentAgents ? { subagentAgents } : {}),
+	};
+}
+
 export function loadAgents(agentDir = AGENTS_DIR): AgentConfig[] {
+	if (!fs.existsSync(agentDir)) return [];
 	const loaded: AgentConfig[] = [];
-	if (!fs.existsSync(agentDir)) return loaded;
-	for (const entry of fs.readdirSync(agentDir)) {
-		if (!entry.endsWith(".md")) continue;
-		const filePath = path.join(agentDir, entry);
-		const content = fs.readFileSync(filePath, "utf-8");
-		const { frontmatter, body } = parseFrontmatter<Record<string, string>>(content);
-		const name = frontmatter.name;
-		const thinking = frontmatter.thinking as ThinkingLevel | undefined;
-		const tools = (frontmatter.tools || "")
-			.split(",")
-			.map((t) => t.trim())
-			.filter(Boolean);
-		const subagentAgents = frontmatter.subagent_agents
-			? frontmatter.subagent_agents.split(",").map((t) => t.trim()).filter(Boolean)
-			: undefined;
-
-		if (!name || !frontmatter.description || !frontmatter.model || !thinking || !THINKING_LEVELS.has(thinking)) {
-			throw new Error(`Invalid subagent profile: ${filePath}. name, description, model, and thinking are required.`);
+	for (const entry of fs.readdirSync(agentDir).filter((entry) => entry.endsWith(".md"))) {
+		const profile = parseAgentProfile(path.join(agentDir, entry));
+		if (loaded.some((agent) => agent.name === profile.name)) {
+			throw new Error(`Duplicate subagent profile: ${profile.name}`);
 		}
-		if (!ALLOWED_AGENT_NAMES.has(name)) {
-			throw new Error(`Unsupported subagent profile: ${name}. Allowed agents: scout, researcher, environment-scout, worker.`);
-		}
-		if (loaded.some((agent) => agent.name === name)) {
-			throw new Error(`Duplicate subagent profile: ${name}`);
-		}
-
-		loaded.push({
-			name,
-			description: frontmatter.description,
-			tools,
-			model: frontmatter.model,
-			thinking,
-			systemPrompt: body,
-			filePath,
-			...(subagentAgents ? { subagentAgents } : {}),
-		});
+		loaded.push(profile);
 	}
 	return loaded;
 }
@@ -255,26 +255,23 @@ function formatDuration(ms: number): string {
 	return `${Math.floor(ms / 60000)}m${Math.floor((ms % 60000) / 1000)}s`;
 }
 
-function truncLine(text: string, maxWidth: number): string {
+function ansiSequenceAt(text: string, index: number): string | undefined {
+	return text[index] === "\x1b" ? text.slice(index).match(/^\x1b\[[0-9;]*m/)?.[0] : undefined;
+}
+
+export function truncLine(text: string, maxWidth: number): string {
 	if (visibleWidth(text) <= maxWidth) return text;
-	// Simple truncation - strip to fit
 	let result = "";
 	let width = 0;
 	for (let i = 0; i < text.length; i++) {
-		const ch = text[i];
-		// Skip ANSI escape sequences
-		if (ch === "\x1b") {
-			const match = text.slice(i).match(/^\x1b\[[0-9;]*m/);
-			if (match) {
-				result += match[0];
-				i += match[0].length - 1;
-				continue;
-			}
+		const ansi = ansiSequenceAt(text, i);
+		if (ansi) {
+			result += ansi;
+			i += ansi.length - 1;
+			continue;
 		}
-		if (width >= maxWidth - 1) {
-			return result + "…";
-		}
-		result += ch;
+		if (width >= maxWidth - 1) return result + "…";
+		result += text[i];
 		width++;
 	}
 	return result;
@@ -371,6 +368,106 @@ function extractToolArgsPreview(args: Record<string, unknown>): string {
 	return boundedRedactedText(preview, 100);
 }
 
+type ActiveToolCalls = Map<string, { toolName: string; argsPreview: string }>;
+type SubagentEventContext = {
+	result: AgentResult;
+	progress: AgentProgress;
+	activeToolCalls: ActiveToolCalls;
+	fireUpdate: () => void;
+	startTime: number;
+};
+
+function trimRecentTools(recentTools: ToolEvent[]): void {
+	if (recentTools.length > 20) recentTools.splice(0, recentTools.length - 20);
+}
+
+function handleToolStart(evt: any, context: SubagentEventContext): void {
+	const args = (evt.args || {}) as Record<string, unknown>;
+	const toolCallId = String(evt.toolCallId ?? "");
+	const argsPreview = extractToolArgsPreview(args);
+	context.activeToolCalls.set(toolCallId, { toolName: evt.toolName, argsPreview });
+	context.progress.toolCount++;
+	context.progress.currentTool = evt.toolName;
+	context.progress.currentToolArgs = argsPreview;
+	context.fireUpdate();
+}
+
+function toolErrorDiagnostic(evt: any, call: { toolName: string } | undefined): string {
+	const resultContent = evt.result && typeof evt.result === "object" ? evt.result.content : evt.result;
+	return extractTextFromContent(resultContent)
+		|| evt.result?.errorMessage
+		|| evt.result?.message
+		|| `${evt.toolName || call?.toolName || "tool"} failed`;
+}
+
+function handleToolEnd(evt: any, context: SubagentEventContext): void {
+	const toolCallId = String(evt.toolCallId ?? "");
+	const call = context.activeToolCalls.get(toolCallId);
+	context.activeToolCalls.delete(toolCallId);
+	if (call) {
+		context.progress.recentTools.push({ toolCallId, tool: call.toolName, args: call.argsPreview });
+		trimRecentTools(context.progress.recentTools);
+	}
+	const remainingCall = Array.from(context.activeToolCalls.values()).at(-1);
+	context.progress.currentTool = remainingCall?.toolName;
+	context.progress.currentToolArgs = remainingCall?.argsPreview;
+	if (evt.isError) context.progress.lastToolError = boundedRedactedText(toolErrorDiagnostic(evt, call), 1000);
+	context.fireUpdate();
+}
+
+function extractProse(text: string): string {
+	let inCodeBlock = false;
+	const proseLines: string[] = [];
+	for (const line of text.split("\n")) {
+		if (line.trimStart().startsWith("```")) {
+			inCodeBlock = !inCodeBlock;
+		} else if (!inCodeBlock && line.trim()) {
+			proseLines.push(line.trim());
+		}
+	}
+	return proseLines.slice(0, 3).join(" ");
+}
+
+function handleAssistantMessage(evt: any, context: SubagentEventContext): void {
+	const message = evt.message;
+	if (message.role !== "assistant") return;
+	const { result, progress } = context;
+	result.usage.turns++;
+	const usage = message.usage;
+	if (usage) {
+		result.usage.input += usage.input || 0;
+		result.usage.output += usage.output || 0;
+		result.usage.cacheRead += usage.cacheRead || 0;
+		result.usage.cacheWrite += usage.cacheWrite || 0;
+		result.usage.cost += usage.cost?.total || 0;
+		progress.tokens = result.usage.input + result.usage.output;
+	}
+	if (message.model) result.model = message.model;
+	if (message.errorMessage) progress.error = redactSensitiveText(message.errorMessage);
+	const text = redactSensitiveText(extractTextFromContent(message.content));
+	if (text) {
+		result.output = text;
+		progress.lastMessage = extractProse(text) || progress.lastMessage;
+	}
+	context.fireUpdate();
+}
+
+function processSubagentLine(line: string, context: SubagentEventContext): void {
+	if (!line.trim()) return;
+	try {
+		const evt = JSON.parse(line) as any;
+		context.progress.durationMs = Date.now() - context.startTime;
+		const handlers: Record<string, (event: any, eventContext: SubagentEventContext) => void> = {
+			tool_execution_start: handleToolStart,
+			tool_execution_end: handleToolEnd,
+			message_end: handleAssistantMessage,
+		};
+		handlers[evt.type]?.(evt, context);
+	} catch {
+		// Non-JSON lines are expected
+	}
+}
+
 export async function runSubagent(
 	agent: AgentConfig,
 	task: string,
@@ -431,7 +528,7 @@ export async function runSubagent(
 	let exitCode = 1;
 
 	try {
-		exitCode = await new Promise<number>((resolve) => {
+		exitCode = await new Promise<number>(function watchSubagentProcess(resolve) {
 			const proc = spawnProcess(command, spawnArgs, {
 				cwd,
 				stdio: ["ignore", "pipe", "pipe"],
@@ -462,7 +559,7 @@ export async function runSubagent(
 				try {
 					proc.kill("SIGTERM");
 				} catch {}
-				terminateTimer = setTimeout(() => {
+				terminateTimer = setTimeout(function forceKillAfterGrace() {
 					if (closed) return;
 					try {
 						proc.kill("SIGKILL");
@@ -470,100 +567,8 @@ export async function runSubagent(
 				}, terminateGraceMs);
 			};
 
-		const processLine = (line: string) => {
-			if (!line.trim()) return;
-			try {
-				const evt = JSON.parse(line) as any;
-				progress.durationMs = Date.now() - startTime;
-
-				if (evt.type === "tool_execution_start") {
-					const args = (evt.args || {}) as Record<string, unknown>;
-					const toolCallId = String(evt.toolCallId ?? "");
-					const argsPreview = extractToolArgsPreview(args);
-					activeToolCalls.set(toolCallId, {
-						toolName: evt.toolName,
-						argsPreview,
-					});
-					progress.toolCount++;
-					progress.currentTool = evt.toolName;
-					progress.currentToolArgs = argsPreview;
-					fireUpdate();
-				}
-
-				if (evt.type === "tool_execution_end") {
-					const toolCallId = String(evt.toolCallId ?? "");
-					const call = activeToolCalls.get(toolCallId);
-					activeToolCalls.delete(toolCallId);
-
-					if (call) {
-						progress.recentTools.push({
-							toolCallId,
-							tool: call.toolName,
-							args: call.argsPreview,
-						});
-						// Keep last 20
-						if (progress.recentTools.length > 20) {
-							progress.recentTools.splice(0, progress.recentTools.length - 20);
-						}
-					}
-					const remainingCall = Array.from(activeToolCalls.values()).at(-1);
-					progress.currentTool = remainingCall?.toolName;
-					progress.currentToolArgs = remainingCall?.argsPreview;
-					if (evt.isError) {
-						const resultContent = evt.result && typeof evt.result === "object"
-							? evt.result.content
-							: evt.result;
-						const diagnostic = extractTextFromContent(resultContent)
-							|| evt.result?.errorMessage
-							|| evt.result?.message
-							|| `${evt.toolName || call?.toolName || "tool"} failed`;
-						progress.lastToolError = boundedRedactedText(diagnostic, 1000);
-					}
-					fireUpdate();
-				}
-
-				if (evt.type === "message_end" && evt.message) {
-					if (evt.message.role === "assistant") {
-						result.usage.turns++;
-						const u = evt.message.usage;
-						if (u) {
-							result.usage.input += u.input || 0;
-							result.usage.output += u.output || 0;
-							result.usage.cacheRead += u.cacheRead || 0;
-							result.usage.cacheWrite += u.cacheWrite || 0;
-							result.usage.cost += u.cost?.total || 0;
-							progress.tokens = result.usage.input + result.usage.output;
-						}
-						if (evt.message.model) result.model = evt.message.model;
-						if (evt.message.errorMessage) progress.error = redactSensitiveText(evt.message.errorMessage);
-
-						const text = redactSensitiveText(extractTextFromContent(evt.message.content));
-						if (text) {
-							result.output = text;
-							// Extract just the prose "thinking" text — skip code blocks
-							const proseLines: string[] = [];
-							let inCodeBlock = false;
-							for (const line of text.split("\n")) {
-								if (line.trimStart().startsWith("```")) {
-									inCodeBlock = !inCodeBlock;
-									continue;
-								}
-								if (!inCodeBlock && line.trim()) {
-									proseLines.push(line.trim());
-								}
-							}
-							if (proseLines.length > 0) {
-								progress.lastMessage = proseLines.slice(0, 3).join(" ");
-							}
-						}
-					}
-
-					fireUpdate();
-				}
-			} catch {
-				// Non-JSON lines are expected
-			}
-		};
+		const eventContext: SubagentEventContext = { result, progress, activeToolCalls, fireUpdate, startTime };
+		const processLine = (line: string) => processSubagentLine(line, eventContext);
 
 		proc.stdout.on("data", (d: Buffer) => {
 			buf += d.toString();
@@ -576,7 +581,7 @@ export async function runSubagent(
 			stderrBuf += d.toString();
 		});
 
-			proc.on("close", (code) => {
+			proc.on("close", function handleProcessClose(code) {
 				if (buf.trim()) processLine(buf);
 				if (code !== 0 && stderrBuf.trim() && !progress.error) {
 					progress.error = redactSensitiveText(stderrBuf.trim());
@@ -679,123 +684,143 @@ function getTermWidth(): number {
 	return process.stdout.columns || 120;
 }
 
-function renderAgentProgress(
-	r: AgentResult,
-	theme: Theme,
-	expanded: boolean,
-	w: number,
-): Container {
-	const c = new Container();
-	const prog = r.progress;
-	const isRunning = prog.status === "running";
-	const isPending = prog.status === "pending";
+function addLine(container: Container, theme: Theme, color: string, text: string, expanded: boolean, width: number): void {
+	const rendered = theme.fg(color, text);
+	container.addChild(new Text(expanded ? rendered : truncLine(rendered, width), 0, 0));
+}
 
-	// Header: icon + agent + stats (always one line, truncated)
-	const icon = isRunning
-		? theme.fg("warning", "⟳")
-		: isPending
-			? theme.fg("dim", "○")
-			: prog.status === "completed"
-				? theme.fg("success", "✓")
-				: theme.fg("error", "✗");
-	const stats = `${prog.toolCount} tools · ${formatTokens(prog.tokens)} tok · ${formatDuration(prog.durationMs)}`;
-	const modelStr = r.model ? theme.fg("dim", ` (${r.model})`) : "";
-	c.addChild(
-		new Text(
-			truncLine(`${icon} ${theme.fg("toolTitle", theme.bold(r.agent))}${modelStr} — ${theme.fg("dim", stats)}`, w),
-			0, 0,
-		),
-	);
+function addRenderedLine(container: Container, text: string, width: number): void {
+	container.addChild(new Text(truncLine(text, width), 0, 0));
+}
 
-	// Task
-	if (expanded) {
-		// Full task, Text wraps naturally
-		c.addChild(new Text(theme.fg("dim", `Task: ${r.task}`), 0, 0));
-	} else {
-		// Truncate to one line
-		const flat = r.task.replace(/\n/g, " ");
-		c.addChild(
-			new Text(truncLine(theme.fg("dim", `Task: ${flat}`), w), 0, 0),
-		);
+function progressIcon(status: AgentProgress["status"], theme: Theme): string {
+	const icons: Record<AgentProgress["status"], [string, string]> = {
+		running: ["warning", "⟳"], pending: ["dim", "○"], completed: ["success", "✓"], failed: ["error", "✗"],
+	};
+	const [color, icon] = icons[status];
+	return theme.fg(color, icon);
+}
+
+function usageSummary(usage: AgentResult["usage"]): string {
+	const parts = [
+		usage.turns && `${usage.turns} turn${usage.turns > 1 ? "s" : ""}`,
+		usage.input && `in:${formatTokens(usage.input)}`,
+		usage.output && `out:${formatTokens(usage.output)}`,
+		usage.cacheRead && `cR:${formatTokens(usage.cacheRead)}`,
+		usage.cacheWrite && `cW:${formatTokens(usage.cacheWrite)}`,
+		usage.cost && `$${usage.cost.toFixed(4)}`,
+	].filter(Boolean);
+	return parts.join(" · ");
+}
+
+function renderAgentProgress(r: AgentResult, theme: Theme, expanded: boolean, width: number): Container {
+	const container = new Container();
+	const { progress } = r;
+	const stats = `${progress.toolCount} tools · ${formatTokens(progress.tokens)} tok · ${formatDuration(progress.durationMs)}`;
+	const model = r.model ? theme.fg("dim", ` (${r.model})`) : "";
+	addRenderedLine(container, `${progressIcon(progress.status, theme)} ${theme.fg("toolTitle", theme.bold(r.agent))}${model} — ${theme.fg("dim", stats)}`, width);
+	addLine(container, theme, "dim", `Task: ${expanded ? r.task : r.task.replace(/\n/g, " ")}`, expanded, width);
+	if (progress.status === "running" && progress.currentTool) {
+		addLine(container, theme, "warning", `▸ ${progress.currentToolArgs ? `${progress.currentTool}: ${progress.currentToolArgs}` : progress.currentTool}`, expanded, width);
 	}
-
-	// Current tool (running state)
-	if (isRunning && prog.currentTool) {
-		const toolLine = prog.currentToolArgs
-			? `${prog.currentTool}: ${prog.currentToolArgs}`
-			: prog.currentTool;
-		if (expanded) {
-			c.addChild(new Text(theme.fg("warning", `▸ ${toolLine}`), 0, 0));
-		} else {
-			c.addChild(new Text(truncLine(theme.fg("warning", `▸ ${toolLine}`), w), 0, 0));
-		}
+	for (const tool of progress.recentTools) addLine(container, theme, "muted", `  ${tool.tool}: ${tool.args}`, expanded, width);
+	if (progress.lastMessage) {
+		container.addChild(new Spacer(1));
+		addLine(container, theme, "text", progress.lastMessage, expanded, width);
 	}
-
-	// Recent tools (always all)
-	const toolsToShow = prog.recentTools;
-	for (const t of toolsToShow) {
-		const line = `  ${t.tool}: ${t.args}`;
-		if (expanded) {
-			c.addChild(new Text(theme.fg("muted", line), 0, 0));
-		} else {
-			c.addChild(new Text(truncLine(theme.fg("muted", line), w), 0, 0));
-		}
+	if (progress.status !== "running" && r.output && expanded) {
+		container.addChild(new Spacer(1));
+		container.addChild(new Markdown(r.output, 0, 0, getMarkdownTheme()));
 	}
-
-	// Latest assistant message — the prose "thinking" text, always visible
-	if (prog.lastMessage) {
-		c.addChild(new Spacer(1));
-		if (expanded) {
-			c.addChild(new Text(theme.fg("text", prog.lastMessage), 0, 0));
-		} else {
-			c.addChild(new Text(truncLine(theme.fg("text", prog.lastMessage), w), 0, 0));
-		}
-	}
-
-	// Expanded: full final output
-	if (!isRunning && r.output && expanded) {
-		c.addChild(new Spacer(1));
-		const mdTheme = getMarkdownTheme();
-		c.addChild(new Markdown(r.output, 0, 0, mdTheme));
-	}
-
-	// Usage breakdown
-	c.addChild(new Spacer(1));
-	const usageParts: string[] = [];
-	if (r.usage.turns) usageParts.push(`${r.usage.turns} turn${r.usage.turns > 1 ? "s" : ""}`);
-	if (r.usage.input) usageParts.push(`in:${formatTokens(r.usage.input)}`);
-	if (r.usage.output) usageParts.push(`out:${formatTokens(r.usage.output)}`);
-	if (r.usage.cacheRead) usageParts.push(`cR:${formatTokens(r.usage.cacheRead)}`);
-	if (r.usage.cacheWrite) usageParts.push(`cW:${formatTokens(r.usage.cacheWrite)}`);
-	if (r.usage.cost) usageParts.push(`$${r.usage.cost.toFixed(4)}`);
-	if (usageParts.length) {
-		c.addChild(new Text(theme.fg("dim", usageParts.join(" · ")), 0, 0));
-	}
-	
-
-	// Most recent child tool error; a later child response may still recover.
-	if (prog.lastToolError) {
-		const toolError = `Tool error: ${prog.lastToolError}`;
-		if (expanded) {
-			c.addChild(new Text(theme.fg("error", toolError), 0, 0));
-		} else {
-			c.addChild(new Text(truncLine(theme.fg("error", toolError), w), 0, 0));
-		}
-	}
-
-	// Process/provider error
-	if (prog.error) {
-		if (expanded) {
-			c.addChild(new Text(theme.fg("error", `Error: ${prog.error}`), 0, 0));
-		} else {
-			c.addChild(new Text(truncLine(theme.fg("error", `Error: ${prog.error}`), w), 0, 0));
-		}
-	}
-
-	return c;
+	container.addChild(new Spacer(1));
+	const usage = usageSummary(r.usage);
+	if (usage) addLine(container, theme, "dim", usage, true, width);
+	if (progress.lastToolError) addLine(container, theme, "error", `Tool error: ${progress.lastToolError}`, expanded, width);
+	if (progress.error) addLine(container, theme, "error", `Error: ${progress.error}`, expanded, width);
+	return container;
 }
 
 // ── Extension ─────────────────────────────────────────────────────────
+
+type SubagentTask = { agent: string; task: string; cwd?: string };
+type SubagentParams = { agent?: string; task?: string; tasks?: SubagentTask[]; cwd?: string };
+type ExecutionDependencies = { agents: AgentConfig[]; maxConcurrency: number; gate: ReturnType<typeof createExecutionGate> };
+
+function availableAgentNames(agents: AgentConfig[]): string {
+	return agents.map((agent) => agent.name).join(", ") || "none";
+}
+
+function requireAgent(agents: AgentConfig[], name: string): AgentConfig {
+	const agent = agents.find((candidate) => candidate.name === name);
+	if (!agent) throw new Error(`Unknown agent: ${name}. Available agents: ${availableAgentNames(agents)}`);
+	return agent;
+}
+
+function createLiveResult(agent: AgentConfig, task: string, status: AgentProgress["status"]): AgentResult {
+	const displayTask = redactSensitiveText(task);
+	return {
+		agent: agent.name, task: displayTask, output: "", outputComplete: true,
+		outputStats: { sourceLines: 0, sourceBytes: 0, emittedLines: 0, emittedBytes: 0 }, exitCode: -1, model: status === "pending" ? undefined : agent.model,
+		usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0, turns: 0 },
+		progress: { agent: agent.name, status, task: displayTask, recentTools: [], toolCount: 0, tokens: 0, durationMs: 0, lastMessage: "" },
+	};
+}
+
+function validateParallelTasks(tasks: SubagentTask[], agents: AgentConfig[]): void {
+	if (tasks.length > MAX_SUBAGENT_TASKS) throw new Error(`Too many subagent tasks: ${tasks.length}. Maximum is ${MAX_SUBAGENT_TASKS}.`);
+	for (const task of tasks) {
+		requireAgent(agents, task.agent);
+		if (task.agent === "worker") throw new Error("Worker is single-mode only to prevent concurrent repository commands or edits.");
+	}
+}
+
+async function executeParallel(tasks: SubagentTask[], cwd: string, signal: AbortSignal | undefined, onUpdate: any, dependencies: ExecutionDependencies): Promise<any> {
+	validateParallelTasks(tasks, dependencies.agents);
+	const allResults = tasks.map((task) => createLiveResult(requireAgent(dependencies.agents, task.agent), task.task, "pending"));
+	const flushUpdate = () => onUpdate?.({ content: [{ type: "text", text: `Running ${tasks.length} tasks...` }], details: { mode: "parallel" as const, results: [...allResults] } });
+	const fireUpdate = throttle(flushUpdate, 150);
+	const results = await mapConcurrent(tasks, dependencies.maxConcurrency, async (task, index) => {
+		const result = await runSubagent(requireAgent(dependencies.agents, task.agent), task.task, task.cwd ?? cwd, signal, (progress) => {
+			allResults[index].progress = progress;
+			fireUpdate();
+		});
+		allResults[index] = result;
+		flushUpdate();
+		return result;
+	});
+	const byteCaps = allocateFairBudgetCaps(results.map((result) => Buffer.byteLength(result.output, "utf8")), SUBAGENT_TOOL_OUTPUT_BUDGET.maxBytes - 2048, 2 * 1024);
+	const lineCaps = allocateFairBudgetCaps(results.map((result) => result.output.split("\n").length), SUBAGENT_TOOL_OUTPUT_BUDGET.maxLines - 32, 40);
+	for (const [index, result] of results.entries()) applyResultBudget(result, lineCaps[index], byteCaps[index], `${result.agent} result`);
+	const outputParts = results.map((result) => `## ${result.agent}${result.exitCode !== 0 ? " (FAILED)" : ""}\n\n${result.output || "(no output)"}`);
+	const bounded = boundTextEvidence(outputParts.join("\n\n---\n\n"), { maxLines: SUBAGENT_TOOL_OUTPUT_BUDGET.maxLines, maxBytes: SUBAGENT_TOOL_OUTPUT_BUDGET.maxBytes, label: "parallel subagent output" });
+	return { content: [{ type: "text", text: bounded.text }], details: { mode: "parallel" as const, results, contentComplete: bounded.contentComplete && results.every((result) => result.outputComplete) } };
+}
+
+async function executeSingle(agentName: string, task: string, cwd: string, signal: AbortSignal | undefined, onUpdate: any, agents: AgentConfig[]): Promise<any> {
+	const agent = requireAgent(agents, agentName);
+	const liveResult = createLiveResult(agent, task, "running");
+	const result = await runSubagent(agent, task, cwd, signal, (progress) => {
+		liveResult.progress = progress;
+		onUpdate?.({ content: [{ type: "text", text: "(running...)" }], details: { mode: "single" as const, results: [liveResult] } });
+	});
+	const isError = result.exitCode !== 0 || !!result.progress.error;
+	return { content: [{ type: "text", text: result.output || "(no output)" }], details: { mode: "single" as const, results: [result], contentComplete: result.outputComplete }, ...(isError ? { isError: true } : {}) };
+}
+
+async function executeSubagent(params: SubagentParams, signal: AbortSignal | undefined, onUpdate: any, cwd: string, dependencies: ExecutionDependencies): Promise<any> {
+	const hasParallel = (params.tasks?.length ?? 0) > 0;
+	const hasSingle = Boolean(params.agent && params.task);
+	if (Number(hasParallel) + Number(hasSingle) !== 1) throw new Error("Provide exactly one mode: (agent + task) for single mode, or tasks[] for parallel mode.");
+	const release = dependencies.gate.enter(hasSingle && params.agent === "worker" ? "worker" : undefined);
+	if (!release) throw new Error("Worker single-mode execution cannot overlap another subagent call.");
+	try {
+		return await (hasParallel
+			? executeParallel(params.tasks!, cwd, signal, onUpdate, dependencies)
+			: executeSingle(params.agent!, params.task!, params.cwd ?? cwd, signal, onUpdate, dependencies.agents));
+	} finally {
+		release();
+	}
+}
 
 export default function (pi: ExtensionAPI) {
 	const config = loadConfig();
@@ -844,156 +869,8 @@ export default function (pi: ExtensionAPI) {
 			cwd: Type.Optional(Type.String({ description: "Working directory for the agent process (single mode)" })),
 		}),
 
-		async execute(toolCallId, params, signal, onUpdate, ctx) {
-			const cwd = ctx.cwd;
-			const hasParallel = (params.tasks?.length ?? 0) > 0;
-			const hasSingle = Boolean(params.agent && params.task);
-
-			if (Number(hasParallel) + Number(hasSingle) !== 1) {
-				throw new Error("Provide exactly one mode: (agent + task) for single mode, or tasks[] for parallel mode.");
-			}
-			const exclusiveRole = hasSingle && params.agent === "worker" ? "worker" : undefined;
-			const releaseExecution = executionGate.enter(exclusiveRole);
-			if (!releaseExecution) {
-				throw new Error("Worker single-mode execution cannot overlap another subagent call.");
-			}
-
-			try {
-			if (hasParallel) {
-				// ── Parallel mode ──
-				const taskList = params.tasks!;
-				if (taskList.length > MAX_SUBAGENT_TASKS) {
-					throw new Error(`Too many subagent tasks: ${taskList.length}. Maximum is ${MAX_SUBAGENT_TASKS}.`);
-				}
-
-				// Validate all agents
-				const available = agents.map((a) => a.name).join(", ") || "none";
-				for (const t of taskList) {
-					if (!agents.find((a) => a.name === t.agent)) {
-						throw new Error(`Unknown agent: ${t.agent}. Available agents: ${available}`);
-					}
-					if (t.agent === "worker") {
-						throw new Error("Worker is single-mode only to prevent concurrent repository commands or edits.");
-					}
-				}
-
-				const allResults: AgentResult[] = [];
-
-				// Initialize all result slots as pending
-				for (let i = 0; i < taskList.length; i++) {
-					const displayTask = redactSensitiveText(taskList[i].task);
-					allResults[i] = {
-						agent: taskList[i].agent,
-						task: displayTask,
-						output: "",
-						outputComplete: true,
-						outputStats: { sourceLines: 0, sourceBytes: 0, emittedLines: 0, emittedBytes: 0 },
-						exitCode: -1,
-						model: undefined,
-						usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0, turns: 0 },
-						progress: { agent: taskList[i].agent, status: "pending" as any, task: displayTask, recentTools: [], toolCount: 0, tokens: 0, durationMs: 0, lastMessage: "" },
-					};
-				}
-
-				const flushParallelUpdate = () => {
-					onUpdate?.({
-						content: [{ type: "text", text: `Running ${taskList.length} tasks...` }],
-						details: {
-							mode: "parallel" as const,
-							results: [...allResults],
-						},
-					});
-				};
-				const fireParallelUpdate = throttle(flushParallelUpdate, 150);
-
-				const results = await mapConcurrent(taskList, maxConcurrency, async (t, idx) => {
-					const agent = agents.find((a) => a.name === t.agent)!;
-					const result = await runSubagent(agent, t.task, t.cwd ?? cwd, signal, (progress) => {
-						allResults[idx].progress = progress;
-						fireParallelUpdate();
-					});
-
-					// Update allResults with the completed result so the UI reflects it immediately
-					allResults[idx] = result;
-					flushParallelUpdate();
-
-					return result;
-				});
-
-				// Guarantee a fair floor, then reuse capacity that short child results do not need.
-				const byteCaps = allocateFairBudgetCaps(
-					results.map((result) => Buffer.byteLength(result.output, "utf8")),
-					SUBAGENT_TOOL_OUTPUT_BUDGET.maxBytes - 2048,
-					2 * 1024,
-				);
-				const lineCaps = allocateFairBudgetCaps(
-					results.map((result) => result.output.split("\n").length),
-					SUBAGENT_TOOL_OUTPUT_BUDGET.maxLines - 32,
-					40,
-				);
-				for (const [index, result] of results.entries()) {
-					applyResultBudget(result, lineCaps[index], byteCaps[index], `${result.agent} result`);
-				}
-
-				// Build final output text
-				const outputParts = results.map((r) => {
-					const header = `## ${r.agent}${r.exitCode !== 0 ? " (FAILED)" : ""}`;
-					return `${header}\n\n${r.output || "(no output)"}`;
-				});
-				const bounded = boundTextEvidence(outputParts.join("\n\n---\n\n"), {
-					maxLines: SUBAGENT_TOOL_OUTPUT_BUDGET.maxLines,
-					maxBytes: SUBAGENT_TOOL_OUTPUT_BUDGET.maxBytes,
-					label: "parallel subagent output",
-				});
-				const contentComplete = bounded.contentComplete && results.every((result) => result.outputComplete);
-
-				return {
-					content: [{ type: "text", text: bounded.text }],
-					details: { mode: "parallel" as const, results, contentComplete },
-				};
-			} else if (hasSingle) {
-				// ── Single mode ──
-				const agentName = params.agent!;
-				const task = params.task!;
-				const agent = agents.find((candidate) => candidate.name === agentName);
-				if (!agent) {
-					const available = agents.map((candidate) => candidate.name).join(", ") || "none";
-					throw new Error(`Unknown agent: ${agentName}. Available agents: ${available}`);
-				}
-
-				const executionCwd = params.cwd ?? cwd;
-				const effectiveTask = task;
-				const displayTask = redactSensitiveText(effectiveTask);
-				const liveResult: AgentResult = {
-					agent: agentName,
-					task: displayTask,
-					output: "",
-					outputComplete: true,
-					outputStats: { sourceLines: 0, sourceBytes: 0, emittedLines: 0, emittedBytes: 0 },
-					exitCode: -1,
-					model: agent.model,
-					usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0, turns: 0 },
-					progress: { agent: agentName, status: "running" as const, task: displayTask, recentTools: [], toolCount: 0, tokens: 0, durationMs: 0, lastMessage: "" },
-				};
-				const result = await runSubagent(agent, effectiveTask, executionCwd, signal, (progress) => {
-					liveResult.progress = progress;
-					onUpdate?.({
-						content: [{ type: "text", text: "(running...)" }],
-						details: { mode: "single" as const, results: [liveResult] },
-					});
-				});
-				const isError = result.exitCode !== 0 || !!result.progress.error;
-				return {
-					content: [{ type: "text", text: result.output || "(no output)" }],
-					details: { mode: "single" as const, results: [result], contentComplete: result.outputComplete },
-					...(isError ? { isError: true } : {}),
-				};
-			}
-
-			throw new Error("Invalid subagent mode");
-			} finally {
-				releaseExecution();
-			}
+		async execute(_toolCallId, params, signal, onUpdate, ctx) {
+			return executeSubagent(params, signal, onUpdate, ctx.cwd, { agents, maxConcurrency, gate: executionGate });
 		},
 
 		// ── Render: tool call header ──

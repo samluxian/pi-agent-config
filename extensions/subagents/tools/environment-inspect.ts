@@ -107,197 +107,128 @@ function namespacedGet(
 	return args;
 }
 
-export function buildKubectlCommands(input: Record<string, unknown>): CommandSpec[] {
-	const operation = input.operation as KubectlOperation;
-	const base = kubectlBase(input.context);
-	switch (operation) {
-		case "current_context":
-			return [{ label: "current context", command: "kubectl", args: ["config", "current-context"] }];
-		case "namespaces":
-			return [{ label: "namespaces", command: "kubectl", args: [...base, "get", "namespaces", "-o", "wide"] }];
-		case "nodes":
-			return [{ label: "nodes", command: "kubectl", args: [...base, "get", "nodes", "-o", "wide"] }];
-		case "workloads":
-			return [{ label: "workloads", command: "kubectl", args: namespacedGet(input.context, input.namespace, "deployments,statefulsets,daemonsets", input.selector, WORKLOAD_COLUMNS) }];
-		case "pods":
-			return [{ label: "pods", command: "kubectl", args: namespacedGet(input.context, input.namespace, "pods", input.selector, POD_COLUMNS) }];
-		case "services":
-			return [{ label: "services", command: "kubectl", args: namespacedGet(input.context, input.namespace, "services,endpointslices", input.selector, SERVICE_COLUMNS) }];
-		case "ingresses":
-			return [{ label: "ingresses", command: "kubectl", args: namespacedGet(input.context, input.namespace, "ingresses", input.selector) }];
-		case "events":
-			return [{
-				label: "events",
-				command: "kubectl",
-				args: [...base, "get", "events", "--namespace", requireName(input.namespace, "namespace"), "--sort-by=.lastTimestamp", "-o", EVENT_COLUMNS, "--no-headers"],
-			}];
-		case "storage": {
-			const commands: CommandSpec[] = [
-				{ label: "storage classes", command: "kubectl", args: [...base, "get", "storageclasses", "-o", "wide"] },
-				{ label: "persistent volumes", command: "kubectl", args: [...base, "get", "persistentvolumes", "-o", "wide"] },
-				{ label: "CSI drivers", command: "kubectl", args: [...base, "get", "csidrivers", "-o", "wide"] },
-				{ label: "volume attachments", command: "kubectl", args: [...base, "get", "volumeattachments", "-o", "wide"] },
-			];
-			if (input.namespace !== undefined) {
-				commands.push({
-					label: "persistent volume claims",
-					command: "kubectl",
-					args: namespacedGet(input.context, input.namespace, "persistentvolumeclaims", input.selector),
-				});
-			}
-			return commands;
-		}
-		case "pod_logs": {
-			const tail = input.tail === undefined ? 100 : Number(input.tail);
-			if (!Number.isInteger(tail) || tail < 1 || tail > 200) throw new Error("tail must be an integer from 1 to 200.");
-			const since = input.since === undefined ? "15m" : String(input.since);
-			if (!["5m", "15m", "30m", "1h"].includes(since)) throw new Error("since must be 5m, 15m, 30m, or 1h.");
-			const args = [
-				...base,
-				"logs",
-				requireName(input.pod, "pod"),
-				"--namespace",
-				requireName(input.namespace, "namespace"),
-				`--tail=${tail}`,
-				`--since=${since}`,
-			];
-			if (input.container !== undefined) args.push("--container", requireName(input.container, "container"));
-			return [{ label: "pod logs", command: "kubectl", args }];
-		}
-		case "auth_can_i":
-			return [{
-				label: "authorization check",
-				command: "kubectl",
-				args: [
-					...base,
-					"auth",
-					"can-i",
-					requireName(input.verb, "verb"),
-					requireName(input.resource, "resource"),
-					"--namespace",
-					requireName(input.namespace, "namespace"),
-				],
-			}];
-		default:
-			throw new Error(`Unsupported kubectl_inspect operation: ${String(input.operation)}`);
-	}
+type KubectlBuilder = (input: Record<string, unknown>, base: string[]) => CommandSpec[];
+type GcloudBuilder = (input: Record<string, unknown>, project: string) => CommandSpec[];
+
+function kubectlCommand(label: string, args: string[]): CommandSpec[] {
+	return [{ label, command: "kubectl", args }];
 }
 
+function gcloudCommand(label: string, args: string[]): CommandSpec[] {
+	return [{ label, command: "gcloud", args }];
+}
+
+function boundedInteger(value: unknown, defaultValue: number, maximum: number, error: string): number {
+	const number = value === undefined ? defaultValue : Number(value);
+	if (!Number.isInteger(number) || number < 1 || number > maximum) throw new Error(error);
+	return number;
+}
+
+function allowedValue(value: unknown, defaultValue: string, allowed: string[], error: string): string {
+	const selected = value === undefined ? defaultValue : String(value);
+	if (!allowed.includes(selected)) throw new Error(error);
+	return selected;
+}
+
+function requireLoggingFilter(value: unknown): string {
+	const filter = typeof value === "string" ? value : "";
+	if (!/^(?![\s\S]*[\r\n])[\s\S]{1,500}$/.test(filter)) throw new Error("filter must be an explicit bounded single-line Cloud Logging filter.");
+	return filter;
+}
+
+function appendOptionalName(args: string[], value: unknown, flag: string, field: string): void {
+	if (value !== undefined) args.push(flag, requireName(value, field));
+}
+
+function buildStorageCommands(input: Record<string, unknown>, base: string[]): CommandSpec[] {
+	const commands: CommandSpec[] = [
+		{ label: "storage classes", command: "kubectl", args: [...base, "get", "storageclasses", "-o", "wide"] },
+		{ label: "persistent volumes", command: "kubectl", args: [...base, "get", "persistentvolumes", "-o", "wide"] },
+		{ label: "CSI drivers", command: "kubectl", args: [...base, "get", "csidrivers", "-o", "wide"] },
+		{ label: "volume attachments", command: "kubectl", args: [...base, "get", "volumeattachments", "-o", "wide"] },
+	];
+	if (input.namespace !== undefined) {
+		commands.push({ label: "persistent volume claims", command: "kubectl", args: namespacedGet(input.context, input.namespace, "persistentvolumeclaims", input.selector) });
+	}
+	return commands;
+}
+
+function buildPodLogCommands(input: Record<string, unknown>, base: string[]): CommandSpec[] {
+	const tail = boundedInteger(input.tail, 100, 200, "tail must be an integer from 1 to 200.");
+	const since = allowedValue(input.since, "15m", ["5m", "15m", "30m", "1h"], "since must be 5m, 15m, 30m, or 1h.");
+	const args = [...base, "logs", requireName(input.pod, "pod"), "--namespace", requireName(input.namespace, "namespace"), `--tail=${tail}`, `--since=${since}`];
+	appendOptionalName(args, input.container, "--container", "container");
+	return kubectlCommand("pod logs", args);
+}
+
+const kubectlOperationBuilders: Record<KubectlOperation, KubectlBuilder> = {
+	current_context: () => kubectlCommand("current context", ["config", "current-context"]),
+	namespaces: (_input, base) => kubectlCommand("namespaces", [...base, "get", "namespaces", "-o", "wide"]),
+	nodes: (_input, base) => kubectlCommand("nodes", [...base, "get", "nodes", "-o", "wide"]),
+	workloads: (input) => kubectlCommand("workloads", namespacedGet(input.context, input.namespace, "deployments,statefulsets,daemonsets", input.selector, WORKLOAD_COLUMNS)),
+	pods: (input) => kubectlCommand("pods", namespacedGet(input.context, input.namespace, "pods", input.selector, POD_COLUMNS)),
+	services: (input) => kubectlCommand("services", namespacedGet(input.context, input.namespace, "services,endpointslices", input.selector, SERVICE_COLUMNS)),
+	ingresses: (input) => kubectlCommand("ingresses", namespacedGet(input.context, input.namespace, "ingresses", input.selector)),
+	events: (input, base) => kubectlCommand("events", [...base, "get", "events", "--namespace", requireName(input.namespace, "namespace"), "--sort-by=.lastTimestamp", "-o", EVENT_COLUMNS, "--no-headers"]),
+	storage: buildStorageCommands,
+	pod_logs: buildPodLogCommands,
+	auth_can_i: (input, base) => kubectlCommand("authorization check", [...base, "auth", "can-i", requireName(input.verb, "verb"), requireName(input.resource, "resource"), "--namespace", requireName(input.namespace, "namespace")]),
+};
+
+export function buildKubectlCommands(input: Record<string, unknown>): CommandSpec[] {
+	const base = kubectlBase(input.context);
+	const builder = kubectlOperationBuilders[input.operation as KubectlOperation];
+	if (!builder) throw new Error(`Unsupported kubectl_inspect operation: ${String(input.operation)}`);
+	return builder(input, base);
+}
+
+function buildAssetInventoryCommands(input: Record<string, unknown>, project: string): CommandSpec[] {
+	const view = allowedValue(input.view, "summary", ["names", "summary"], "view must be names or summary.");
+	const format = view === "names" ? "--format=csv[no-heading](name)" : "--format=csv[no-heading](assetType,name,displayName,location,state,createTime,updateTime,parent,labels)";
+	const args = ["asset", "search-all-resources", `--scope=projects/${project}`, "--limit=1000", format];
+	const assetTypes = optionalAssetTypes(input.assetTypes);
+	if (assetTypes) args.push(`--asset-types=${assetTypes.join(",")}`);
+	const query = optionalBoundedText(input.query, "query");
+	if (query) args.push(`--query=${query}`);
+	return gcloudCommand("Cloud Asset Inventory", args);
+}
+
+function buildActivityHistoryCommands(input: Record<string, unknown>, project: string): CommandSpec[] {
+	const freshness = allowedValue(input.freshness, "400d", ["1d", "7d", "30d", "90d", "180d", "400d"], "freshness must be 1d, 7d, 30d, 90d, 180d, or 400d.");
+	const limit = boundedInteger(input.limit, 100, 200, "limit must be an integer from 1 to 200.");
+	const resourceName = optionalBoundedText(input.resourceName, "resourceName", 1000);
+	const activityFilter = optionalBoundedText(input.activityFilter, "activityFilter", 500);
+	const filters = ['log_id("cloudaudit.googleapis.com/activity")'];
+	if (resourceName) filters.push(`protoPayload.resourceName="${resourceName.replaceAll('"', '\\"')}"`);
+	if (activityFilter) filters.push(`(${activityFilter})`);
+	return gcloudCommand("Admin Activity history", ["logging", "read", filters.join(" AND "), `--project=${project}`, `--freshness=${freshness}`, `--limit=${limit}`, "--order=desc", "--format=json(timestamp,protoPayload.serviceName,protoPayload.methodName,protoPayload.resourceName,protoPayload.authenticationInfo.principalEmail,protoPayload.requestMetadata.callerSuppliedUserAgent,protoPayload.status.message)"]);
+}
+
+function buildLoggingCommands(input: Record<string, unknown>, project: string): CommandSpec[] {
+	const filter = requireLoggingFilter(input.filter);
+	const freshness = allowedValue(input.freshness, "15m", ["5m", "15m", "30m", "1h"], "freshness must be 5m, 15m, 30m, or 1h.");
+	const limit = boundedInteger(input.limit, 50, 100, "limit must be an integer from 1 to 100.");
+	return gcloudCommand("Cloud Logging", ["logging", "read", filter, `--project=${project}`, `--freshness=${freshness}`, `--limit=${limit}`, "--order=desc", "--format=json(timestamp,severity,resource.type,logName,textPayload,jsonPayload.message)"]);
+}
+
+const gcloudOperationBuilders: Record<Exclude<GcloudOperation, "active_context">, GcloudBuilder> = {
+	gke_clusters: (_input, project) => gcloudCommand("GKE clusters", ["container", "clusters", "list", `--project=${project}`, "--format=table(name,location,status,currentMasterVersion,currentNodeVersion,autopilot.enabled)"]),
+	gke_cluster: (input, project) => gcloudCommand("GKE cluster", ["container", "clusters", "describe", requireName(input.cluster, "cluster"), `--location=${requireName(input.location, "location")}`, `--project=${project}`, "--format=json(name,location,status,currentMasterVersion,currentNodeVersion,autopilot,releaseChannel,network,subnetwork,privateClusterConfig,workloadIdentityConfig,addonsConfig,resourceLabels)"]),
+	compute_disks: (_input, project) => gcloudCommand("Compute disks", ["compute", "disks", "list", `--project=${project}`, "--format=table(name,zone.basename(),region.basename(),type.basename(),sizeGb,status,users.len())"]),
+	compute_disk: (input, project) => gcloudCommand("Compute disk", ["compute", "disks", "describe", requireName(input.disk, "disk"), `--zone=${requireName(input.zone, "zone")}`, `--project=${project}`, "--format=json(name,zone,region,type,sizeGb,status,users,labels,physicalBlockSizeBytes,provisionedIops,provisionedThroughput,onUpdateAction)"]),
+	project_quotas: (_input, project) => gcloudCommand("project quotas", ["compute", "project-info", "describe", `--project=${project}`, "--format=json(quotas)"]),
+	service_accounts: (_input, project) => gcloudCommand("service accounts", ["iam", "service-accounts", "list", `--project=${project}`, "--format=table(email,displayName,disabled)"]),
+	asset_inventory: buildAssetInventoryCommands,
+	activity_history: buildActivityHistoryCommands,
+	logging: buildLoggingCommands,
+};
+
 export function buildGcloudCommands(input: Record<string, unknown>): CommandSpec[] {
-	const operation = input.operation as GcloudOperation;
-	if (operation === "active_context") {
-		return [{
-			label: "active gcloud context",
-			command: "gcloud",
-			args: ["config", "list", "account,core/project", "--format=json"],
-		}];
-	}
+	if (input.operation === "active_context") return gcloudCommand("active gcloud context", ["config", "list", "account,core/project", "--format=json"]);
 	const project = requireProject(input.project);
-	switch (operation) {
-		case "gke_clusters":
-			return [{
-				label: "GKE clusters",
-				command: "gcloud",
-				args: ["container", "clusters", "list", `--project=${project}`, "--format=table(name,location,status,currentMasterVersion,currentNodeVersion,autopilot.enabled)"],
-			}];
-		case "gke_cluster":
-			return [{
-				label: "GKE cluster",
-				command: "gcloud",
-				args: [
-					"container", "clusters", "describe", requireName(input.cluster, "cluster"),
-					`--location=${requireName(input.location, "location")}`,
-					`--project=${project}`,
-					"--format=json(name,location,status,currentMasterVersion,currentNodeVersion,autopilot,releaseChannel,network,subnetwork,privateClusterConfig,workloadIdentityConfig,addonsConfig,resourceLabels)",
-				],
-			}];
-		case "compute_disks":
-			return [{
-				label: "Compute disks",
-				command: "gcloud",
-				args: ["compute", "disks", "list", `--project=${project}`, "--format=table(name,zone.basename(),region.basename(),type.basename(),sizeGb,status,users.len())"],
-			}];
-		case "compute_disk":
-			return [{
-				label: "Compute disk",
-				command: "gcloud",
-				args: [
-					"compute", "disks", "describe", requireName(input.disk, "disk"),
-					`--zone=${requireName(input.zone, "zone")}`,
-					`--project=${project}`,
-					"--format=json(name,zone,region,type,sizeGb,status,users,labels,physicalBlockSizeBytes,provisionedIops,provisionedThroughput,onUpdateAction)",
-				],
-			}];
-		case "project_quotas":
-			return [{
-				label: "project quotas",
-				command: "gcloud",
-				args: ["compute", "project-info", "describe", `--project=${project}`, "--format=json(quotas)"],
-			}];
-		case "service_accounts":
-			return [{
-				label: "service accounts",
-				command: "gcloud",
-				args: ["iam", "service-accounts", "list", `--project=${project}`, "--format=table(email,displayName,disabled)"],
-			}];
-		case "asset_inventory": {
-			const view = input.view === undefined ? "summary" : String(input.view);
-			if (!["names", "summary"].includes(view)) throw new Error("view must be names or summary.");
-			const format = view === "names"
-				? "--format=csv[no-heading](name)"
-				: "--format=csv[no-heading](assetType,name,displayName,location,state,createTime,updateTime,parent,labels)";
-			const args = [
-				"asset", "search-all-resources", `--scope=projects/${project}`, "--limit=1000", format,
-			];
-			const assetTypes = optionalAssetTypes(input.assetTypes);
-			if (assetTypes) args.push(`--asset-types=${assetTypes.join(",")}`);
-			const query = optionalBoundedText(input.query, "query");
-			if (query) args.push(`--query=${query}`);
-			return [{ label: "Cloud Asset Inventory", command: "gcloud", args }];
-		}
-		case "activity_history": {
-			const freshness = input.freshness === undefined ? "400d" : String(input.freshness);
-			if (!["1d", "7d", "30d", "90d", "180d", "400d"].includes(freshness)) {
-				throw new Error("freshness must be 1d, 7d, 30d, 90d, 180d, or 400d.");
-			}
-			const limit = input.limit === undefined ? 100 : Number(input.limit);
-			if (!Number.isInteger(limit) || limit < 1 || limit > 200) throw new Error("limit must be an integer from 1 to 200.");
-			const resourceName = optionalBoundedText(input.resourceName, "resourceName", 1000);
-			const activityFilter = optionalBoundedText(input.activityFilter, "activityFilter", 500);
-			const filters = ['log_id("cloudaudit.googleapis.com/activity")'];
-			if (resourceName) filters.push(`protoPayload.resourceName="${resourceName.replaceAll('"', '\\"')}"`);
-			if (activityFilter) filters.push(`(${activityFilter})`);
-			return [{
-				label: "Admin Activity history",
-				command: "gcloud",
-				args: [
-					"logging", "read", filters.join(" AND "), `--project=${project}`,
-					`--freshness=${freshness}`, `--limit=${limit}`, "--order=desc",
-					"--format=json(timestamp,protoPayload.serviceName,protoPayload.methodName,protoPayload.resourceName,protoPayload.authenticationInfo.principalEmail,protoPayload.requestMetadata.callerSuppliedUserAgent,protoPayload.status.message)",
-				],
-			}];
-		}
-		case "logging": {
-			const filter = input.filter;
-			if (typeof filter !== "string" || filter.length < 1 || filter.length > 500 || /[\r\n]/.test(filter)) {
-				throw new Error("filter must be an explicit bounded single-line Cloud Logging filter.");
-			}
-			const freshness = input.freshness === undefined ? "15m" : String(input.freshness);
-			if (!["5m", "15m", "30m", "1h"].includes(freshness)) throw new Error("freshness must be 5m, 15m, 30m, or 1h.");
-			const limit = input.limit === undefined ? 50 : Number(input.limit);
-			if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new Error("limit must be an integer from 1 to 100.");
-			return [{
-				label: "Cloud Logging",
-				command: "gcloud",
-				args: [
-					"logging", "read", filter, `--project=${project}`, `--freshness=${freshness}`, `--limit=${limit}`,
-					"--order=desc", "--format=json(timestamp,severity,resource.type,logName,textPayload,jsonPayload.message)",
-				],
-			}];
-		}
-		default:
-			throw new Error(`Unsupported gcloud_inspect operation: ${String(input.operation)}`);
-	}
+	const builder = gcloudOperationBuilders[input.operation as Exclude<GcloudOperation, "active_context">];
+	if (!builder) throw new Error(`Unsupported gcloud_inspect operation: ${String(input.operation)}`);
+	return builder(input, project);
 }
 
 async function executeCommands(

@@ -33,13 +33,19 @@ function message(entry: JsonObject): string {
 	return boundedRedactedText(entry.textPayload || jsonPayload.message || "(no projected message)", 600);
 }
 
-export function summarizeGcloudLogging(stdout: string, request: Record<string, unknown>): EnvironmentProcessorResult | undefined {
+function orderedEntries(stdout: string): JsonObject[] | undefined {
 	const entries = strictObjectArray(JSON.parse(stdout));
 	if (!entries) return undefined;
-	const timestamps = entries.map((entry) => Date.parse(String(entry.timestamp || "")));
-	if (timestamps.some((timestamp) => !Number.isFinite(timestamp))) return undefined;
-	if (timestamps.some((timestamp, index) => index > 0 && timestamps[index - 1] < timestamp)) return undefined;
+	let previous = Number.POSITIVE_INFINITY;
+	for (const entry of entries) {
+		const timestamp = Date.parse(String(entry.timestamp || ""));
+		if (!Number.isFinite(timestamp) || timestamp > previous) return undefined;
+		previous = timestamp;
+	}
+	return entries;
+}
 
+function groupEntries(entries: JsonObject[]): { severityCounts: Record<string, number>; groups: JsonObject[] } {
 	const severityCounts: Record<string, number> = {};
 	const groups: JsonObject[] = [];
 	for (const entry of entries) {
@@ -53,42 +59,33 @@ export function summarizeGcloudLogging(stdout: string, request: Record<string, u
 		if (previous?.key === key) {
 			previous.count += 1;
 			previous.oldestTimestamp = String(entry.timestamp || previous.oldestTimestamp || "");
-			continue;
+		} else {
+			groups.push({ key, newestTimestamp: String(entry.timestamp || ""), oldestTimestamp: String(entry.timestamp || ""), severity, resourceType, logName, message: projectedMessage, count: 1 });
 		}
-		groups.push({
-			key,
-			newestTimestamp: String(entry.timestamp || ""),
-			oldestTimestamp: String(entry.timestamp || ""),
-			severity,
-			resourceType,
-			logName,
-			message: projectedMessage,
-			count: 1,
-		});
 	}
+	return { severityCounts, groups };
+}
+
+function loggingOutput(entries: JsonObject[], request: Record<string, unknown>, severityCounts: Record<string, number>, groups: JsonObject[]) {
 	const groupsTruncated = groups.length > MAX_GROUPS;
-	const outputGroups = groups.slice(0, MAX_GROUPS).map(({ key: _key, ...group }) => group);
 	const filter = typeof request.filter === "string" ? request.filter : "";
-	const output = {
-		schema_version: "environment-summary/v1",
-		domain: "gcp-logging",
-		operation: "logging",
-		source_complete: true,
+	return {
+		schema_version: "environment-summary/v1", domain: "gcp-logging", operation: "logging", source_complete: true,
 		complete: !groupsTruncated,
-		coverage: {
-			freshness: String(request.freshness || "15m"),
-			requested_limit: Number(request.limit || 50),
-			returned_count: entries.length,
-			state: entries.length ? "hits" : "no_hits",
-			filter_sha256: createHash("sha256").update(filter).digest("hex").slice(0, 16),
-		},
+		coverage: { freshness: String(request.freshness || "15m"), requested_limit: Number(request.limit || 50), returned_count: entries.length, state: entries.length ? "hits" : "no_hits", filter_sha256: createHash("sha256").update(filter).digest("hex").slice(0, 16) },
 		order: "descending-timestamp",
 		severity_counts: Object.fromEntries(Object.entries(severityCounts).sort()),
 		groups_truncated: groupsTruncated,
 		omitted_group_count: Math.max(0, groups.length - MAX_GROUPS),
-		groups: outputGroups,
+		groups: groups.slice(0, MAX_GROUPS).map(({ key: _key, ...group }) => group),
 	};
-	const text = JSON.stringify(output);
+}
+
+export function summarizeGcloudLogging(stdout: string, request: Record<string, unknown>): EnvironmentProcessorResult | undefined {
+	const entries = orderedEntries(stdout);
+	if (!entries) return undefined;
+	const { severityCounts, groups } = groupEntries(entries);
+	const text = JSON.stringify(loggingOutput(entries, request, severityCounts, groups));
 	if (entries.length > 0 && Buffer.byteLength(text, "utf8") >= Buffer.byteLength(stdout, "utf8")) return undefined;
 	return { text, processor: "gcloud-logging" };
 }

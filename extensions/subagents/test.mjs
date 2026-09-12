@@ -15,6 +15,7 @@ import subagents, {
   MAX_SUBAGENT_TASKS,
   normalizeConfig,
   runSubagent,
+  truncLine,
   WORKER_SUBAGENT_TIMEOUT_MS,
 } from "./index.ts";
 import environmentInspect, {
@@ -168,7 +169,28 @@ test("does not install a repository review completion gate", () => {
   assert.equal(sentMessages.length, 0);
 });
 
-test("builds isolated child arguments with model, thinking, exact tools, and worker delegation bounds", async () => {
+test("renders calls and results while preserving fallback output", () => {
+  const tool = toolHarness();
+  const theme = { fg: (_color, text) => text, bold: (text) => text };
+  assert.equal(tool.renderCall({ tasks: [{ agent: "scout" }, { agent: "researcher" }] }, theme).text.includes("parallel"), true);
+  assert.equal(tool.renderCall({ agent: "scout", task: "password=do-not-print" }, theme).text.includes("REDACTED"), true);
+  assert.equal(tool.renderCall({}, theme).text, "subagent");
+  assert.equal(tool.renderResult({ content: [{ type: "text", text: "fallback output" }] }, { expanded: false }, theme).text, "fallback output");
+  const result = {
+    agent: "scout", task: "one\ntwo", output: "final output", exitCode: 0, model: "model",
+    usage: { input: 2, output: 3, cacheRead: 4, cacheWrite: 5, cost: 0.1, turns: 2 },
+    progress: { agent: "scout", status: "completed", task: "one\ntwo", recentTools: [{ tool: "read", args: "file" }], toolCount: 1, tokens: 5, durationMs: 1000, lastMessage: "message", lastToolError: "tool failed", error: "process failed" },
+  };
+  assert.ok(tool.renderResult({ content: [], details: { mode: "single", results: [result] } }, { expanded: true }, theme));
+  result.progress.status = "running";
+  result.progress.currentTool = "read";
+  result.progress.currentToolArgs = "file";
+  assert.ok(tool.renderResult({ content: [], details: { mode: "parallel", results: [result] } }, { expanded: false }, theme));
+  assert.equal(truncLine("abcdef", 4), "abc…");
+  assert.equal(truncLine("\x1b[31mabcdef", 4), "\x1b[31mabc…");
+});
+
+async function assertChildArguments() {
   for (const agent of profiles().values()) {
     const { args, tempDir, childEnv } = await buildPiArgs(agent, "Collect bounded evidence", process.cwd());
     try {
@@ -201,7 +223,9 @@ test("builds isolated child arguments with model, thinking, exact tools, and wor
       await rm(tempDir, { recursive: true, force: true });
     }
   }
-});
+}
+
+test("builds isolated child arguments with model, thinking, exact tools, and worker delegation bounds", assertChildArguments);
 
 test("keeps authority in the parent and worker out of parallel mode", async () => {
   const tool = toolHarness();

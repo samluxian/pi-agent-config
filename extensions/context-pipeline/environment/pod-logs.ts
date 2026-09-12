@@ -15,48 +15,52 @@ interface ProjectionState {
 	omittedArrayItemCount: number;
 }
 
+function markRedacted(state: ProjectionState): "[REDACTED]" {
+	state.contentComplete = false;
+	state.redactedFieldCount += 1;
+	return "[REDACTED]";
+}
+
+function projectString(value: string, state: ProjectionState): string {
+	const redacted = redactSensitiveText(value).replaceAll("\u0000", "�");
+	if (redacted !== value) markRedacted(state);
+	if (redacted.length <= MAX_STRING_CHARS) return redacted;
+	state.contentComplete = false;
+	state.truncatedStringCount += 1;
+	const headChars = Math.floor(MAX_STRING_CHARS * 3 / 4);
+	const tailChars = MAX_STRING_CHARS - headChars;
+	return `${redacted.slice(0, headChars)}...[truncated ${redacted.length - MAX_STRING_CHARS} chars]...${redacted.slice(-tailChars)}`;
+}
+
+function projectArray(value: unknown[], depth: number, state: ProjectionState): unknown[] {
+	if (value.length > MAX_ARRAY_ITEMS) {
+		state.contentComplete = false;
+		state.omittedArrayItemCount += value.length - MAX_ARRAY_ITEMS;
+	}
+	return value.slice(0, MAX_ARRAY_ITEMS).map((entry) => projectValue(entry, "", depth + 1, state));
+}
+
+function projectObject(value: Record<string, unknown>, depth: number, state: ProjectionState): Record<string, unknown> {
+	const entries = Object.entries(value);
+	if (entries.length > MAX_OBJECT_KEYS) {
+		state.contentComplete = false;
+		state.omittedObjectKeyCount += entries.length - MAX_OBJECT_KEYS;
+	}
+	return Object.fromEntries(entries.slice(0, MAX_OBJECT_KEYS).map(([entryKey, entryValue]) => [
+		boundedRedactedText(entryKey, 120), projectValue(entryValue, entryKey, depth + 1, state),
+	]));
+}
+
 function projectValue(value: unknown, key: string, depth: number, state: ProjectionState): unknown {
-	if (key && boundedRedactedNamedValue(key, value, MAX_STRING_CHARS) === "[REDACTED]") {
-		state.contentComplete = false;
-		state.redactedFieldCount += 1;
-		return "[REDACTED]";
-	}
-	if (typeof value === "string") {
-		const redacted = redactSensitiveText(value).replaceAll("\u0000", "�");
-		if (redacted !== value) {
-			state.contentComplete = false;
-			state.redactedFieldCount += 1;
-		}
-		if (redacted.length <= MAX_STRING_CHARS) return redacted;
-		state.contentComplete = false;
-		state.truncatedStringCount += 1;
-		const headChars = Math.floor(MAX_STRING_CHARS * 3 / 4);
-		const tailChars = MAX_STRING_CHARS - headChars;
-		return `${redacted.slice(0, headChars)}...[truncated ${redacted.length - MAX_STRING_CHARS} chars]...${redacted.slice(-tailChars)}`;
-	}
+	if (key && boundedRedactedNamedValue(key, value, MAX_STRING_CHARS) === "[REDACTED]") return markRedacted(state);
+	if (typeof value === "string") return projectString(value, state);
 	if (value === null || typeof value === "number" || typeof value === "boolean") return value;
 	if (depth >= MAX_DEPTH) {
 		state.contentComplete = false;
 		return "[nested value omitted at depth limit]";
 	}
-	if (Array.isArray(value)) {
-		if (value.length > MAX_ARRAY_ITEMS) {
-			state.contentComplete = false;
-			state.omittedArrayItemCount += value.length - MAX_ARRAY_ITEMS;
-		}
-		return value.slice(0, MAX_ARRAY_ITEMS).map((entry) => projectValue(entry, "", depth + 1, state));
-	}
-	if (value && typeof value === "object") {
-		const entries = Object.entries(value as Record<string, unknown>);
-		if (entries.length > MAX_OBJECT_KEYS) {
-			state.contentComplete = false;
-			state.omittedObjectKeyCount += entries.length - MAX_OBJECT_KEYS;
-		}
-		return Object.fromEntries(entries.slice(0, MAX_OBJECT_KEYS).map(([entryKey, entryValue]) => [
-			boundedRedactedText(entryKey, 120),
-			projectValue(entryValue, entryKey, depth + 1, state),
-		]));
-	}
+	if (Array.isArray(value)) return projectArray(value, depth, state);
+	if (value && typeof value === "object") return projectObject(value as Record<string, unknown>, depth, state);
 	return boundedRedactedText(value, 120);
 }
 

@@ -26,16 +26,49 @@ function replacementContent(content: (TextContent | ImageContent)[], text: strin
 	const result: (TextContent | ImageContent)[] = [];
 	let inserted = false;
 	for (const block of content) {
-		if (block.type === "text") {
-			if (!inserted) {
-				result.push(replacement);
-				inserted = true;
-			}
-			continue;
+		if (block.type !== "text") result.push(block);
+		else if (!inserted) {
+			result.push(replacement);
+			inserted = true;
 		}
-		result.push(block);
 	}
 	return inserted ? result : content;
+}
+
+function processorRequest(event: PipelineEvent, signal?: AbortSignal) {
+	if (!SUPPORTED_SHELL_TOOLS.has(event.toolName)) return undefined;
+	const kind = classifyCommand(event.input.command);
+	const originalText = textContent(event.content);
+	if (!kind || !originalText || (event.isError && kind !== "test-result")) return undefined;
+
+	const inputPath = fullOutputPath(event.details)
+		?? (event.isError ? fullOutputPathFromNativeError(originalText) : undefined);
+	const truncated = reportsTruncation(event.details);
+	if (!inputPath && (truncated || Buffer.byteLength(originalText, "utf8") < MIN_DIRECT_PROCESSOR_BYTES)) return undefined;
+	return {
+		kind,
+		input: inputPath ? { type: "file" as const, path: inputPath } : { type: "text" as const, text: originalText },
+		inputComplete: Boolean(inputPath) || !truncated,
+		commandFailed: event.isError,
+		signal,
+		inputPath,
+	};
+}
+
+function summaryText(kind: string, output: string, inputPath?: string): string {
+	const labels: Record<string, string> = {
+		"terraform-plan": "Terraform plan",
+		"helm-manifest": "Helm manifest",
+		"test-result": "test result",
+	};
+	const source = inputPath
+		? `[Original output remains available at: ${inputPath}]`
+		: "[Original tool result remains in the session transcript; use emitted test identifiers for a focused rerun.]";
+	return [
+		`[Context Pipeline: deterministic ${labels[kind]} summary from complete bash output]`,
+		output.trimEnd(),
+		source,
+	].join("\n\n");
 }
 
 export async function processToolResult(
@@ -43,38 +76,15 @@ export async function processToolResult(
 	ctx: PipelineContext,
 	runner: ProcessorRunner = runProcessor,
 ): Promise<PipelinePatch | undefined> {
-	if (!SUPPORTED_SHELL_TOOLS.has(event.toolName)) return undefined;
-	const kind = classifyCommand(event.input.command);
-	if (!kind || (event.isError && kind !== "test-result")) return undefined;
-	const originalText = textContent(event.content);
-	if (!originalText) return undefined;
-
-	const detailPath = fullOutputPath(event.details);
-	const errorPath = event.isError ? fullOutputPathFromNativeError(originalText) : undefined;
-	const inputPath = detailPath ?? errorPath;
-	if (!inputPath && reportsTruncation(event.details)) return undefined;
-	if (!inputPath && Buffer.byteLength(originalText, "utf8") < MIN_DIRECT_PROCESSOR_BYTES) return undefined;
-
+	const request = processorRequest(event, ctx.signal);
+	if (!request) return undefined;
 	try {
-		const output = await runner({
-			kind,
-			input: inputPath ? { type: "file", path: inputPath } : { type: "text", text: originalText },
-			inputComplete: Boolean(inputPath) || !reportsTruncation(event.details),
-			commandFailed: event.isError,
-			signal: ctx.signal,
-		});
-		if (!output?.complete || output.kind !== kind) return undefined;
-		const label = kind === "terraform-plan" ? "Terraform plan" : kind === "helm-manifest" ? "Helm manifest" : "test result";
-		const source = inputPath
-			? `[Original output remains available at: ${inputPath}]`
-			: "[Original tool result remains in the session transcript; use emitted test identifiers for a focused rerun.]";
-		const summary = [
-			`[Context Pipeline: deterministic ${label} summary from complete bash output]`,
-			output.text.trimEnd(),
-			source,
-		].join("\n\n");
-		if (Buffer.byteLength(summary, "utf8") >= textBytes(event.content)) return undefined;
-		return { content: replacementContent(event.content, summary) };
+		const output = await runner(request);
+		if (!output?.complete || output.kind !== request.kind) return undefined;
+		const summary = summaryText(request.kind, output.text, request.inputPath);
+		return Buffer.byteLength(summary, "utf8") < textBytes(event.content)
+			? { content: replacementContent(event.content, summary) }
+			: undefined;
 	} catch {
 		return undefined;
 	}

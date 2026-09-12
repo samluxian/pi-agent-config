@@ -47,6 +47,17 @@ function appendBounded(chunks: Buffer[], chunk: Buffer, currentBytes: number, li
 	return currentBytes + chunk.length;
 }
 
+function successfulProcessorResult(
+	cancelled: boolean,
+	code: number | null,
+	stdoutBytes: number,
+	stdout: Buffer[],
+	stderr: Buffer[],
+): { stdout: string; stderr: string } | undefined {
+	if (cancelled || code !== 0 || stdoutBytes > MAX_PROCESSOR_STDOUT_BYTES) return undefined;
+	return { stdout: Buffer.concat(stdout).toString("utf8"), stderr: Buffer.concat(stderr).toString("utf8") };
+}
+
 async function executeProcessor(
 	input: ProcessorInput,
 	script: string,
@@ -62,7 +73,7 @@ async function executeProcessor(
 	}
 
 	try {
-		return await new Promise((resolveResult) => {
+		return await new Promise(function monitorProcessor(resolveResult) {
 			let settled = false;
 			let cancelled = false;
 			let forceKillTimer: ReturnType<typeof setTimeout> | undefined;
@@ -108,13 +119,7 @@ async function executeProcessor(
 				stderrBytes = appendBounded(stderr, chunk, stderrBytes, MAX_PROCESSOR_STDERR_BYTES);
 			});
 			child.on("error", () => finish(undefined));
-			child.on("close", (code) => {
-				if (cancelled || code !== 0 || stdoutBytes > MAX_PROCESSOR_STDOUT_BYTES) {
-					finish(undefined);
-					return;
-				}
-				finish({ stdout: Buffer.concat(stdout).toString("utf8"), stderr: Buffer.concat(stderr).toString("utf8") });
-			});
+			child.on("close", (code) => finish(successfulProcessorResult(cancelled, code, stdoutBytes, stdout, stderr)));
 			signal?.addEventListener("abort", cancel, { once: true });
 			if (input.type === "text") {
 				child.stdin?.on("error", () => undefined);

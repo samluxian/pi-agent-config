@@ -116,16 +116,18 @@ function eventProjection(row: string[]) {
 	};
 }
 
+function podHasStatusIssue(pod: ReturnType<typeof podProjection>): boolean {
+	const [ready, total] = String(pod.ready).split("/").map(Number);
+	return pod.phase !== "Running" || total === 0 || ready !== total;
+}
+
+function podIsAnomalous(pod: ReturnType<typeof podProjection>): boolean {
+	return podHasStatusIssue(pod) || pod.restarts > 0 || Boolean(pod.reasons);
+}
+
 function selectProjections(operation: string, rows: string[][]): { mode: string; items: any[] } {
 	if (operation === "pods") {
-		const pods = rows.map(podProjection);
-		return {
-			mode: "anomalies",
-			items: pods.filter((pod) => {
-				const [ready, total] = String(pod.ready).split("/").map(Number);
-				return pod.phase !== "Running" || total === 0 || ready !== total || pod.restarts > 0 || pod.reasons;
-			}),
-		};
+		return { mode: "anomalies", items: rows.map(podProjection).filter(podIsAnomalous) };
 	}
 	if (operation === "workloads") {
 		const workloads = rows.map(workloadProjection);
