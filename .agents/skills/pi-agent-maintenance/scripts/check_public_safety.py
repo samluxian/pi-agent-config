@@ -36,7 +36,7 @@ SYNTHETIC_PROJECT_IDS = {
     "sample-project",
     "test-project",
 }
-ALLOWED_HOME_ROOTS = ("/home/linuxbrew",)
+ALLOWED_HOME_ROOTS = ("/home/linuxbrew", "/home/runner")
 DOCUMENTATION_IPV4_NETWORKS = tuple(
     ipaddress.ip_network(cidr)
     for cidr in ("192.0.2.0/24", "198.51.100.0/24", "203.0.113.0/24")

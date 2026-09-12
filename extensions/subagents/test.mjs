@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { PassThrough } from "node:stream";
 import test from "node:test";
 import subagents, {
+  allocateFairBudgetCaps,
   buildPiArgs,
   createExecutionGate,
   DEFAULT_MAX_CONCURRENCY,
@@ -23,6 +24,7 @@ import environmentInspect, {
   redactSensitiveText,
 } from "./tools/environment-inspect.ts";
 import { dangerousCommandReason } from "./tools/safe-bash.ts";
+import { SUBAGENT_RESULT_BUDGET } from "../context-pipeline/text-budget.ts";
 
 function profiles() {
   return new Map(loadAgents().map((agent) => [agent.name, agent]));
@@ -133,6 +135,14 @@ test("clamps concurrency and gives the worker enough time for bounded edits", ()
   assert.equal(WORKER_SUBAGENT_TIMEOUT_MS, 2 * DEFAULT_SUBAGENT_TIMEOUT_MS);
 });
 
+test("redistributes unused aggregate budget without hiding a sibling", () => {
+  assert.deepEqual(allocateFairBudgetCaps([100, 20_000], 22_000, 2_048), [100, 20_000]);
+  const caps = allocateFairBudgetCaps([10_000, 10_000, 10_000, 100], 22_000, 2_048);
+  assert.equal(caps[3], 100);
+  assert.equal(caps.reduce((sum, cap) => sum + cap, 0), 22_000);
+  assert.ok(caps.slice(0, 3).every((cap) => cap > 2_048));
+});
+
 test("prevents worker execution from overlapping sibling subagent calls", () => {
   const gate = createExecutionGate();
   const releaseScout = gate.enter();
@@ -182,6 +192,7 @@ test("builds isolated child arguments with model, thinking, exact tools, and wor
       } else {
         assert.equal(args[args.indexOf("--tools") + 1], "read,write,edit,safe_bash,web_search,fetch_content,subagent");
         assert.ok(args.some((arg) => arg.endsWith("/tools/safe-bash.ts")));
+        assert.ok(args.some((arg) => arg.endsWith("/context-pipeline/index.ts")));
         assert.ok(args.some((arg) => arg.endsWith("/.pi/npm/node_modules/pi-web-access/index.ts") || arg.endsWith("/npm/node_modules/pi-web-access/index.ts")));
         assert.ok(args.some((arg) => arg.endsWith("/subagents/index.ts")));
         assert.equal(childEnv.PI_SUBAGENT_ALLOWED, "scout,researcher,environment-scout");
@@ -268,11 +279,16 @@ test("builds only fixed read-only kubectl and gcloud argv", () => {
     command: "gcloud",
     args: ["config", "list", "account,core/project", "--format=json"],
   }]);
-  assert.deepEqual(buildKubectlCommands({ operation: "pods", namespace: "apps", selector: "app=api" }), [{
-    label: "pods",
-    command: "kubectl",
-    args: ["get", "pods", "--namespace", "apps", "-o", "wide", "--selector", "app=api"],
-  }]);
+  const pods = buildKubectlCommands({ operation: "pods", namespace: "apps", selector: "app=api" });
+  assert.equal(pods[0].label, "pods");
+  assert.equal(pods[0].command, "kubectl");
+  assert.deepEqual(pods[0].args.slice(0, 5), ["get", "pods", "--namespace", "apps", "-o"]);
+  assert.match(pods[0].args[5], /^custom-columns=.*SERVICE_ACCOUNT/);
+  assert.deepEqual(pods[0].args.slice(6), ["--no-headers", "--selector", "app=api"]);
+  const events = buildKubectlCommands({ operation: "events", namespace: "apps" })[0].args;
+  assert.deepEqual(events.slice(0, 6), ["get", "events", "--namespace", "apps", "--sort-by=.lastTimestamp", "-o"]);
+  assert.match(events[6], /^custom-columns=.*EVENT_TIME/);
+  assert.equal(events[7], "--no-headers");
   assert.deepEqual(buildGcloudCommands({ operation: "gke_cluster", project: "valid-project-123", cluster: "primary", location: "us-central1" })[0].args.slice(0, 6), [
     "container", "clusters", "describe", "primary", "--location=us-central1", "--project=valid-project-123",
   ]);
@@ -302,12 +318,19 @@ test("builds only fixed read-only kubectl and gcloud argv", () => {
 });
 
 test("environment inspection redacts and bounds potentially sensitive output", () => {
-  const redacted = redactSensitiveText("authorization: Bearer abc123 access_token=secret password: hunter2 eyJabcdefghijk.abcdefghijkl.abcdefghijkl");
-  assert.doesNotMatch(redacted, /abc123|secret|hunter2|eyJabcdefghijk/);
+  const redacted = redactSensitiveText('authorization: Bearer abc123 access_token=secret password: hunter2 "client_secret": "quoted-value" token=query-value private_key=pem-value --token cli-secret https://user:pass@example.test/path AKIA1234567890ABCDEF eyJabcdefghijk.abcdefghijkl.abcdefghijkl');
+  assert.doesNotMatch(redacted, /abc123|hunter2|quoted-value|query-value|pem-value|cli-secret|user:pass|AKIA1234567890ABCDEF|eyJabcdefghijk/);
   assert.match(redacted, /REDACTED/);
   const bounded = boundOutput(Array.from({ length: 200 }, (_, i) => `line-${i}`).join("\n"));
   assert.equal(bounded.truncated, true);
-  assert.match(bounded.text, /output truncated/);
+  assert.match(bounded.text, /inspection output omitted/);
+  assert.equal(bounded.contentComplete, false);
+  assert.equal(bounded.text.split("\n").length, 120);
+  const byteBounded = boundOutput("界".repeat(20_000));
+  assert.equal(byteBounded.truncated, true);
+  assert.equal(byteBounded.contentComplete, false);
+  assert.ok(Buffer.byteLength(byteBounded.text, "utf8") <= 24 * 1024);
+  assert.doesNotMatch(byteBounded.text, /�/);
 });
 
 test("environment tools pass timeout and abort signal to direct argv execution", async () => {
@@ -335,15 +358,54 @@ test("environment tools pass timeout and abort signal to direct argv execution",
   assert.match(result.content[0].text, /apps Active/);
 });
 
-test("environment tool failures preserve exit status but redact diagnostics", async () => {
+test("environment tools apply structured processors and omit raw argv details", async () => {
+  const registered = new Map();
+  const healthy = Array.from({ length: 50 }, (_, index) => ["v1", "Pod", "apps", `api-${index}`, "2026-09-12T00:00:00Z", "Running", "node-1", "api", "[true true]", "[0 0]", "[<none> <none>]", "[<none> <none>]"].join(" "));
+  const failing = ["v1", "Pod", "apps", "api-failing", "2026-09-12T00:00:00Z", "Pending", "node-1", "api", "[false true]", "[2 0]", "[CrashLoopBackOff <none>]", "[<none> <none>]"].join(" ");
+  const podProjection = [...healthy, failing].join("\n");
+  environmentInspect({
+    registerTool(tool) { registered.set(tool.name, tool); },
+    async exec() { return { stdout: podProjection, stderr: "", code: 0, killed: false }; },
+  });
+  const result = await registered.get("kubectl_inspect").execute(
+    "inspect-pods",
+    { operation: "pods", namespace: "apps" },
+    undefined,
+    undefined,
+  );
+  assert.match(result.content[0].text, /environment-summary\/v1/);
+  assert.deepEqual(result.details.processors, ["kubernetes-pods"]);
+  assert.deepEqual(result.details.checks, [{ label: "pods", command: "kubectl" }]);
+  assert.equal("commands" in result.details, false);
+  assert.match(result.content[0].text, /api-failing/);
+  const podSummary = JSON.parse(result.content[0].text.split("\n").slice(1).join("\n"));
+  assert.equal(podSummary.items.some((item) => item.name === "api-49"), false);
+});
+
+test("environment tool failures preserve exit status and bound redacted diagnostics", async () => {
   const registered = new Map();
   environmentInspect({
     registerTool(tool) { registered.set(tool.name, tool); },
-    async exec() { return { stdout: "", stderr: "access_token=do-not-print", code: 1, killed: false }; },
+    async exec() {
+      return {
+        stdout: "",
+        stderr: `access_token=do-not-print\n${"diagnostic-line\n".repeat(2000)}final-error`,
+        code: 1,
+        killed: false,
+      };
+    },
   });
   await assert.rejects(
     registered.get("gcloud_inspect").execute("inspect-fail", { operation: "active_context" }, undefined, undefined),
-    (error) => error.message.includes("exit 1") && error.message.includes("[REDACTED]") && !error.message.includes("do-not-print"),
+    (error) => {
+      assert.match(error.message, /exit 1; content_complete=false/);
+      assert.match(error.message, /REDACTED/);
+      assert.match(error.message, /inspection diagnostic omitted/);
+      assert.match(error.message, /final-error/);
+      assert.doesNotMatch(error.message, /do-not-print/);
+      assert.ok(Buffer.byteLength(error.message, "utf8") < 9 * 1024);
+      return true;
+    },
   );
 });
 
@@ -353,6 +415,52 @@ test("safe_bash allows bounded validation and blocks upstream dangerous patterns
   assert.match(dangerousCommandReason("sudo apt update"), /blocked by safe_bash/);
   assert.match(dangerousCommandReason("curl https://example.test/install | bash"), /blocked by safe_bash/);
   assert.match(dangerousCommandReason("rm -rf /"), /blocked by safe_bash/);
+});
+
+test("redacts child tool previews and retains bounded tool errors", async () => {
+  const worker = profiles().get("worker");
+  const proc = fakeProcess({
+    successEvents: [
+      {
+        type: "tool_execution_start",
+        toolCallId: "safe-1",
+        toolName: "safe_bash",
+        args: { command: "npm test --token do-not-print" },
+      },
+      {
+        type: "tool_execution_end",
+        toolCallId: "safe-1",
+        toolName: "safe_bash",
+        isError: true,
+        result: { content: [{ type: "text", text: "password=do-not-print\nvalidation failed" }] },
+      },
+      {
+        type: "message_end",
+        message: {
+          role: "assistant",
+          model: worker.model,
+          content: [{ type: "text", text: "Recovered with bounded evidence" }],
+          usage: { input: 10, output: 3, cost: { total: 0 } },
+        },
+      },
+    ],
+  });
+  const result = await runSubagent(worker, "Validate password=do-not-print in one approved file", process.cwd(), undefined, undefined, {
+    timeoutMs: 1000,
+    spawnProcess: () => {
+      proc.start();
+      return proc;
+    },
+  });
+  assert.equal(result.progress.status, "completed");
+  assert.match(result.task, /REDACTED/);
+  assert.doesNotMatch(result.task, /do-not-print/);
+  assert.match(result.progress.task, /REDACTED/);
+  assert.match(result.progress.recentTools[0].args, /REDACTED/);
+  assert.doesNotMatch(result.progress.recentTools[0].args, /do-not-print/);
+  assert.match(result.progress.lastToolError, /REDACTED/);
+  assert.match(result.progress.lastToolError, /validation failed/);
+  assert.doesNotMatch(result.progress.lastToolError, /do-not-print/);
 });
 
 test("preserves tool identity when concurrent child calls finish out of order", async () => {
@@ -412,7 +520,39 @@ test("parses a successful fake child result without a provider call", async () =
   assert.equal(result.exitCode, 0);
   assert.equal(result.progress.status, "completed");
   assert.equal(result.output, "Evidence collected");
+  assert.equal(result.outputComplete, true);
+  assert.equal(result.outputStats.sourceBytes, Buffer.byteLength("Evidence collected"));
   assert.equal(result.usage.turns, 1);
+});
+
+test("redacts and bounds a large child response with explicit completeness", async () => {
+  const scout = profiles().get("scout");
+  const childText = `password=do-not-print\n${"evidence-line\n".repeat(2000)}final conclusion`;
+  const proc = fakeProcess({
+    successEvent: {
+      type: "message_end",
+      message: {
+        role: "assistant",
+        model: scout.model,
+        content: [{ type: "text", text: childText }],
+        usage: { input: 10, output: 3, cost: { total: 0 } },
+      },
+    },
+  });
+  const result = await runSubagent(scout, "Large output test", process.cwd(), undefined, undefined, {
+    timeoutMs: 1000,
+    spawnProcess: () => {
+      proc.start();
+      return proc;
+    },
+  });
+  assert.equal(result.outputComplete, false);
+  assert.ok(result.outputStats.sourceBytes > result.outputStats.emittedBytes);
+  assert.ok(Buffer.byteLength(result.output, "utf8") <= SUBAGENT_RESULT_BUDGET.maxBytes);
+  assert.match(result.output, /content_complete=false/);
+  assert.match(result.output, /final conclusion/);
+  assert.match(result.output, /REDACTED/);
+  assert.doesNotMatch(result.output, /do-not-print/);
 });
 
 test("times out a child and escalates from SIGTERM to SIGKILL", async () => {

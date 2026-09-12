@@ -17,6 +17,8 @@ from typing import Any
 import yaml
 
 
+MAX_FINDINGS = 500
+
 IMPORTANT_KINDS = {
     "Deployment",
     "Service",
@@ -27,15 +29,44 @@ IMPORTANT_KINDS = {
     "Secret",
     "ExternalSecret",
     "Ingress",
+    "Job",
+    "ScaledObject",
 }
 
 
-def load_docs(path: str | None) -> list[dict[str, Any]]:
-    text = sys.stdin.read() if not path or path == "-" else Path(path).read_text()
+def extract_helm_manifest(text: str) -> str:
+    """Remove Helm dry-run release headers while retaining hooks and manifests."""
+    lines = text.splitlines()
+    section_indexes = [
+        index for index, line in enumerate(lines) if line in {"HOOKS:", "MANIFEST:"}
+    ]
+    if section_indexes:
+        selected: list[str] = []
+        for line in lines[section_indexes[0] + 1 :]:
+            if line == "NOTES:":
+                break
+            if line in {"HOOKS:", "MANIFEST:"}:
+                continue
+            selected.append(line)
+        return "\n".join(selected)
+
+    for index, line in enumerate(lines):
+        if line.strip() == "---" or line.startswith("apiVersion:"):
+            return "\n".join(lines[index:])
+    return text
+
+
+def load_docs(path: str | None, helm_output: bool = False) -> list[dict[str, Any]]:
+    text = sys.stdin.read() if not path or path == "-" else Path(path).read_text(encoding="utf-8")
+    if helm_output:
+        text = extract_helm_manifest(text)
     docs: list[dict[str, Any]] = []
-    for doc in yaml.safe_load_all(text):
-        if isinstance(doc, dict):
-            docs.append(doc)
+    for index, doc in enumerate(yaml.safe_load_all(text), start=1):
+        if doc is None:
+            continue
+        if not isinstance(doc, dict):
+            raise ValueError(f"manifest document {index} is not a Kubernetes object")
+        docs.append(doc)
     return docs
 
 
@@ -91,9 +122,25 @@ def container_summary(container: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def scaled_trigger_summary(trigger: dict[str, Any]) -> dict[str, Any]:
+    metadata = trigger.get("metadata")
+    authentication = trigger.get("authenticationRef")
+    authentication = authentication if isinstance(authentication, dict) else {}
+    return {
+        "type": trigger.get("type"),
+        "name": trigger.get("name"),
+        "metadata_keys": sorted(metadata) if isinstance(metadata, dict) else [],
+        "authentication_ref": {
+            "name": authentication.get("name"),
+            "kind": authentication.get("kind"),
+        },
+    }
+
+
 def summarize_doc(doc: dict[str, Any]) -> dict[str, Any]:
     doc_kind = kind(doc)
     item: dict[str, Any] = {
+        "apiVersion": str(doc.get("apiVersion", "")),
         "kind": doc_kind,
         "name": name(doc),
     }
@@ -154,7 +201,22 @@ def summarize_doc(doc: dict[str, Any]) -> dict[str, Any]:
         item["max_unavailable"] = spec.get("maxUnavailable")
     elif doc_kind in {"ConfigMap", "Secret"}:
         data = doc.get("data")
-        item["data_keys"] = sorted(data) if isinstance(data, dict) else []
+        string_data = doc.get("stringData")
+        keys = set(data) if isinstance(data, dict) else set()
+        if isinstance(string_data, dict):
+            keys.update(string_data)
+        item["data_keys"] = sorted(keys)
+    elif doc_kind == "ScaledObject":
+        item["scale_target_ref"] = spec.get("scaleTargetRef") or {}
+        item["min_replicas"] = spec.get("minReplicaCount")
+        item["max_replicas"] = spec.get("maxReplicaCount")
+        item["polling_interval"] = spec.get("pollingInterval")
+        item["cooldown_period"] = spec.get("cooldownPeriod")
+        item["triggers"] = [
+            scaled_trigger_summary(trigger)
+            for trigger in spec.get("triggers", []) or []
+            if isinstance(trigger, dict)
+        ]
     elif doc_kind == "ExternalSecret":
         data = spec.get("data")
         item["target_name"] = get_path(spec, "target", "name")
@@ -196,31 +258,70 @@ def build_findings(resources: list[dict[str, Any]]) -> list[dict[str, str]]:
     return findings
 
 
+def resource_identity(doc: dict[str, Any]) -> dict[str, Any]:
+    identity = {
+        "apiVersion": str(doc.get("apiVersion", "")),
+        "kind": kind(doc),
+        "name": name(doc),
+    }
+    ns = namespace(doc)
+    if ns:
+        identity["namespace"] = ns
+    return identity
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Summarize rendered Kubernetes manifest as JSON.")
     parser.add_argument("--manifest", "-m", help="Manifest path; defaults to stdin.")
+    parser.add_argument("--helm-output", action="store_true", help="Extract manifest sections from Helm template or dry-run output.")
     parser.add_argument("--include-kind", action="append", default=[], help="Extra kind to include in resources.")
-    parser.add_argument("--max-resources", type=int, default=80, help="Maximum resources to include in JSON.")
+    parser.add_argument("--max-resources", type=int, default=80, help="Maximum projected resources to include in JSON.")
     args = parser.parse_args()
 
-    docs = load_docs(args.manifest)
+    if args.max_resources < 1:
+        parser.error("--max-resources must be positive")
+
+    docs = load_docs(args.manifest, args.helm_output)
     kinds = Counter(kind(doc) for doc in docs)
+    resource_index = sorted(
+        (resource_identity(doc) for doc in docs),
+        key=lambda item: (
+            str(item.get("apiVersion", "")),
+            str(item.get("kind", "")),
+            str(item.get("namespace", "")),
+            str(item.get("name", "")),
+        ),
+    )
+    identity_complete = bool(docs) and all(
+        item["apiVersion"] and item["kind"] and item["name"] for item in resource_index
+    )
     include_kinds = IMPORTANT_KINDS | set(args.include_kind)
-    resources = [summarize_doc(doc) for doc in docs if kind(doc) in include_kinds]
-    truncated = len(resources) > args.max_resources
-    resources = resources[: args.max_resources]
-    findings = build_findings(resources)
-    result = "fail" if any(f["level"] == "fail" for f in findings) else "warning" if findings else "pass"
+    projected_resources = [summarize_doc(doc) for doc in docs if kind(doc) in include_kinds]
+    truncated = len(projected_resources) > args.max_resources
+    resources = projected_resources[: args.max_resources]
+    all_findings = build_findings(projected_resources)
+    findings_truncated = len(all_findings) > MAX_FINDINGS
+    findings = all_findings[:MAX_FINDINGS]
+    complete = identity_complete and not findings_truncated
+    result = "fail" if any(f["level"] == "fail" for f in all_findings) else "warning" if all_findings else "pass"
 
     output = {
         "schema_version": "gitops-summary/v1",
         "type": "manifest_summary",
-        "result": result,
+        "complete": complete,
+        "content_complete": complete and not truncated,
+        "result": result if complete else "incomplete",
         "input": args.manifest or "stdin",
         "document_count": len(docs),
         "resource_counts": dict(sorted(kinds.items())),
+        "resource_index": resource_index,
+        "projected_resource_count": len(projected_resources),
+        "projected_resources_omitted": len(projected_resources) - len(resources),
         "resources_truncated": truncated,
         "resources": resources,
+        "findings_total": len(all_findings),
+        "findings_omitted": len(all_findings) - len(findings),
+        "findings_truncated": findings_truncated,
         "findings": findings,
     }
     print(json.dumps(output, ensure_ascii=False, indent=2, sort_keys=True))

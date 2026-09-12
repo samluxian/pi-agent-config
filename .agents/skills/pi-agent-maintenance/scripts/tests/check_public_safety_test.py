@@ -69,6 +69,13 @@ class PublicSafetyTest(unittest.TestCase):
             for value in (private_ip, private_url, bare_private_host, home_path, service_account):
                 self.assertNotIn(value, output)
 
+    def test_accepts_public_ci_and_package_manager_home_roots(self) -> None:
+        for line in (
+            "/home/runner/work/<repository>/<repository>",
+            "/home/linuxbrew/.linuxbrew/bin",
+        ):
+            self.assertEqual(CHECKER.line_findings("README.md", 1, line, []), [])
+
     def test_detects_terminal_linux_and_macos_home_paths(self) -> None:
         linux_path = "HOME=/" + "home/example-user"
         macos_path = "USER_HOME=/" + "Users/example-user"

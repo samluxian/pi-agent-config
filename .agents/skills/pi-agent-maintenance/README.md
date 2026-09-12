@@ -44,10 +44,12 @@ tree、確認 approval scope 並保留無關的使用者變更。
 - `SKILL.md` 只保留 task boundary、核心流程、停止條件、references 與 domain-specific
   reporting additions；通用 report fields 由 `AGENTS.md` 統一管理。
 - 深層說明移到 `references/`，重複檢查移到 `scripts/`。
-- Automatic skill description 要同時寫清楚適用範圍與最近的排除範圍。
-- Manual skill 要設定 `disable-model-invocation: true`，並在 root README 保留
-  `/skill:<name>` 入口。
-- Skill routing 有實質變更時，除了 fixtures 之外才考慮付費 benchmark。
+- Skill metadata 必須符合 Agent Skills 的 name、description 與 optional field constraints。
+- Automatic description 要寫清楚做什麼與何時使用；只有真實 collision 才需增加最近的排除範圍。
+- Manual skill 可設定 `disable-model-invocation: true`，並在需要人類入口時記錄
+  `/skill:<name>`。
+- 500 行與約 5,000 tokens 是 review/performance signals，不是 hard failures。
+- Skill routing 有實質變更或已知 collision 時，才考慮 fixtures 與付費 benchmark。
 
 ## Extension 維護
 
@@ -85,10 +87,9 @@ extensions/<name>/README.md
 .agents/skills/<name>/README.md
 ```
 
-每個 active skill 都必須有 `README.md`。README 用白話說明用途、適用與排除範圍、運作方式、
-evidence／authority 邊界，以及 references/scripts 入口；`SKILL.md` 仍是 agent contract，不能
-把完整 workflow 複製到 README。Manual skill 要在自己的 README 與根 README index 寫出
-`/skill:<name>`。
+只有存在人類 setup、inventory 或 manual usage 時才需要 skill README。README 用白話說明
+用途與入口；`SKILL.md` 仍是 agent contract，不能把完整 workflow 複製到 README。
+README 是否存在不影響 Agent Skills loadability，也不是 contract validator gate。
 
 Human-facing 行為、安裝方式或文件入口有變更時，要在同一個 patch 更新相關 README。
 
@@ -113,8 +114,9 @@ npm run test:contract
 git diff --check
 ```
 
-`test:contract` 只檢查 skill metadata、context budgets、README links、settings baseline、
-extension registration、always-on contract 與 invocation fixtures，不再順便執行所有元件測試。
+`test:contract` 只 hard-fail Agent Skills loadability 與 metadata errors；AGENTS／SKILL 大小、
+portability、performance 與 focus findings 是 nonblocking signals。README、settings、package、
+exact wording、provenance 與 invocation fixtures 不屬於這個 validator。Public safety獨立執行。
 再依 changed surface 選一列 targeted test：
 
 | Changed surface | Targeted command |

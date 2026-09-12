@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the structure of shared skill invocation regression fixtures."""
+"""Validate the supplied skill invocation benchmark fixtures."""
 
 from __future__ import annotations
 
@@ -91,16 +91,12 @@ def main() -> None:
     if unexpected:
         fail(f"fixtures reference non-model-invoked skills: {sorted(unexpected)}")
 
-    missing = model_invoked_skills - set(coverage)
-    if missing:
-        fail(f"model-invoked skills lack invocation fixtures: {sorted(missing)}")
-
-    for skill in sorted(model_invoked_skills):
+    for skill in sorted(coverage):
         if coverage[skill] != EXPECTED_VALUES:
-            fail(f"skill {skill} must have both invoke and skip cases")
+            fail(f"covered skill {skill} must have both invoke and skip cases")
 
     print(
-        f"OK: {len(cases)} invocation fixtures across {len(coverage)} skills "
+        f"OK: {len(cases)} optional invocation fixtures across {len(coverage)} covered skills "
         "with positive and negative coverage"
     )
 

@@ -1,12 +1,20 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { StringEnum } from "@earendil-works/pi-ai";
 import { Type } from "typebox";
+import { processEnvironmentOutput } from "../../context-pipeline/environment-processors.ts";
+import { boundEnvironmentError, boundEnvironmentStructured, boundEnvironmentText } from "../../context-pipeline/environment/output-budget.ts";
+import { redactSensitiveText } from "../../context-pipeline/redaction.ts";
 
-const MAX_OUTPUT_LINES = 120;
-const MAX_OUTPUT_BYTES = 24 * 1024;
+export { boundEnvironmentText as boundOutput } from "../../context-pipeline/environment/output-budget.ts";
+export { redactSensitiveText } from "../../context-pipeline/redaction.ts";
+
 const COMMAND_TIMEOUT_MS = 30_000;
 const NAME_PATTERN = /^[a-zA-Z0-9][a-zA-Z0-9._-]{0,252}$/;
 const PROJECT_PATTERN = /^[a-z][a-z0-9-]{4,61}[a-z0-9]$/;
+const POD_COLUMNS = "custom-columns=APIVERSION:.apiVersion,KIND:.kind,NAMESPACE:.metadata.namespace,NAME:.metadata.name,CREATED_AT:.metadata.creationTimestamp,PHASE:.status.phase,NODE:.spec.nodeName,SERVICE_ACCOUNT:.spec.serviceAccountName,READY:.status.containerStatuses[*].ready,RESTARTS:.status.containerStatuses[*].restartCount,WAITING:.status.containerStatuses[*].state.waiting.reason,TERMINATED:.status.containerStatuses[*].state.terminated.reason";
+const WORKLOAD_COLUMNS = "custom-columns=APIVERSION:.apiVersion,KIND:.kind,NAMESPACE:.metadata.namespace,NAME:.metadata.name,CREATED_AT:.metadata.creationTimestamp,DESIRED:.spec.replicas,CURRENT:.status.replicas,READY:.status.readyReplicas,AVAILABLE:.status.availableReplicas,UPDATED:.status.updatedReplicas,UNAVAILABLE:.status.unavailableReplicas,DAEMON_DESIRED:.status.desiredNumberScheduled,DAEMON_CURRENT:.status.currentNumberScheduled,DAEMON_READY:.status.numberReady,DAEMON_AVAILABLE:.status.numberAvailable,DAEMON_UPDATED:.status.updatedNumberScheduled,DAEMON_UNAVAILABLE:.status.numberUnavailable";
+const SERVICE_COLUMNS = "custom-columns=APIVERSION:.apiVersion,KIND:.kind,NAMESPACE:.metadata.namespace,NAME:.metadata.name,TYPE:.spec.type,CLUSTER_IP:.spec.clusterIP,SERVICE:.metadata.labels.kubernetes\\.io/service-name,ADDRESS_TYPE:.addressType,SERVICE_PORTS:.spec.ports[*].port,TARGET_PORTS:.spec.ports[*].targetPort,ENDPOINT_READY:.endpoints[*].conditions.ready,ENDPOINT_PORTS:.ports[*].port";
+const EVENT_COLUMNS = "custom-columns=APIVERSION:.apiVersion,KIND:.kind,NAMESPACE:.metadata.namespace,NAME:.metadata.name,TYPE:.type,REASON:.reason,COUNT:.count,REGARDING_KIND:.involvedObject.kind,REGARDING_NAME:.involvedObject.name,FIRST_TIMESTAMP:.firstTimestamp,LAST_TIMESTAMP:.lastTimestamp,EVENT_TIME:.eventTime";
 
 interface CommandSpec {
 	label: string;
@@ -14,7 +22,7 @@ interface CommandSpec {
 	args: string[];
 }
 
-export type KubectlOperation =
+type KubectlOperation =
 	| "current_context"
 	| "namespaces"
 	| "nodes"
@@ -27,7 +35,7 @@ export type KubectlOperation =
 	| "pod_logs"
 	| "auth_can_i";
 
-export type GcloudOperation =
+type GcloudOperation =
 	| "active_context"
 	| "gke_clusters"
 	| "gke_cluster"
@@ -90,8 +98,10 @@ function namespacedGet(
 	namespace: unknown,
 	resource: string,
 	selector: unknown,
+	output = "wide",
 ): string[] {
-	const args = [...kubectlBase(context), "get", resource, "--namespace", requireName(namespace, "namespace"), "-o", "wide"];
+	const args = [...kubectlBase(context), "get", resource, "--namespace", requireName(namespace, "namespace"), "-o", output];
+	if (output.startsWith("custom-columns=")) args.push("--no-headers");
 	const selected = optionalSelector(selector);
 	if (selected) args.push("--selector", selected);
 	return args;
@@ -108,18 +118,18 @@ export function buildKubectlCommands(input: Record<string, unknown>): CommandSpe
 		case "nodes":
 			return [{ label: "nodes", command: "kubectl", args: [...base, "get", "nodes", "-o", "wide"] }];
 		case "workloads":
-			return [{ label: "workloads", command: "kubectl", args: namespacedGet(input.context, input.namespace, "deployments,statefulsets,daemonsets", input.selector) }];
+			return [{ label: "workloads", command: "kubectl", args: namespacedGet(input.context, input.namespace, "deployments,statefulsets,daemonsets", input.selector, WORKLOAD_COLUMNS) }];
 		case "pods":
-			return [{ label: "pods", command: "kubectl", args: namespacedGet(input.context, input.namespace, "pods", input.selector) }];
+			return [{ label: "pods", command: "kubectl", args: namespacedGet(input.context, input.namespace, "pods", input.selector, POD_COLUMNS) }];
 		case "services":
-			return [{ label: "services", command: "kubectl", args: namespacedGet(input.context, input.namespace, "services,endpointslices", input.selector) }];
+			return [{ label: "services", command: "kubectl", args: namespacedGet(input.context, input.namespace, "services,endpointslices", input.selector, SERVICE_COLUMNS) }];
 		case "ingresses":
 			return [{ label: "ingresses", command: "kubectl", args: namespacedGet(input.context, input.namespace, "ingresses", input.selector) }];
 		case "events":
 			return [{
 				label: "events",
 				command: "kubectl",
-				args: [...base, "get", "events", "--namespace", requireName(input.namespace, "namespace"), "--sort-by=.lastTimestamp"],
+				args: [...base, "get", "events", "--namespace", requireName(input.namespace, "namespace"), "--sort-by=.lastTimestamp", "-o", EVENT_COLUMNS, "--no-headers"],
 			}];
 		case "storage": {
 			const commands: CommandSpec[] = [
@@ -290,51 +300,57 @@ export function buildGcloudCommands(input: Record<string, unknown>): CommandSpec
 	}
 }
 
-export function redactSensitiveText(text: string): string {
-	return text
-		.replace(/-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g, "[REDACTED PRIVATE KEY]")
-		.replace(/\beyJ[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}\b/g, "[REDACTED JWT]")
-		.replace(/(authorization\s*:\s*bearer)\s+\S+/gi, "$1 [REDACTED]")
-		.replace(/((?:access[_-]?token|id[_-]?token|refresh[_-]?token|password|passwd|api[_-]?key|client[_-]?secret)\s*[:=]\s*)("[^"]*"|'[^']*'|\S+)/gi, "$1[REDACTED]");
-}
-
-export function boundOutput(text: string): { text: string; truncated: boolean } {
-	let output = text;
-	let truncated = false;
-	const lines = output.split("\n");
-	if (lines.length > MAX_OUTPUT_LINES) {
-		output = [...lines.slice(0, 80), "[... output truncated ...]", ...lines.slice(-40)].join("\n");
-		truncated = true;
-	}
-	if (Buffer.byteLength(output, "utf8") > MAX_OUTPUT_BYTES) {
-		const data = Buffer.from(output, "utf8");
-		output = `${data.subarray(0, 16 * 1024).toString("utf8")}\n[... output truncated by byte limit ...]\n${data.subarray(data.length - 8 * 1024).toString("utf8")}`;
-		truncated = true;
-	}
-	return { text: output, truncated };
-}
-
 async function executeCommands(
 	pi: ExtensionAPI,
 	commands: CommandSpec[],
+	input: Record<string, unknown>,
 	signal: AbortSignal | undefined,
 	onUpdate: ((result: any) => void) | undefined,
 ) {
 	const sections: string[] = [];
+	const processors: string[] = [];
+	let truncated = false;
+	let contentComplete = true;
 	for (const spec of commands) {
 		onUpdate?.({ content: [{ type: "text", text: `Inspecting ${spec.label}...` }], details: {} });
 		const result = await pi.exec(spec.command, spec.args, { signal, timeout: COMMAND_TIMEOUT_MS });
-		const stdout = redactSensitiveText(result.stdout || "");
+		const rawStdout = result.stdout || "";
 		const stderr = redactSensitiveText(result.stderr || "");
 		if (result.code !== 0) {
-			throw new Error(`${spec.command} ${spec.label} failed (exit ${result.code}): ${stderr || stdout || "no diagnostic output"}`);
+			const diagnostic = stderr || redactSensitiveText(rawStdout) || "no diagnostic output";
+			const bounded = boundEnvironmentError(diagnostic);
+			throw new Error(`${spec.command} ${spec.label} failed (exit ${result.code}; content_complete=${bounded.contentComplete}): ${bounded.text}`);
 		}
-		sections.push(`## ${spec.label}\n${stdout.trim() || "(no output)"}`);
+		const processed = processEnvironmentOutput({
+			command: spec.command,
+			operation: String(input.operation || ""),
+			label: spec.label,
+			stdout: rawStdout,
+			request: input,
+		});
+		if (processed) processors.push(processed.processor);
+		const bounded = processed
+			? boundEnvironmentStructured(processed.text) ?? boundEnvironmentText(processed.text)
+			: boundEnvironmentText(redactSensitiveText(rawStdout));
+		truncated ||= bounded.truncated;
+		contentComplete &&= bounded.contentComplete;
+		sections.push(`## ${spec.label}\n${bounded.text.trim() || "(no output)"}`);
 	}
-	const bounded = boundOutput(sections.join("\n\n"));
+	let output = sections.join("\n\n");
+	if (commands.length > 1 || processors.length === 0) {
+		const bounded = boundEnvironmentText(output);
+		output = bounded.text;
+		truncated ||= bounded.truncated;
+		contentComplete &&= bounded.contentComplete;
+	}
 	return {
-		content: [{ type: "text" as const, text: bounded.text + (bounded.truncated ? "\n\n[Inspection output was bounded.]" : "") }],
-		details: { commands: commands.map(({ label, command, args }) => ({ label, command, args })), truncated: bounded.truncated },
+		content: [{ type: "text" as const, text: output }],
+		details: {
+			checks: commands.map(({ label, command }) => ({ label, command })),
+			processors,
+			truncated,
+			contentComplete,
+		},
 	};
 }
 
@@ -356,7 +372,7 @@ export default function environmentInspect(pi: ExtensionAPI) {
 			resource: Type.Optional(Type.String()),
 		}),
 		async execute(_id, params, signal, onUpdate) {
-			return executeCommands(pi, buildKubectlCommands(params), signal, onUpdate);
+			return executeCommands(pi, buildKubectlCommands(params), params, signal, onUpdate);
 		},
 	});
 
@@ -381,7 +397,7 @@ export default function environmentInspect(pi: ExtensionAPI) {
 			limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 200 })),
 		}),
 		async execute(_id, params, signal, onUpdate) {
-			return executeCommands(pi, buildGcloudCommands(params), signal, onUpdate);
+			return executeCommands(pi, buildGcloudCommands(params), params, signal, onUpdate);
 		},
 	});
 }

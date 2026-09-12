@@ -131,9 +131,9 @@ prompt、model、thinking level 與 exact tool allowlist。
 `scout` 使用 `thinking: off`，讓 bounded repository lookup 以速度和成本為優先；其他角色維持
 `thinking: medium`。這個設定只關閉額外 thinking budget，不會移除 scout 的 read-only tools。
 
-`researcher` 與 `worker` 需要 web tools 時，extension 會明確載入 project-local
-`pi-web-access`。`environment-scout` 與 `worker` 所需的 custom tools 也由 extension 按
-profile 加入，不依賴 child 自動載入 extensions。
+`researcher` 與 `worker` 需要 web tools 時，extension會明確載入project-local
+`pi-web-access`。`environment-scout`與`worker`所需的custom tools也按profile加入；worker載入
+`safe_bash`時一併載入Context Pipeline的result hook，不依賴child自動發現extensions。
 
 ## Parent 和 child 的責任
 
@@ -163,9 +163,13 @@ parent contract 和 role prompt 約束。
 
 `environment-scout` 不接受任意 shell command。它只會從固定 operations 產生直接 argv，
 要求明確的 context、namespace、project、location 或 resource identifier，並封鎖 Secret、
-ConfigMap contents、credentials 與 mutation operations。輸出限制為 120 行和 24 KiB，且會
-遮罩常見 token、password、JWT 與 private-key patterns。遮罩只能降低暴露風險，不能取代
-最小查詢範圍。
+ConfigMap contents、credentials 與 mutation operations。Kubernetes pods、workloads、services、
+events、pod logs 和 Cloud Logging 會先通過 Context Pipeline 的 deterministic processor；其餘
+operation套用共用text budget。Structured結果由Context Pipeline依schema縮減，先保留status、
+counts、completeness與omitted metadata，整體上限為120行／24 KiB，不再盲切JSON。Command
+failure diagnostics限制為120行／8 KiB。所有路徑都會遮罩常見token、password、JWT與
+private-key patterns。Tool-result details只保存check label、command name、processor name、
+truncation與completeness，不複製完整argv。遮罩不能取代最小查詢範圍。
 
 ## Extension 怎麼接收 child 結果
 
@@ -176,14 +180,17 @@ Child 使用 JSON mode，stdout 會輸出一連串 events。Extension 解析這�
 - tool call 次數；
 - 正在執行的 tool；
 - 最近的 tool calls；
-- provider、process 與 tool errors。
+- provider、process 與最近一次tool error；task preview、tool arguments與error text會先redact再進入progress details。
 
-執行期間，extension 透過 tool update 把簡短進度交給 parent。Child 結束後，它將 bounded
-文字和結構化 `details.results` 放進 tool result。Parent model 看到的是這份結果，不是 child
-完整 conversation。
+執行期間，extension透過tool update把簡短進度交給parent。Child結束後，只取最後一段
+assistant text；final image blocks不會直接轉送，child必須先把相關image evidence寫成文字結論。
+文字先redact再透過Context Pipeline共用的UTF-8-safe budget處理：單一child最多400行／16 KiB；
+parallel aggregate最多600行／24 KiB，先為每個child保留公平份額，再把短結果未使用的容量分給
+較長結果，避免一個verbose結果隱藏其他task。Head與tail evidence都保留。
 
-結果受 Pi 的 tool-output line／byte bounds 約束。大型 raw output 應留在 child process
-或 tool 管理的 temp output，只回傳 finding。
+`details.results`記錄`outputComplete`及source/emitted lines與bytes；model-facing aggregate另有
+`contentComplete`。任何省略都會出現`content_complete=false` marker。Temporary child session
+結束後刪除，不另存raw response。Parent model看到bounded result，不是child conversation。
 
 ## Timeout、abort 與錯誤
 
@@ -196,8 +203,9 @@ Child 使用 JSON mode，stdout 會輸出一連串 events。Extension 解析這�
 
 Parent 中止 tool call 或 child 超時時，extension 先送 `SIGTERM`，等待三秒後仍未結束才送
 `SIGKILL`。Spawn error、provider error、非零 exit code、timeout 與 abort 都會讓該 task
-標成 failed。Parallel mode 會保留每一項 task 的成功或失敗結果，不會因為其中一項失敗就
-假裝整批成功。
+標成 failed。單次tool error會保留在progress中；若child之後成功恢復且process正常結束，
+不會僅因該次tool error把整個task改標failed。Parallel mode會保留每一項task的成功或失敗
+結果，不會因為其中一項失敗就假裝整批成功。
 
 ## 安裝與驗證
 

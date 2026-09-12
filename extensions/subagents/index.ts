@@ -10,9 +10,11 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { getMarkdownTheme, parseFrontmatter, truncateHead, withFileMutationQueue, DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES } from "@earendil-works/pi-coding-agent";
+import { getMarkdownTheme, parseFrontmatter, withFileMutationQueue } from "@earendil-works/pi-coding-agent";
 import { Container, Markdown, Spacer, Text, visibleWidth } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
+import { boundTextEvidence, SUBAGENT_RESULT_BUDGET, SUBAGENT_TOOL_OUTPUT_BUDGET } from "../context-pipeline/text-budget.ts";
+import { boundedRedactedText, redactSensitiveText } from "../context-pipeline/redaction.ts";
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -48,6 +50,7 @@ interface AgentProgress {
 	timeoutMs?: number;
 	timedOut?: boolean;
 	lastMessage: string;
+	lastToolError?: string;
 	error?: string;
 }
 
@@ -55,6 +58,8 @@ interface AgentResult {
 	agent: string;
 	task: string;
 	output: string;
+	outputComplete: boolean;
+	outputStats: { sourceLines: number; sourceBytes: number; emittedLines: number; emittedBytes: number };
 	exitCode: number;
 	progress: AgentProgress;
 	model?: string;
@@ -64,6 +69,35 @@ interface AgentResult {
 interface Details {
 	mode: "single" | "parallel";
 	results: AgentResult[];
+	contentComplete?: boolean;
+}
+
+function applyResultBudget(result: AgentResult, maxLines: number, maxBytes: number, label: string): void {
+	const bounded = boundTextEvidence(result.output, { maxLines, maxBytes, label });
+	result.output = bounded.text;
+	result.outputComplete &&= bounded.contentComplete;
+	result.outputStats.emittedLines = bounded.emittedLines;
+	result.outputStats.emittedBytes = bounded.emittedBytes;
+}
+
+export function allocateFairBudgetCaps(demands: number[], total: number, minimum: number): number[] {
+	if (!demands.length) return [];
+	const base = Math.min(minimum, Math.floor(total / demands.length));
+	const caps = demands.map((demand) => Math.min(Math.max(0, demand), base));
+	let remaining = Math.max(0, total - caps.reduce((sum, cap) => sum + cap, 0));
+	while (remaining > 0) {
+		const needy = demands.map((demand, index) => ({ demand, index }))
+			.filter(({ demand, index }) => demand > caps[index]);
+		if (!needy.length) break;
+		const share = Math.max(1, Math.floor(remaining / needy.length));
+		for (const { demand, index } of needy) {
+			const granted = Math.min(demand - caps[index], share, remaining);
+			caps[index] += granted;
+			remaining -= granted;
+			if (!remaining) break;
+		}
+	}
+	return caps;
 }
 
 // ── Config ─────────────────────────────────────────────────────────────
@@ -139,6 +173,7 @@ const WEB_ACCESS_EXTENSION = path.join(
 	"pi-web-access",
 	"index.ts",
 );
+const CONTEXT_PIPELINE_EXTENSION = path.join(EXT_DIR, "..", "context-pipeline", "index.ts");
 const CUSTOM_TOOL_EXTENSIONS: Record<string, string> = {
 	web_search: WEB_ACCESS_EXTENSION,
 	fetch_content: WEB_ACCESS_EXTENSION,
@@ -220,37 +255,6 @@ function formatDuration(ms: number): string {
 	return `${Math.floor(ms / 60000)}m${Math.floor((ms % 60000) / 1000)}s`;
 }
 
-function formatToolPreview(name: string, args: Record<string, unknown>): string {
-	switch (name) {
-		case "bash":
-		case "safe_bash":
-			return `$ ${((args.command as string) || "").slice(0, 80)}`;
-		case "read":
-			return `read ${(args.path as string) || ""}`;
-		case "write":
-			return `write ${(args.path as string) || ""}`;
-		case "edit":
-			return `edit ${(args.path as string) || ""}`;
-		case "grep":
-			return `grep ${(args.pattern as string) || ""}`;
-		case "find":
-			return `find ${(args.pattern as string) || ""}`;
-		case "ls":
-			return `ls ${(args.path as string) || "."}`;
-		case "web_search":
-			return `search ${((args.query as string) || "").slice(0, 80)}`;
-		case "fetch_content":
-			return `fetch ${(args.url as string) || ""}`;
-		case "kubectl_inspect":
-		case "gcloud_inspect":
-			return `${name} ${(args.operation as string) || ""}`;
-		default: {
-			const s = JSON.stringify(args);
-			return `${name} ${s.slice(0, 60)}`;
-		}
-	}
-}
-
 function truncLine(text: string, maxWidth: number): string {
 	if (visibleWidth(text) <= maxWidth) return text;
 	// Simple truncation - strip to fit
@@ -304,6 +308,7 @@ export async function buildPiArgs(
 		} else if (CUSTOM_TOOL_EXTENSIONS[tool]) {
 			allowlist.push(tool);
 			extensionPaths.add(CUSTOM_TOOL_EXTENSIONS[tool]);
+			if (tool === "safe_bash") extensionPaths.add(CONTEXT_PIPELINE_EXTENSION);
 		}
 	}
 
@@ -356,13 +361,14 @@ function extractTextFromContent(content: unknown): string {
 }
 
 function extractToolArgsPreview(args: Record<string, unknown>): string {
-	if (args.command) return String(args.command).slice(0, 100);
-	if (args.path) return String(args.path);
-	if (args.query) return `"${String(args.query).slice(0, 80)}"`;
-	if (args.url) return String(args.url);
-	if (args.pattern) return String(args.pattern);
-	const s = JSON.stringify(args);
-	return s.length > 80 ? s.slice(0, 80) + "…" : s;
+	let preview: string;
+	if (args.command) preview = String(args.command);
+	else if (args.path) preview = String(args.path);
+	else if (args.query) preview = `"${String(args.query)}"`;
+	else if (args.url) preview = String(args.url);
+	else if (args.pattern) preview = String(args.pattern);
+	else preview = JSON.stringify(args);
+	return boundedRedactedText(preview, 100);
 }
 
 export async function runSubagent(
@@ -381,17 +387,20 @@ export async function runSubagent(
 	const command = args[0];
 	const spawnArgs = args.slice(1);
 
+	const displayTask = redactSensitiveText(task);
 	const result: AgentResult = {
 		agent: agent.name,
-		task,
+		task: displayTask,
 		output: "",
+		outputComplete: true,
+		outputStats: { sourceLines: 0, sourceBytes: 0, emittedLines: 0, emittedBytes: 0 },
 		exitCode: 0,
 		model: agent.model,
 		usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0, turns: 0 },
 		progress: {
 			agent: agent.name,
 			status: "running",
-			task,
+			task: displayTask,
 			recentTools: [],
 			toolCount: 0,
 			tokens: 0,
@@ -417,7 +426,7 @@ export async function runSubagent(
 	const spawnProcess = options.spawnProcess ?? spawn;
 	const activeToolCalls = new Map<string, {
 		toolName: string;
-		args: Record<string, unknown>;
+		argsPreview: string;
 	}>();
 	let exitCode = 1;
 
@@ -449,7 +458,7 @@ export async function runSubagent(
 			const terminate = (reason: string) => {
 				if (closed || terminating) return;
 				terminating = true;
-				if (!progress.error) progress.error = reason;
+				if (!progress.error) progress.error = redactSensitiveText(reason);
 				try {
 					proc.kill("SIGTERM");
 				} catch {}
@@ -470,13 +479,14 @@ export async function runSubagent(
 				if (evt.type === "tool_execution_start") {
 					const args = (evt.args || {}) as Record<string, unknown>;
 					const toolCallId = String(evt.toolCallId ?? "");
+					const argsPreview = extractToolArgsPreview(args);
 					activeToolCalls.set(toolCallId, {
 						toolName: evt.toolName,
-						args,
+						argsPreview,
 					});
 					progress.toolCount++;
 					progress.currentTool = evt.toolName;
-					progress.currentToolArgs = extractToolArgsPreview(args);
+					progress.currentToolArgs = argsPreview;
 					fireUpdate();
 				}
 
@@ -489,7 +499,7 @@ export async function runSubagent(
 						progress.recentTools.push({
 							toolCallId,
 							tool: call.toolName,
-							args: extractToolArgsPreview(call.args),
+							args: call.argsPreview,
 						});
 						// Keep last 20
 						if (progress.recentTools.length > 20) {
@@ -498,13 +508,17 @@ export async function runSubagent(
 					}
 					const remainingCall = Array.from(activeToolCalls.values()).at(-1);
 					progress.currentTool = remainingCall?.toolName;
-					progress.currentToolArgs = remainingCall
-						? extractToolArgsPreview(remainingCall.args)
-						: undefined;
-					fireUpdate();
-				}
-
-				if (evt.type === "tool_result_end") {
+					progress.currentToolArgs = remainingCall?.argsPreview;
+					if (evt.isError) {
+						const resultContent = evt.result && typeof evt.result === "object"
+							? evt.result.content
+							: evt.result;
+						const diagnostic = extractTextFromContent(resultContent)
+							|| evt.result?.errorMessage
+							|| evt.result?.message
+							|| `${evt.toolName || call?.toolName || "tool"} failed`;
+						progress.lastToolError = boundedRedactedText(diagnostic, 1000);
+					}
 					fireUpdate();
 				}
 
@@ -521,9 +535,9 @@ export async function runSubagent(
 							progress.tokens = result.usage.input + result.usage.output;
 						}
 						if (evt.message.model) result.model = evt.message.model;
-						if (evt.message.errorMessage) progress.error = evt.message.errorMessage;
+						if (evt.message.errorMessage) progress.error = redactSensitiveText(evt.message.errorMessage);
 
-						const text = extractTextFromContent(evt.message.content);
+						const text = redactSensitiveText(extractTextFromContent(evt.message.content));
 						if (text) {
 							result.output = text;
 							// Extract just the prose "thinking" text — skip code blocks
@@ -565,13 +579,13 @@ export async function runSubagent(
 			proc.on("close", (code) => {
 				if (buf.trim()) processLine(buf);
 				if (code !== 0 && stderrBuf.trim() && !progress.error) {
-					progress.error = stderrBuf.trim();
+					progress.error = redactSensitiveText(stderrBuf.trim());
 				}
 				finish(code ?? 1);
 			});
 
 			proc.on("error", (error) => {
-				if (!progress.error) progress.error = `Failed to start subagent: ${error.message}`;
+				if (!progress.error) progress.error = redactSensitiveText(`Failed to start subagent: ${error.message}`);
 				finish(1);
 			});
 
@@ -594,19 +608,20 @@ export async function runSubagent(
 	progress.durationMs = Date.now() - startTime;
 	if (progress.error) result.output = result.output || `Error: ${progress.error}`;
 
-	const outputLimits = { maxLines: DEFAULT_MAX_LINES, maxBytes: DEFAULT_MAX_BYTES };
-	const truncationMarker = "[Output truncated]";
-	const markerBytes = Buffer.byteLength(`\n${truncationMarker}`, "utf-8");
-	const trunc = truncateHead(result.output, {
-		maxLines: Math.max(1, outputLimits.maxLines - 1),
-		maxBytes: Math.max(1, outputLimits.maxBytes - markerBytes),
+	result.output = redactSensitiveText(result.output);
+	const bounded = boundTextEvidence(result.output, {
+		maxLines: SUBAGENT_RESULT_BUDGET.maxLines,
+		maxBytes: SUBAGENT_RESULT_BUDGET.maxBytes,
+		label: "subagent response",
 	});
-	if (trunc.truncated) {
-		const bounded = trunc.content.replace(/\n+$/, "");
-		result.output = bounded ? `${bounded}\n${truncationMarker}` : truncationMarker;
-	} else {
-		result.output = trunc.content;
-	}
+	result.output = bounded.text;
+	result.outputComplete = bounded.contentComplete;
+	result.outputStats = {
+		sourceLines: bounded.sourceLines,
+		sourceBytes: bounded.sourceBytes,
+		emittedLines: bounded.emittedLines,
+		emittedBytes: bounded.emittedBytes,
+	};
 
 	return result;
 }
@@ -758,7 +773,17 @@ function renderAgentProgress(
 	}
 	
 
-	// Error
+	// Most recent child tool error; a later child response may still recover.
+	if (prog.lastToolError) {
+		const toolError = `Tool error: ${prog.lastToolError}`;
+		if (expanded) {
+			c.addChild(new Text(theme.fg("error", toolError), 0, 0));
+		} else {
+			c.addChild(new Text(truncLine(theme.fg("error", toolError), w), 0, 0));
+		}
+	}
+
+	// Process/provider error
 	if (prog.error) {
 		if (expanded) {
 			c.addChild(new Text(theme.fg("error", `Error: ${prog.error}`), 0, 0));
@@ -856,14 +881,17 @@ export default function (pi: ExtensionAPI) {
 
 				// Initialize all result slots as pending
 				for (let i = 0; i < taskList.length; i++) {
+					const displayTask = redactSensitiveText(taskList[i].task);
 					allResults[i] = {
 						agent: taskList[i].agent,
-						task: taskList[i].task,
+						task: displayTask,
 						output: "",
+						outputComplete: true,
+						outputStats: { sourceLines: 0, sourceBytes: 0, emittedLines: 0, emittedBytes: 0 },
 						exitCode: -1,
 						model: undefined,
 						usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0, turns: 0 },
-						progress: { agent: taskList[i].agent, status: "pending" as any, task: taskList[i].task, recentTools: [], toolCount: 0, tokens: 0, durationMs: 0, lastMessage: "" },
+						progress: { agent: taskList[i].agent, status: "pending" as any, task: displayTask, recentTools: [], toolCount: 0, tokens: 0, durationMs: 0, lastMessage: "" },
 					};
 				}
 
@@ -892,15 +920,36 @@ export default function (pi: ExtensionAPI) {
 					return result;
 				});
 
+				// Guarantee a fair floor, then reuse capacity that short child results do not need.
+				const byteCaps = allocateFairBudgetCaps(
+					results.map((result) => Buffer.byteLength(result.output, "utf8")),
+					SUBAGENT_TOOL_OUTPUT_BUDGET.maxBytes - 2048,
+					2 * 1024,
+				);
+				const lineCaps = allocateFairBudgetCaps(
+					results.map((result) => result.output.split("\n").length),
+					SUBAGENT_TOOL_OUTPUT_BUDGET.maxLines - 32,
+					40,
+				);
+				for (const [index, result] of results.entries()) {
+					applyResultBudget(result, lineCaps[index], byteCaps[index], `${result.agent} result`);
+				}
+
 				// Build final output text
 				const outputParts = results.map((r) => {
 					const header = `## ${r.agent}${r.exitCode !== 0 ? " (FAILED)" : ""}`;
 					return `${header}\n\n${r.output || "(no output)"}`;
 				});
+				const bounded = boundTextEvidence(outputParts.join("\n\n---\n\n"), {
+					maxLines: SUBAGENT_TOOL_OUTPUT_BUDGET.maxLines,
+					maxBytes: SUBAGENT_TOOL_OUTPUT_BUDGET.maxBytes,
+					label: "parallel subagent output",
+				});
+				const contentComplete = bounded.contentComplete && results.every((result) => result.outputComplete);
 
 				return {
-					content: [{ type: "text", text: outputParts.join("\n\n---\n\n") }],
-					details: { mode: "parallel" as const, results },
+					content: [{ type: "text", text: bounded.text }],
+					details: { mode: "parallel" as const, results, contentComplete },
 				};
 			} else if (hasSingle) {
 				// ── Single mode ──
@@ -914,14 +963,17 @@ export default function (pi: ExtensionAPI) {
 
 				const executionCwd = params.cwd ?? cwd;
 				const effectiveTask = task;
+				const displayTask = redactSensitiveText(effectiveTask);
 				const liveResult: AgentResult = {
 					agent: agentName,
-					task: effectiveTask,
+					task: displayTask,
 					output: "",
+					outputComplete: true,
+					outputStats: { sourceLines: 0, sourceBytes: 0, emittedLines: 0, emittedBytes: 0 },
 					exitCode: -1,
 					model: agent.model,
 					usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0, turns: 0 },
-					progress: { agent: agentName, status: "running" as const, task: effectiveTask, recentTools: [], toolCount: 0, tokens: 0, durationMs: 0, lastMessage: "" },
+					progress: { agent: agentName, status: "running" as const, task: displayTask, recentTools: [], toolCount: 0, tokens: 0, durationMs: 0, lastMessage: "" },
 				};
 				const result = await runSubagent(agent, effectiveTask, executionCwd, signal, (progress) => {
 					liveResult.progress = progress;
@@ -933,7 +985,7 @@ export default function (pi: ExtensionAPI) {
 				const isError = result.exitCode !== 0 || !!result.progress.error;
 				return {
 					content: [{ type: "text", text: result.output || "(no output)" }],
-					details: { mode: "single" as const, results: [result] },
+					details: { mode: "single" as const, results: [result], contentComplete: result.outputComplete },
 					...(isError ? { isError: true } : {}),
 				};
 			}
@@ -954,8 +1006,9 @@ export default function (pi: ExtensionAPI) {
 				);
 			}
 			if (args.agent) {
-				const taskPreview = args.task
-					? (args.task.length > 60 ? args.task.slice(0, 60) + "…" : args.task).replace(/\n/g, " ")
+				const safeTask = args.task ? redactSensitiveText(args.task) : "";
+				const taskPreview = safeTask
+					? (safeTask.length > 60 ? safeTask.slice(0, 60) + "…" : safeTask).replace(/\n/g, " ")
 					: "";
 				return new Text(
 					`${theme.fg("toolTitle", theme.bold("subagent"))} ${theme.fg("accent", args.agent)} ${theme.fg("dim", taskPreview)}`,

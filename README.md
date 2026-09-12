@@ -258,13 +258,13 @@ skill-owned deterministic helper 時，優先使用單一 bounded helper，避�
 
 | Extension | 文件 |
 | --- | --- |
+| `context-pipeline` | [`extensions/context-pipeline/README.md`](extensions/context-pipeline/README.md) |
 | `humanizer` | [`extensions/humanizer/README.md`](extensions/humanizer/README.md) |
 | `subagents` | [`extensions/subagents/README.md`](extensions/subagents/README.md) |
 
 ## Skill 入口
 
-每個 skill 的適用範圍、停止條件與流程由該目錄的 `SKILL.md` 管理。這裡只保留路徑索引，
-避免把所有工作流程複製到根 README：
+每個 skill 的適用範圍、停止條件與流程由該目錄的 `SKILL.md` 管理。這裡只保留 repository-owned human-facing 入口，避免把工作流程複製到根 README。External skills 保留 upstream layout 與內容；[`skills-lock.json`](skills-lock.json) 只作 installer inventory：
 
 - [`.agents/skills/context-window-retrospective/README.md`](.agents/skills/context-window-retrospective/README.md) — 手動使用 `/skill:context-window-retrospective`
 - [`.agents/skills/developer-activity-summary/README.md`](.agents/skills/developer-activity-summary/README.md)

@@ -2,78 +2,80 @@
 
 Use this contract when creating or changing project-scoped skills.
 
-## Placement and Shape
+## Placement and Ownership
 
-Skills live at `.agents/skills/<skill-name>/`:
+Skills live at `.agents/skills/<skill-name>/` and require `SKILL.md`. Add
+`references/`, `scripts/`, `assets/`, or a human-facing `README.md` only when each
+surface has a concrete owner:
 
-```text
-<skill-name>/
-├── README.md
-├── SKILL.md
-├── references/
-├── scripts/
-└── assets/
-```
-
-Every active skill requires `SKILL.md` for the agent contract and `README.md` for
-human-facing usage. Do not add provider-specific UI metadata. Add other support
-files only when they reduce repeated reasoning or provide deterministic behavior.
-
-## Context Ownership
-
-- `AGENTS.md`: universal safety, approval, workspace, evidence, and mutation
-  invariants. Never put a skill routing table or domain workflow there.
-- Skill description: automatic invocation boundary; state positive and negative
-  scope in one concise line.
-- `SKILL.md`: selected task's core flow, stop conditions, reference pointers, and
-  domain-specific reporting additions. Universal report fields stay in `AGENTS.md`.
-- `references/`: optional deep procedures loaded only for a concrete need.
+- `AGENTS.md`: rules needed for every task.
+- Skill description: what the skill does and when it should be selected.
+- `SKILL.md`: the selected task's core flow and stop conditions.
+- `references/`: detailed procedures loaded for a stated condition.
 - `scripts/`: deterministic checks and repeated data reduction.
-- `README.md`: human-facing inventory and manual invocation instructions.
+- `assets/`: templates and static resources.
+- `README.md`: optional human setup, inventory, or manual usage.
 
-Do not repeat the same rule across surfaces. Prefer moving detail downward over
-copying it.
+Move detail downward instead of copying it. Do not repeat the complete workspace
+report shape or add a skill routing table to always-on instructions.
 
-## Frontmatter
+## Agent Skills Metadata
 
-Required:
+Every `SKILL.md` starts with YAML frontmatter containing:
 
 ```yaml
 ---
 name: lower-kebab-case
-description: What it does. Use for X. Do not use for Y.
+description: What the skill does and when it should be used.
 ---
 ```
 
-Use `disable-model-invocation: true` for infrequent, expensive, or explicitly
-requested workflows. Manual skills must be documented as `/skill:<name>` in the
-skill README and root README index, and must not have automatic invocation fixtures.
+The deterministic hard contract follows the Agent Skills specification:
 
-Keep auto descriptions precise and generally under 260 characters. Preserve the
-positive trigger and closest negative boundary; do not optimize length by making
-routing ambiguous.
+- `name` is 1–64 characters, uses lowercase letters, digits, and single internal
+  hyphens, and matches its parent directory.
+- `description` is a non-empty string of at most 1,024 characters.
+- Optional `compatibility` is a string of 1–500 characters.
+- Optional `license` and `allowed-tools` are strings.
+- Optional `metadata` maps string keys to string values.
 
-## Body Budget
+Descriptions should contain specific task language and enough positive scope to
+route correctly. Add the nearest negative boundary when it resolves a real
+collision; no exact `Use` or `Do not use` sentence form is required.
 
-A normal `SKILL.md` should remain below 85 lines and contain only:
+Pi-specific fields such as `disable-model-invocation: true` may control local
+behavior. Unknown fields remain available to compatible harnesses and are not a
+reason to rewrite an external skill.
 
-1. task contract or invariant
-2. bounded workflow
-3. safety/stop conditions
-4. pointers to deeper references or scripts
-5. domain-specific reporting additions without the workspace report skeleton
+## Progressive Disclosure and Budgets
 
-Move command catalogs, troubleshooting matrices, examples, and domain background
-to support files. A line limit is a review signal, not permission to compress
-multiple unrelated rules into dense prose.
+Instruction size is review evidence, not a loadability failure:
 
-## Routing and Tests
+- Review `AGENTS.md` after 200 lines. At 32 KiB, report its contribution to
+  Codex's combined project-instruction portability limit.
+- Review `SKILL.md` after 500 lines.
+- Report a performance notice when a skill body reaches an estimated 5,000
+  tokens. The validator uses a documented byte-derived estimate, not a claimed
+  model tokenizer count.
+- Report aggregate description characters because all skill metadata is loaded
+  at startup, but do not impose an invented aggregate hard limit.
 
-Automatic skills require positive and negative invocation fixtures. Prefer one
-fixture per meaningful boundary; add more only for a known collision.
+Keep core workflow and stop conditions in `SKILL.md`. Move command catalogs,
+troubleshooting, examples, and domain background to focused references. Every
+reference pointer should state when the agent needs that file.
 
-Maintenance fixed checks are public safety, the structural contract helper, and
-`git diff --check`. Select additional regression-matrix tests only for changed
-surfaces; skill-body changes do not require extension tests. Run the paid
-invocation benchmark only after automatic descriptions change and the user
-confirms provider, model, authentication, and budget.
+## External Skills
+
+Externally installed skills retain their upstream layout and wording. Apply the
+same Agent Skills metadata checks and report the same nonblocking size signals,
+but do not locally rewrite upstream content to satisfy repository preferences.
+`skills-lock.json` remains installer inventory and is not part of the instruction
+focus validator. Public-safety remains a separate whole-repository check.
+
+## Routing Evaluation
+
+Static validation cannot prove semantic routing. When a description materially
+changes or a known collision recurs, use representative positive and negative
+prompts under an explicitly approved provider, model, authentication, and paid
+budget. Invocation fixtures and model trials are optional evaluation tools, not
+fixed contract gates.

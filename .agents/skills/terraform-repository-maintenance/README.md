@@ -46,7 +46,7 @@
 - [`references/iam-review-checklist.md`](references/iam-review-checklist.md)：IAM 與 Workload Identity review。
 - [`references/firewall-review-checklist.md`](references/firewall-review-checklist.md)：network/firewall review。
 - [`scripts/terraform_repository_preflight.sh`](scripts/terraform_repository_preflight.sh)：repository、roots、fmt 與 change preflight。
-- [`scripts/summarize_terraform_plan.py`](scripts/summarize_terraform_plan.py)：將文字 plan 壓縮成 bounded replacement evidence。
+- [`scripts/summarize_terraform_plan.py`](scripts/summarize_terraform_plan.py)：將完整文字 plan 壓縮成 bounded replacement evidence；`--json` 會輸出含 completeness、action counts、resource-header consistency 與 replacement order 的 `terraform-plan-summary/v1`。
 
 ## Plan 與 secret 邊界
 

@@ -43,14 +43,15 @@ python3 .agents/skills/pi-agent-maintenance/scripts/validate_repo_contract.py
 git diff --check
 ```
 
-The contract helper covers structural contracts and invocation fixtures. Select
-additional tests from `references/regression-matrix.md` only for changed surfaces;
-for example, run `npm run test:extensions` when extension runtime, package
-registration, or its harness changed.
+The contract helper hard-fails only Agent Skills loadability and metadata errors;
+instruction-size, portability, and focus findings are nonblocking review signals.
+Public safety remains a separate check. Select additional tests from
+`references/regression-matrix.md` only for changed surfaces.
 
-Run `scripts/run_invocation_benchmark.py` only when automatic routing changed
-and the user has confirmed provider, model, authentication, and paid-test budget.
-Keep benchmark artifacts under git-ignored `tmp/`.
+Use `scripts/run_invocation_benchmark.py` only for a material routing change or
+known collision after the user confirms provider, model, authentication, and
+paid-test budget. It is not a fixed contract gate. Keep benchmark artifacts under
+git-ignored `tmp/`.
 
 ## Domain Reporting
 

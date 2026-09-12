@@ -35,6 +35,7 @@ export function dangerousCommandReason(command: string): string | undefined {
 	return undefined;
 }
 
+// fallow-ignore-next-line unused-export -- loaded dynamically through TOOL_EXTENSION_PATHS
 export default function (pi: ExtensionAPI) {
 	const bashTool = createBashTool(process.cwd());
 

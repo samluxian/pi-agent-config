@@ -1,424 +1,349 @@
 #!/usr/bin/env python3
-"""Validate the devops-pi-agent skill, extension, and documentation contract."""
+"""Validate Agent Skills metadata and report instruction-context pressure."""
 
 from __future__ import annotations
 
-import json
+import math
 import re
-import subprocess
 import sys
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
+
+sys.dont_write_bytecode = True
+
+AGENTS_REVIEW_LINES = 200
+AGENTS_PORTABILITY_BYTES = 32 * 1024
+SKILL_REVIEW_LINES = 500
+SKILL_PERFORMANCE_TOKENS = 5_000
+ESTIMATED_BYTES_PER_TOKEN = 4
+MAX_EMITTED_FINDINGS = 100
+NAME_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+FRONTMATTER_KEY = re.compile(r"^([A-Za-z0-9_-]+):(?:[ \t]*(.*))?$")
+METADATA_ENTRY = re.compile(r"^[ \t]+([^:#][^:]*):(?:[ \t]*(.*))?$")
 
 
-def run(command: list[str], cwd: Path) -> tuple[bool, str]:
-    completed = subprocess.run(
-        command,
-        cwd=cwd,
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        check=False,
-    )
-    return completed.returncode == 0, completed.stdout.strip()
+class FrontmatterError(ValueError):
+    """Raised when the supported Agent Skills frontmatter profile is malformed."""
+
+
+@dataclass(frozen=True)
+class Finding:
+    severity: str
+    code: str
+    path: str
+    message: str
+
+
+@dataclass(frozen=True)
+class ValidationReport:
+    findings: tuple[Finding, ...]
+    skill_count: int
+    description_chars: int
+    agents_lines: int
+    agents_bytes: int
+    agents_estimated_tokens: int
+
+    @property
+    def errors(self) -> tuple[Finding, ...]:
+        return tuple(item for item in self.findings if item.severity == "ERROR")
+
+
+SEVERITY_ORDER = {"ERROR": 0, "REVIEW": 1, "NOTICE": 2}
+
+
+def estimated_tokens(text: str) -> int:
+    """Return a stable byte-derived estimate, not a model tokenizer count."""
+    return math.ceil(len(text.encode("utf-8")) / ESTIMATED_BYTES_PER_TOKEN)
+
+
+def split_frontmatter(text: str) -> tuple[str, str]:
+    normalized = text.replace("\r\n", "\n").replace("\r", "\n")
+    if normalized.startswith("\ufeff"):
+        normalized = normalized[1:]
+    if not normalized.startswith("---\n"):
+        raise FrontmatterError("missing opening YAML frontmatter delimiter")
+    end = normalized.find("\n---", 4)
+    if end < 0 or (end + 4 < len(normalized) and normalized[end + 4] != "\n"):
+        raise FrontmatterError("missing closing YAML frontmatter delimiter")
+    frontmatter = normalized[4:end]
+    body = normalized[end + 4 :]
+    if body.startswith("\n"):
+        body = body[1:]
+    return frontmatter, body
+
+
+def strip_plain_comment(value: str) -> str:
+    quote: str | None = None
+    escaped = False
+    for index, character in enumerate(value):
+        if escaped:
+            escaped = False
+            continue
+        if quote == '"' and character == "\\":
+            escaped = True
+            continue
+        if character in {"'", '"'}:
+            if quote is None:
+                quote = character
+            elif quote == character:
+                quote = None
+            continue
+        if character == "#" and quote is None and index > 0 and value[index - 1].isspace():
+            return value[:index].rstrip()
+    return value.rstrip()
+
+
+def parse_quoted_scalar(value: str) -> str:
+    quote = value[0]
+    if len(value) < 2 or value[-1] != quote:
+        raise FrontmatterError("unterminated quoted scalar")
+    inner = value[1:-1]
+    if quote == "'":
+        return inner.replace("''", "'")
+    try:
+        import json
+
+        parsed = json.loads(value)
+    except (ValueError, TypeError) as exc:
+        raise FrontmatterError("invalid double-quoted scalar") from exc
+    if not isinstance(parsed, str):
+        raise FrontmatterError("quoted scalar is not a string")
+    return parsed
+
+
+def parse_inline_scalar(raw: str) -> Any:
+    value = strip_plain_comment(raw.strip())
+    if not value:
+        return ""
+    if value[0] in {"'", '"'}:
+        return parse_quoted_scalar(value)
+    lowered = value.lower()
+    if lowered in {"true", "false"}:
+        return lowered == "true"
+    if lowered in {"null", "~"}:
+        return None
+    if re.fullmatch(r"[-+]?\d+", value):
+        return int(value)
+    if re.fullmatch(r"[-+]?(?:\d+\.\d*|\d*\.\d+)", value):
+        return float(value)
+    return value
+
+
+def fold_block(lines: list[str], style: str) -> str:
+    values = [line.lstrip(" \t") for line in lines]
+    if style.startswith("|"):
+        result = "\n".join(values)
+    else:
+        parts: list[str] = []
+        pending_break = False
+        for value in values:
+            if not value:
+                pending_break = True
+                continue
+            if parts:
+                parts.append("\n" if pending_break else " ")
+            parts.append(value)
+            pending_break = False
+        result = "".join(parts)
+    if style.endswith("-"):
+        return result.rstrip("\n")
+    return result + "\n"
+
+
+def parse_frontmatter(block: str) -> dict[str, Any]:
+    lines = block.split("\n")
+    parsed: dict[str, Any] = {}
+    index = 0
+    while index < len(lines):
+        line = lines[index]
+        if not line.strip() or line.lstrip().startswith("#"):
+            index += 1
+            continue
+        if line[0].isspace():
+            raise FrontmatterError(f"unexpected indentation on frontmatter line {index + 1}")
+        match = FRONTMATTER_KEY.fullmatch(line)
+        if not match:
+            raise FrontmatterError(f"invalid frontmatter line {index + 1}")
+        key, raw = match.group(1), match.group(2) or ""
+        if key in parsed:
+            raise FrontmatterError(f"duplicate frontmatter field: {key}")
+        index += 1
+        if raw in {">", ">-", ">+", "|", "|-", "|+"}:
+            block_lines: list[str] = []
+            while index < len(lines) and (not lines[index] or lines[index][0].isspace()):
+                block_lines.append(lines[index])
+                index += 1
+            if not block_lines:
+                raise FrontmatterError(f"empty block scalar: {key}")
+            parsed[key] = fold_block(block_lines, raw)
+            continue
+        if not raw:
+            nested_lines: list[str] = []
+            while index < len(lines) and (not lines[index] or lines[index][0].isspace()):
+                nested_lines.append(lines[index])
+                index += 1
+            if key != "metadata":
+                parsed[key] = "\n".join(nested_lines)
+                continue
+            entries: dict[str, Any] = {}
+            for nested in nested_lines:
+                if not nested.strip() or nested.lstrip().startswith("#"):
+                    continue
+                entry = METADATA_ENTRY.fullmatch(nested)
+                if not entry:
+                    raise FrontmatterError(f"invalid nested mapping for {key}")
+                nested_key = entry.group(1).strip()
+                if nested_key in entries:
+                    raise FrontmatterError(f"duplicate nested field: {key}.{nested_key}")
+                entries[nested_key] = parse_inline_scalar(entry.group(2) or "")
+            parsed[key] = entries
+            continue
+        parsed[key] = parse_inline_scalar(raw)
+    return parsed
 
 
 def repeats_workspace_report(text: str) -> bool:
     fields = ("Summary:", "Validation:", "Risk:", "Next step:")
-    return all(
-        re.search(rf"^{re.escape(field)}\s*$", text, flags=re.MULTILINE)
-        for field in fields
+    return all(re.search(rf"^{re.escape(field)}\s*$", text, flags=re.MULTILINE) for field in fields)
+
+
+def validate_skill(skill_dir: Path, repo: Path) -> tuple[list[Finding], int]:
+    findings: list[Finding] = []
+    skill_file = skill_dir / "SKILL.md"
+    relative = str(skill_file.relative_to(repo))
+    if not skill_file.is_file():
+        return [Finding("ERROR", "skill-file-missing", relative, "skill directory must contain SKILL.md")], 0
+    try:
+        text = skill_file.read_text(encoding="utf-8")
+        block, body = split_frontmatter(text)
+        metadata = parse_frontmatter(block)
+    except (OSError, UnicodeError, FrontmatterError) as exc:
+        return [Finding("ERROR", "skill-frontmatter-invalid", relative, str(exc))], 0
+
+    name = metadata.get("name")
+    if not isinstance(name, str):
+        findings.append(Finding("ERROR", "skill-name-invalid", relative, "name must be a string"))
+    elif not (1 <= len(name) <= 64):
+        findings.append(Finding("ERROR", "skill-name-length", relative, f"name has {len(name)} characters; expected 1..64"))
+    elif not NAME_PATTERN.fullmatch(name):
+        findings.append(Finding("ERROR", "skill-name-format", relative, "name must use lowercase letters, digits, and single internal hyphens"))
+    elif name != skill_dir.name:
+        findings.append(Finding("ERROR", "skill-name-path", relative, f"name {name!r} must match directory {skill_dir.name!r}"))
+
+    description = metadata.get("description")
+    description_chars = len(description) if isinstance(description, str) else 0
+    if not isinstance(description, str):
+        findings.append(Finding("ERROR", "skill-description-invalid", relative, "description must be a string"))
+    elif not description.strip() or len(description) > 1024:
+        findings.append(Finding("ERROR", "skill-description-length", relative, f"description has {len(description)} characters; expected a non-empty value of at most 1024"))
+
+    compatibility = metadata.get("compatibility")
+    if compatibility is not None and (
+        not isinstance(compatibility, str) or not compatibility.strip() or len(compatibility) > 500
+    ):
+        findings.append(Finding("ERROR", "skill-compatibility-invalid", relative, "compatibility must be a 1..500 character string"))
+
+    license_value = metadata.get("license")
+    if license_value is not None and not isinstance(license_value, str):
+        findings.append(Finding("ERROR", "skill-license-invalid", relative, "license must be a string"))
+
+    additional_metadata = metadata.get("metadata")
+    if additional_metadata is not None and (
+        not isinstance(additional_metadata, dict)
+        or any(not isinstance(key, str) or not isinstance(value, str) for key, value in additional_metadata.items())
+    ):
+        findings.append(Finding("ERROR", "skill-metadata-invalid", relative, "metadata must map string keys to string values"))
+
+    allowed_tools = metadata.get("allowed-tools")
+    if allowed_tools is not None and not isinstance(allowed_tools, str):
+        findings.append(Finding("ERROR", "skill-allowed-tools-invalid", relative, "allowed-tools must be a space-separated string"))
+
+    total_lines = len(text.splitlines())
+    if total_lines > SKILL_REVIEW_LINES:
+        findings.append(Finding("REVIEW", "skill-lines", relative, f"{total_lines} lines exceeds the {SKILL_REVIEW_LINES}-line review signal"))
+    body_tokens = estimated_tokens(body)
+    if body_tokens >= SKILL_PERFORMANCE_TOKENS:
+        findings.append(Finding("NOTICE", "skill-token-estimate", relative, f"body byte-estimate is {body_tokens} tokens at 4 bytes/token; recommendation is below {SKILL_PERFORMANCE_TOKENS}"))
+    if repeats_workspace_report(body):
+        findings.append(Finding("REVIEW", "skill-report-owner", relative, "skill repeats the complete workspace report skeleton"))
+    return findings, description_chars
+
+
+def validate_repository(repo: Path) -> ValidationReport:
+    findings: list[Finding] = []
+    agents_path = repo / "AGENTS.md"
+    skills_root = repo / ".agents" / "skills"
+    agents_text = ""
+    if not agents_path.is_file():
+        findings.append(Finding("REVIEW", "agents-file-missing", "AGENTS.md", "always-on repository guidance is unavailable"))
+    else:
+        try:
+            agents_text = agents_path.read_text(encoding="utf-8")
+        except (OSError, UnicodeError) as exc:
+            findings.append(Finding("REVIEW", "agents-file-invalid", "AGENTS.md", str(exc)))
+
+    agents_lines = len(agents_text.splitlines())
+    agents_bytes = len(agents_text.encode("utf-8"))
+    if agents_lines > AGENTS_REVIEW_LINES:
+        findings.append(Finding("REVIEW", "agents-lines", "AGENTS.md", f"{agents_lines} lines exceeds the {AGENTS_REVIEW_LINES}-line review signal"))
+    if agents_bytes >= AGENTS_PORTABILITY_BYTES:
+        findings.append(Finding("NOTICE", "agents-portability", "AGENTS.md", f"local file is {agents_bytes} bytes; Codex defaults to {AGENTS_PORTABILITY_BYTES} combined bytes"))
+    if re.search(r"^## Skill Routing\s*$", agents_text, flags=re.MULTILINE):
+        findings.append(Finding("REVIEW", "agents-routing-owner", "AGENTS.md", "skill routing belongs in skill descriptions, not always-on instructions"))
+
+    skill_count = 0
+    description_chars = 0
+    if not skills_root.is_dir():
+        findings.append(Finding("ERROR", "skills-directory-missing", ".agents/skills", "skills directory is missing"))
+    else:
+        for skill_dir in sorted(path for path in skills_root.iterdir() if path.is_dir()):
+            skill_count += 1
+            skill_findings, chars = validate_skill(skill_dir, repo)
+            findings.extend(skill_findings)
+            description_chars += chars
+
+    findings.sort(key=lambda item: (SEVERITY_ORDER[item.severity], item.path, item.code))
+    return ValidationReport(
+        findings=tuple(findings),
+        skill_count=skill_count,
+        description_chars=description_chars,
+        agents_lines=agents_lines,
+        agents_bytes=agents_bytes,
+        agents_estimated_tokens=estimated_tokens(agents_text),
     )
 
 
-def markdown_visible_text(text: str) -> str:
-    visible: list[str] = []
-    fence_character: str | None = None
-    fence_length = 0
-    for line in text.splitlines():
-        stripped = line.lstrip()
-        fence = re.match(r"(`{3,}|~{3,})", stripped)
-        if fence_character is not None:
-            if (
-                fence
-                and fence.group(1)[0] == fence_character
-                and len(fence.group(1)) >= fence_length
-            ):
-                fence_character = None
-                fence_length = 0
-            continue
-        if fence:
-            fence_character = fence.group(1)[0]
-            fence_length = len(fence.group(1))
-            continue
-        visible.append(line)
-    return "\n".join(visible)
-
-
-def inline_code_ranges(line: str) -> list[tuple[int, int]]:
-    ranges: list[tuple[int, int]] = []
-    offset = 0
-    while offset < len(line):
-        start = line.find("`", offset)
-        if start < 0:
-            break
-        marker_end = start
-        while marker_end < len(line) and line[marker_end] == "`":
-            marker_end += 1
-        marker = line[start:marker_end]
-        end = line.find(marker, marker_end)
-        if end < 0:
-            break
-        ranges.append((start, end + len(marker)))
-        offset = end + len(marker)
-    return ranges
-
-
-def markdown_link_targets(document: Path) -> set[str]:
-    text = markdown_visible_text(document.read_text(encoding="utf-8"))
-    targets: set[str] = set()
-    for line in text.splitlines():
-        code_ranges = inline_code_ranges(line)
-        for match in re.finditer(r"\[[^\]]+\]\(([^)]+)\)", line):
-            if any(start <= match.start() < end for start, end in code_ranges):
-                continue
-            targets.add(match.group(1).strip())
-    return targets
-
-
-def relative_markdown_links(document: Path) -> list[str]:
-    errors: list[str] = []
-    for target in markdown_link_targets(document):
-        if target.startswith(("http://", "https://", "mailto:", "#")):
-            continue
-        path_part = target.split("#", 1)[0]
-        if not path_part:
-            continue
-        resolved = (document.parent / path_part).resolve()
-        if not resolved.exists():
-            errors.append(target)
-    return errors
-
-
-def frontmatter(skill_file: Path) -> tuple[str, str, bool] | None:
-    text = skill_file.read_text(encoding="utf-8")
-    match = re.match(r"\A---\n(.*?)\n---(?:\n|\Z)", text, flags=re.DOTALL)
-    if not match:
-        return None
-
-    block = match.group(1)
-
-    def value(key: str) -> str | None:
-        field = re.search(rf"^{re.escape(key)}:\s*(.+?)\s*$", block, flags=re.MULTILINE)
-        if not field:
-            return None
-        return field.group(1).strip().strip('"\'')
-
-    name = value("name")
-    description = value("description")
-    disabled = bool(
-        re.search(
-            r"^disable-model-invocation:\s*true\s*$",
-            block,
-            flags=re.MULTILINE | re.IGNORECASE,
-        )
-    )
-    if not name or not description:
-        return None
-    return name, description, disabled
+def emitted_findings(findings: tuple[Finding, ...]) -> tuple[tuple[Finding, ...], int]:
+    visible = findings[:MAX_EMITTED_FINDINGS]
+    return visible, len(findings) - len(visible)
 
 
 def main() -> None:
     if len(sys.argv) > 2:
         print("usage: validate_repo_contract.py [repo-root]", file=sys.stderr)
         raise SystemExit(2)
-
-    repo = (
-        Path(sys.argv[1]).expanduser().resolve()
-        if len(sys.argv) == 2
-        else Path(__file__).resolve().parents[4]
-    )
-    errors: list[str] = []
-
-    skills_root = repo / ".agents" / "skills"
-    agents_path = repo / "AGENTS.md"
-    readme_path = repo / "README.md"
-    package_path = repo / "package.json"
-    knowledge_readme_path = repo / "knowledge" / "README.md"
-    if not all((skills_root.is_dir(), agents_path.is_file(), readme_path.is_file(), package_path.is_file())):
-        print(f"ERROR: not a devops-pi-agent repository: {repo}", file=sys.stderr)
-        raise SystemExit(1)
-
-    agents_text = agents_path.read_text(encoding="utf-8")
-    agents_lines = len(agents_text.splitlines())
-    if agents_lines > 230:
-        errors.append(f"AGENTS.md context budget exceeded: {agents_lines} > 230 lines")
-    if re.search(r"^## Skill Routing\s*$", agents_text, flags=re.MULTILINE):
-        errors.append("AGENTS.md must not contain a skill routing table")
-    normalized_agents = re.sub(r"\s+", " ", agents_text)
-    commit_rule = "If repository files changed, include a suggested commit message."
-    if commit_rule not in normalized_agents:
-        errors.append("AGENTS.md must require a suggested commit message after file changes")
-    # Approval 可能跨越多輪；批准前取得的 repository 狀態不能作為修改前證據。
-    approval_refresh_rules = (
-        "After explicit approval and before any branch-safety decision or file edit",
-        "Do not reuse branch or status evidence gathered before approval.",
-    )
-    for rule in approval_refresh_rules:
-        if rule not in normalized_agents:
-            errors.append(f"AGENTS.md missing post-approval repository refresh rule: {rule}")
-    orchestration_rules = (
-        "Default to bounded read-only delegation when evidence acquisition is expected to produce large raw output or require multiple independent searches or reads.",
-        "Keep simple known-path I/O in the parent.",
-        "the orchestrator owns role selection, bounded prompts, concurrency, authority boundaries, and reconciliation.",
-        "After repository file mutations, the parent or approved worker runs the smallest validation that proves the final behavior and reports failures or skipped checks.",
-    )
-    for rule in orchestration_rules:
-        if rule not in normalized_agents:
-            errors.append(f"AGENTS.md missing cross-skill orchestration rule: {rule}")
-    validation_efficiency_rules = (
-        "Classify post-edit validation by behavior and blast radius, not line count",
-        "Do not run post-edit validation when no repository files changed.",
-        "run the smallest release-level checks once after the final edit.",
-        "Do not rerun the same successful check when repository and relevant external state are unchanged.",
-        "Never let this table weaken its mandatory gate.",
-        "Prefer one existing repository or skill-owned deterministic helper over several model-directed commands",
-    )
-    for rule in validation_efficiency_rules:
-        if rule not in normalized_agents:
-            errors.append(f"AGENTS.md missing validation-efficiency rule: {rule}")
-    for tier in ("`V0`", "`V1`", "`V2`", "`V3`"):
-        if tier not in agents_text:
-            errors.append(f"AGENTS.md missing validation tier: {tier}")
-    skills_main_rule = (
-        "when explicitly requested, any repository-owned source, test, script, "
-        "extension, configuration, or documentation file may be created, edited, "
-        "renamed, or deleted on this skills repository's `main` branch."
-    )
-    if skills_main_rule not in normalized_agents:
-        errors.append("AGENTS.md missing the explicit skills-repository main-branch exception")
-    skills_main_exclusions = (
-        "This exception does not apply to sibling or target repositories",
-        "secrets, credentials, generated artifacts, caches, or git-ignored temporary files",
-        "it never permits Git or remote mutations",
-    )
-    for exclusion in skills_main_exclusions:
-        if exclusion not in normalized_agents:
-            errors.append(f"AGENTS.md missing skills-repository main exclusion: {exclusion}")
-    presentation_main_rules = (
-        "Presentation-repository maintenance is a second narrow exception",
-        "when the user explicitly names one presentation target repository and approves direct edits on its current `main` or `master` branch",
-        "tracked slide source, speaker notes, documentation, and slide assets may be edited there.",
-        "Re-inspect the repository and require a clean tree",
-        "apply the exception only to the named repository and approved scope.",
-    )
-    for rule in presentation_main_rules:
-        if rule not in normalized_agents:
-            errors.append(f"AGENTS.md missing presentation-repository main rule: {rule}")
-    presentation_main_exclusions = (
-        "It excludes product, deployment, chart, infrastructure, and other target repositories",
-        "dependencies, lockfiles, build or runtime configuration, generated or git-ignored files",
-        "secrets and credentials",
-        "all Git or remote mutations",
-    )
-    for exclusion in presentation_main_exclusions:
-        if exclusion not in normalized_agents:
-            errors.append(f"AGENTS.md missing presentation-repository main exclusion: {exclusion}")
-    public_safety_rules = (
-        "Treat this skills repository as public source.",
-        "Never add company or client names",
-        "Use descriptive placeholders and reserved example domains.",
-        "machine-local terms file outside the repository",
-        "A clean current snapshot does not sanitize Git history.",
-    )
-    for rule in public_safety_rules:
-        if rule not in normalized_agents:
-            errors.append(f"AGENTS.md missing public repository safety rule: {rule}")
-    wiki_rules = (
-        "Before external research, run the bounded `.agents/skills/llm-wiki/scripts/wiki.py find` for relevant precedent",
-        "read only matched notes and treat them as prior knowledge, not current-state proof.",
-        "Write `knowledge/` content in English and apply its pinned No AI Slop writing contract.",
-    )
-    for rule in wiki_rules:
-        if rule not in normalized_agents:
-            errors.append(f"AGENTS.md missing LLM wiki rule: {rule}")
-    terraform_skill_path = skills_root / "terraform-repository-maintenance" / "SKILL.md"
-    normalized_terraform_skill = re.sub(
-        r"\s+", " ", terraform_skill_path.read_text(encoding="utf-8")
-    )
-    terraform_validation_rules = (
-        "For every affected root/environment pair, the parent or approved worker runs formatting, validation, and an unsaved remote-state plan",
-        "Treat every unapproved source or legacy root as read-only evidence",
-        "scripts/run-terraform.sh plan <service-path> <env>",
-        "Require an add/change/destroy/replace summary and explicit unexpected-drift findings.",
-        "Accept `No changes.` or an explicit zero-action summary as no-op.",
-        "Do not retry authentication or state-lock failures.",
-        "Never save plan files or print sensitive state, plan output, or secrets.",
-    )
-    for rule in terraform_validation_rules:
-        if rule not in normalized_terraform_skill:
-            errors.append(f"Terraform maintenance skill missing validation-plan rule: {rule}")
-    if "user-operated plan" in normalized_terraform_skill:
-        errors.append("Terraform maintenance skill must not delegate post-edit plan to the user")
-
-    readme = readme_path.read_text(encoding="utf-8")
-    normalized_readme = re.sub(r"\s+", " ", readme)
-    readme_main_rules = (
-        "使用者明確要求維護本 repository 時",
-        "建立、修改、重新命名 或刪除 repository-owned source、tests、scripts、extensions、configuration 與 documentation",
-        "不延伸到 sibling/target repositories",
-        "不涵蓋 secrets、credentials、generated artifacts、caches 或 git-ignored temporary files",
-        "不允許 agent commit、push、修改 Git 或操作 remotes",
-        "完整 authority boundary 以 [`AGENTS.md`](AGENTS.md) 為準",
-    )
-    for rule in readme_main_rules:
-        if rule not in normalized_readme:
-            errors.append(f"README missing skills-repository main rule: {rule}")
-    readme_presentation_rules = (
-        "投影片 repository 另有窄範圍例外",
-        "使用者明確指定一個 presentation target repository",
-        "核准直接修改目前的 `main` 或 `master` branch",
-        "乾淨工作樹中修改 tracked slide source、speaker notes、documentation 與 slide assets",
-        "例外只適用於指定 repository 和核准範圍",
-        "不包含產品、部署、chart、infrastructure 或其他 target repositories",
-        "依賴、lockfiles、build/runtime configuration、generated/git-ignored files、secrets、credentials",
-        "Git 或 remote 操作",
-    )
-    for rule in readme_presentation_rules:
-        if rule not in normalized_readme:
-            errors.append(f"README missing presentation-repository main rule: {rule}")
-    root_readme_targets = markdown_link_targets(readme_path)
-    if "knowledge/README.md" not in root_readme_targets:
-        errors.append("README missing knowledge/README.md wiki entry")
-    if not knowledge_readme_path.is_file():
-        errors.append("missing knowledge/README.md")
-    wiki_files = (
-        repo / "knowledge" / "INDEX.md",
-        skills_root / "llm-wiki" / "scripts" / "wiki.py",
-        skills_root / "llm-wiki" / "references" / "writing-style.md",
-    )
-    for wiki_file in wiki_files:
-        if not wiki_file.is_file():
-            errors.append(f"missing LLM wiki contract file: {wiki_file.relative_to(repo)}")
-    skill_names: set[str] = set()
-    model_invoked: set[str] = set()
-    model_description_chars = 0
-    skill_readmes: list[Path] = []
-    for skill_dir in sorted(path for path in skills_root.iterdir() if path.is_dir()):
-        skill_file = skill_dir / "SKILL.md"
-        skill_readme = skill_dir / "README.md"
-        if not skill_file.is_file():
-            errors.append(f"skill directory has no SKILL.md: {skill_dir.relative_to(repo)}")
-            continue
-        if not skill_readme.is_file():
-            errors.append(f"skill directory has no README.md: {skill_dir.relative_to(repo)}")
-        else:
-            skill_readmes.append(skill_readme)
-
-        parsed = frontmatter(skill_file)
-        if parsed is None:
-            errors.append(f"invalid or incomplete frontmatter: {skill_file.relative_to(repo)}")
-            continue
-        name, description, disabled = parsed
-        skill_names.add(skill_dir.name)
-        skill_text = skill_file.read_text(encoding="utf-8")
-        skill_lines = len(skill_text.splitlines())
-        if skill_lines > 85:
-            errors.append(f"SKILL.md context budget exceeded: {skill_dir.name} has {skill_lines} lines")
-        if repeats_workspace_report(skill_text):
-            errors.append(
-                f"SKILL.md duplicates the workspace report skeleton: {skill_dir.name}"
-            )
-        if len(description) > 320:
-            errors.append(f"skill description too long: {skill_dir.name} has {len(description)} characters")
-        if name != skill_dir.name:
-            errors.append(f"skill name/path mismatch: {name} != {skill_dir.name}")
-        readme_target = f".agents/skills/{skill_dir.name}/README.md"
-        if readme_target not in root_readme_targets:
-            errors.append(f"README inventory missing skill README link: {skill_dir.name}")
-        skill_readme_text = skill_readme.read_text(encoding="utf-8") if skill_readme.is_file() else ""
-        skill_readme_targets = markdown_link_targets(skill_readme) if skill_readme.is_file() else set()
-        if "SKILL.md" not in skill_readme_targets:
-            errors.append(f"skill README does not link SKILL.md: {skill_dir.name}")
-        if disabled:
-            invocation = f"/skill:{skill_dir.name}"
-            if invocation not in readme:
-                errors.append(f"root README manual invocation missing skill: {skill_dir.name}")
-            if invocation not in skill_readme_text:
-                errors.append(f"skill README manual invocation missing skill: {skill_dir.name}")
-        else:
-            model_invoked.add(skill_dir.name)
-            model_description_chars += len(description)
-            if "Use " not in description or "Do not use" not in description:
-                errors.append(
-                    f"model-invoked description lacks positive/negative boundary: {skill_dir.name}"
-                )
-
-    if model_description_chars > 2850:
-        errors.append(
-            f"automatic description budget exceeded: {model_description_chars} > 2850 characters"
-        )
-
-    for documentation in [readme_path, *skill_readmes]:
-        for target in relative_markdown_links(documentation):
-            errors.append(
-                f"broken relative README link: {documentation.relative_to(repo)} -> {target}"
-            )
-
-    package = json.loads(package_path.read_text(encoding="utf-8"))
-    configured_extensions = set(package.get("pi", {}).get("extensions", []))
-    extension_dirs = {
-        f"./extensions/{path.name}"
-        for path in (repo / "extensions").iterdir()
-        if path.is_dir() and (path / "index.ts").is_file()
-    }
-    if configured_extensions != extension_dirs:
-        missing = sorted(extension_dirs - configured_extensions)
-        extra = sorted(configured_extensions - extension_dirs)
-        errors.append(f"package extension mismatch; missing={missing}, extra={extra}")
-    for extension in sorted(extension_dirs):
-        extension_name = Path(extension).name
-        if extension_name not in readme:
-            errors.append(f"README does not name extension: {extension_name}")
-
-    parsed_configs: dict[str, object] = {}
-    for config_file in sorted((repo / "config").glob("*.json")):
-        try:
-            parsed_configs[config_file.name] = json.loads(
-                config_file.read_text(encoding="utf-8")
-            )
-        except json.JSONDecodeError as exc:
-            errors.append(f"invalid JSON {config_file.relative_to(repo)}: {exc}")
-
-    settings_baseline = parsed_configs.get("pi-settings-baseline.json")
-    if not isinstance(settings_baseline, dict):
-        errors.append("missing Pi settings baseline")
-    else:
-        if settings_baseline.get("defaultThinkingLevel") != "low":
-            errors.append("Pi settings baseline must default thinking to low")
-        if settings_baseline.get("showCacheMissNotices") is not True:
-            errors.append("Pi settings baseline must expose prompt-cache misses")
-
-    fixture_validator = repo / ".agents" / "shared" / "skill-quality" / "scripts" / "validate_invocation_fixtures.py"
-    ok, output = run([sys.executable, str(fixture_validator)], repo)
-    if not ok:
-        errors.append(f"invocation fixture validation failed: {output}")
-
-    extension_tests = sorted(
-        str(path.relative_to(repo))
-        for path in (repo / "extensions").glob("*/test.mjs")
-    )
-
-    if errors:
-        for error in errors:
-            print(f"ERROR: {error}", file=sys.stderr)
-        raise SystemExit(1)
-
+    repo = Path(sys.argv[1]).expanduser().resolve() if len(sys.argv) == 2 else Path(__file__).resolve().parents[4]
+    report = validate_repository(repo)
+    visible_findings, omitted = emitted_findings(report.findings)
+    for finding in visible_findings:
+        stream = sys.stderr if finding.severity == "ERROR" else sys.stdout
+        print(f"{finding.severity} [{finding.code}] {finding.path}: {finding.message}", file=stream)
+    if omitted:
+        print(f"NOTICE [findings-omitted] {omitted} additional findings omitted from bounded output")
+    counts = {severity: sum(item.severity == severity for item in report.findings) for severity in SEVERITY_ORDER}
     print(
-        "OK: "
-        f"{len(skill_names)} skills ({len(model_invoked)} model-invoked), "
-        f"{len(skill_readmes)} skill READMEs, {len(extension_dirs)} extensions, "
-        f"{len(extension_tests)} extension test files"
+        "PASS" if not report.errors else "FAIL",
+        f"skills={report.skill_count}",
+        f"metadata_chars={report.description_chars}",
+        f"agents_lines={report.agents_lines}",
+        f"agents_bytes={report.agents_bytes}",
+        f"agents_estimated_tokens={report.agents_estimated_tokens}",
+        f"errors={counts['ERROR']}",
+        f"reviews={counts['REVIEW']}",
+        f"notices={counts['NOTICE']}",
     )
+    raise SystemExit(1 if report.errors else 0)
 
 
 if __name__ == "__main__":
