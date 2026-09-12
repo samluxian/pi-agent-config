@@ -22,6 +22,7 @@ INDEX.md
 
 Available topics:
 
+- [`agent-architecture`](topics/agent-architecture/INDEX.md) covers Pi context projection, subagent authority, prompt enforcement boundaries, typed adapters, evidence layers, and coverage-backed refactoring.
 - [`ci-pipelines`](topics/ci-pipelines/INDEX.md) covers runner capacity, critical-section serialization, parallel jobs, and retry boundaries.
 - [`cloud-identity`](topics/cloud-identity/INDEX.md) covers GKE workload identity, IAM authorization, and service account key replacement.
 - [`gitops-delivery`](topics/gitops-delivery/INDEX.md) covers CI handoffs, immutable artifact references, desired-state changes, status RBAC, and GitOps reconciliation ownership.

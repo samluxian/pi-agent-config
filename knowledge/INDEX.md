@@ -5,6 +5,7 @@ from this index.
 
 | Topic | Keywords | When to search | Index |
 | --- | --- | --- | --- |
+| agent-architecture | adapters, authority, context-projection, coverage, enforcement, evidence-layers, fallow, subagent | Designing Pi extension architecture, delegating bounded work, interpreting agent evidence, or reviewing coverage-backed refactoring | [Index](topics/agent-architecture/INDEX.md) |
 | ci-pipelines | concurrency, gitlab-ci, resource-group, retry, runner, scheduling | Diagnosing runner saturation, serializing critical jobs, sizing parallel work, or limiting retry scope | [Index](topics/ci-pipelines/INDEX.md) |
 | cloud-identity | gke, iam, kubernetes-service-account, service-account-key, wif-gke, workload-identity | Designing GKE workload access, replacing exported service account keys, or reviewing Kubernetes-to-IAM authorization | [Index](topics/cloud-identity/INDEX.md) |
 | gitops-delivery | applications-get, argocd, ci-cd, deployment, gitops, image-digest, rbac, reconciliation, status | Designing or migrating delivery flows where CI updates desired state, reads deployment status, or uses a GitOps controller | [Index](topics/gitops-delivery/INDEX.md) |
