@@ -50,6 +50,28 @@ export function fullOutputPathFromNativeError(text: string): string | undefined 
 	return text.match(NATIVE_FULL_OUTPUT)?.[1];
 }
 
+function isPathInsideTemp(canonicalPath: string, canonicalTemp: string): boolean {
+	const relativePath = relative(canonicalTemp, canonicalPath);
+	return Boolean(relativePath) && !relativePath.startsWith("..") && !isAbsolute(relativePath);
+}
+
+function isSameBoundedFile(
+	supplied: Awaited<ReturnType<typeof lstat>>,
+	opened: Awaited<ReturnType<FileHandle["stat"]>>,
+): boolean {
+	return [
+		opened.isFile(),
+		opened.dev === supplied.dev,
+		opened.ino === supplied.ino,
+		opened.size >= 1,
+		opened.size <= MAX_PROCESSOR_INPUT_BYTES,
+	].every(Boolean);
+}
+
+async function closeQuietly(handle: FileHandle | undefined): Promise<void> {
+	if (handle) await handle.close().catch(() => undefined);
+}
+
 export async function openSafeBashOutput(path: string): Promise<FileHandle | undefined> {
 	if (!isAbsolute(path) || !PI_BASH_TEMP_FILE.test(basename(path))) return undefined;
 	const resolvedPath = resolve(path);
@@ -60,24 +82,16 @@ export async function openSafeBashOutput(path: string): Promise<FileHandle | und
 		if (!supplied.isFile() || supplied.isSymbolicLink()) return undefined;
 		const canonicalPath = await realpath(resolvedPath);
 		const canonicalTemp = await realpath(tmpdir());
-		const relativePath = relative(canonicalTemp, canonicalPath);
-		if (!relativePath || relativePath.startsWith("..") || isAbsolute(relativePath)) return undefined;
+		if (!isPathInsideTemp(canonicalPath, canonicalTemp)) return undefined;
 		const noFollow = typeof constants.O_NOFOLLOW === "number" ? constants.O_NOFOLLOW : 0;
 		handle = await open(canonicalPath, constants.O_RDONLY | noFollow);
-		const stat = await handle.stat();
-		if (
-			!stat.isFile()
-			|| stat.dev !== supplied.dev
-			|| stat.ino !== supplied.ino
-			|| stat.size < 1
-			|| stat.size > MAX_PROCESSOR_INPUT_BYTES
-		) {
+		if (!isSameBoundedFile(supplied, await handle.stat())) {
 			await handle.close();
 			return undefined;
 		}
 		return handle;
 	} catch {
-		if (handle) await handle.close().catch(() => undefined);
+		await closeQuietly(handle);
 		return undefined;
 	}
 }

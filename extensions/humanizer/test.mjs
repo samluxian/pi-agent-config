@@ -45,6 +45,14 @@ function createHarness({ idle = true, hasUI = true, editorResult } = {}) {
 	return { command, ctx, handlers, sent, notifications, editorCalls };
 }
 
+async function runInlineRewrite(source) {
+	const harness = createHarness();
+	await harness.command.handler(source, harness.ctx);
+	assert.equal(harness.sent.length, 1);
+	assert.ok(harness.sent[0].includes(JSON.stringify(source)));
+	return harness;
+}
+
 test("registers the /humanizer command and always-on hook without adding a tool", () => {
 	const harness = createHarness();
 	assert.equal(harness.command.name, "humanizer");
@@ -95,25 +103,17 @@ test("builds a bilingual prompt that preserves facts and returns only the rewrit
 });
 
 test("transforms inline English input into one isolated user message", async () => {
-	const harness = createHarness();
-	const source = "In order to achieve this goal, the system has the ability to process requests.";
+	const harness = await runInlineRewrite(
+		"In order to achieve this goal, the system has the ability to process requests.",
+	);
 
-	await harness.command.handler(source, harness.ctx);
-
-	assert.equal(harness.sent.length, 1);
-	assert.ok(harness.sent[0].includes(JSON.stringify(source)));
 	assert.equal(harness.editorCalls.length, 0);
 	assert.equal(harness.notifications.length, 0);
 });
 
 test("includes Taiwan terminology and technical-term safeguards for Chinese input", async () => {
-	const harness = createHarness();
-	const source = "此外，Kubernetes 為企業提供了強大的容器編排能力。";
+	const harness = await runInlineRewrite("此外，Kubernetes 為企業提供了強大的容器編排能力。");
 
-	await harness.command.handler(source, harness.ctx);
-
-	assert.equal(harness.sent.length, 1);
-	assert.ok(harness.sent[0].includes(JSON.stringify(source)));
 	assert.match(harness.sent[0], /資訊 rather than 信息/);
 	assert.match(harness.sent[0], /Do not change resource names/);
 });

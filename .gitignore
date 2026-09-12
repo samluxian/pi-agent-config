@@ -1,5 +1,6 @@
 workspace-repos/
 node_modules/
+coverage/
 
 # Local temporary files. Contents may include secret plaintext and must stay
 # outside git history.

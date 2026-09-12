@@ -5,6 +5,7 @@
   "scripts": {
     "test:public-safety": "python3 .agents/skills/pi-agent-maintenance/scripts/check_public_safety.py",
     "test:extensions": "node --import ./extensions/subagents/test-loader.mjs --test extensions/*/test.mjs",
+    "test:extensions:coverage": "c8 --reporter=json --reports-dir=coverage node --import ./extensions/subagents/test-loader.mjs --test extensions/*/test.mjs",
     "test:init-workspace": "bash scripts/test-init-workspace.sh",
     "test:makefile": "bash scripts/test-makefile.sh",
     "test:wiki": "python3 .agents/skills/llm-wiki/scripts/tests/wiki_test.py && python3 .agents/skills/llm-wiki/scripts/wiki.py check",
@@ -12,19 +13,26 @@
     "test:contract-unit": "PYTHONDONTWRITEBYTECODE=1 python3 .agents/skills/pi-agent-maintenance/scripts/tests/validate_repo_contract_test.py",
     "benchmark:invocation": "python3 .agents/skills/pi-agent-maintenance/scripts/run_invocation_benchmark.py"
   },
-  "keywords": ["pi-package"],
+  "keywords": [
+    "pi-package"
+  ],
   "pi": {
     "extensions": [
       "./extensions/context-pipeline",
       "./extensions/humanizer",
       "./extensions/subagents"
     ],
-    "skills": ["./.agents/skills"]
+    "skills": [
+      "./.agents/skills"
+    ]
   },
   "peerDependencies": {
     "@earendil-works/pi-ai": "*",
     "@earendil-works/pi-coding-agent": "*",
     "@earendil-works/pi-tui": "*",
     "typebox": "*"
+  },
+  "devDependencies": {
+    "c8": "^12.0.0"
   }
 }
