@@ -27,7 +27,12 @@ runtime evidence separate.
    mismatch, or readiness claim.
 5. Compare expected versus actual, identify the first divergence, and state what
    evidence would falsify the diagnosis.
-6. Stop after the cause or next decisive check is supported. Hand repository
+6. For a CI rule or trigger decision that depends on pipeline source, begin with
+   exact target job history, then inspect its pipeline metadata (`source`, status,
+   and variable keys). Vendor documentation and CI configuration form a hypothesis;
+   target event metadata decides the direction. If no target event is available,
+   stop with an unproven conclusion and request a controlled user-operated check.
+7. Stop after the cause or next decisive check is supported. Hand repository
    fixes to the appropriate implementation workflow.
 
 Use `references/troubleshooting-matrix.md` to select checks and

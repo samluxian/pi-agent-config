@@ -130,8 +130,10 @@ sources conflict, or a readiness claim requires the next layer:
 1. Repository branch/status or supplied diagnostics.
 2. Target desired-state or render summary.
 3. Target live/resource summary.
-Analyze supplied diagnostics first. Before external research for a repository or infrastructure decision,
-run the bounded `.agents/skills/llm-wiki/scripts/wiki.py find`; read only matches and treat them as
+Analyze supplied diagnostics first. When a material change direction depends on a third-party control-plane semantic,
+treat source and vendor documentation as a hypothesis; before editing, inspect a bounded artifact created by the target
+system. Target evidence takes precedence when it conflicts with the hypothesis. If no such artifact exists or is accessible,
+state the direction as unproven and request a controlled user-operated check rather than changing behavior. Before external research for a repository or infrastructure decision, run the bounded `.agents/skills/llm-wiki/scripts/wiki.py find`; read only matches and treat them as
 precedent, not current proof. The `llm-wiki` skill owns knowledge-writing requirements. Summarize large
 outputs and quote only needed evidence.
 

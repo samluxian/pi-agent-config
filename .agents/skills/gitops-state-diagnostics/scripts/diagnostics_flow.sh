@@ -10,6 +10,7 @@ Usage:
   diagnostics_flow.sh manifest-json <manifest-path>
   diagnostics_flow.sh diff-json [kubectl-diff-output-path]
   diagnostics_flow.sh gitlab-pipeline <project-path> <pipeline-id>
+  diagnostics_flow.sh gitlab-batch-pipelines [repository-path]
   diagnostics_flow.sh argocd <app> <namespace> [pod-label-selector]
   diagnostics_flow.sh wi --project <project> --namespace <ns> --ksa <ksa> --gsa <gsa> [options]
 
@@ -79,6 +80,17 @@ case "$mode" in
       exit 2
     fi
     "$script_dir/summarize_gitlab_pipeline.sh" "$1" "$2"
+    ;;
+  gitlab-batch-pipelines)
+    if [[ $# -gt 1 ]]; then
+      usage
+      exit 2
+    fi
+    if [[ $# -eq 1 ]]; then
+      "$script_dir/scan_gitlab_batch_pipelines.py" "$1"
+    else
+      "$script_dir/scan_gitlab_batch_pipelines.py"
+    fi
     ;;
   argocd)
     if [[ $# -lt 2 || $# -gt 3 ]]; then

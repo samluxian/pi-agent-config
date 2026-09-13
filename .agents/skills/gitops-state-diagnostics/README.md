@@ -43,9 +43,13 @@ field、mismatch 或 readiness claim 出現時擴大。
 
 - [`references/troubleshooting-matrix.md`](references/troubleshooting-matrix.md)：依 symptom 選擇最小 probe。
 - [`scripts/diagnostics_flow.sh`](scripts/diagnostics_flow.sh)：固定 repository、Helm、manifest、
-  pipeline、Argo CD 與 Workload Identity 摘要入口。Manifest 摘要會列出所有 resource identity，
-  並只投影 allowlisted non-secret fields；Pipeline 摘要會讀取 plan job 的 bounded trace，回報
-  commit SHA、job status、import/add/change/destroy/replace counts 與警告／錯誤。Manifest projection
+  pipeline、Argo CD 與 Workload Identity 摘要入口。已知 pipeline ID 時，Pipeline 摘要會讀取
+  plan job 的 bounded trace，回報 commit SHA、job status、import/add/change/destroy/replace counts
+  與警告／錯誤。`gitlab-batch-pipelines` 會從 local `origin` 解析 GitLab project，先做 API
+  preflight，再從精確的 `update-image-tag-batch` job history 列出最多 20 個所屬 pipeline 與 batch
+  job 摘要。它用 target pipeline metadata 驗證 `source`，不以 vendor 文件推論；找不到 job history
+  時回傳 `inconclusive`。`skipped` 僅是警告，不直接推論規則或變數原因。Manifest 摘要會列出所有 resource identity，並只投影 allowlisted
+  non-secret fields。Manifest projection
   若超過上限會回報omitted counts，但findings仍掃描全部projected resources；findings本身若超限，
   summary會標成incomplete並fail open。
 - [`assets/evidence-matrix-template.md`](assets/evidence-matrix-template.md)：expected/actual evidence 表。
