@@ -10,7 +10,7 @@ keywords: [actuator, incident-causality, liveness, mongodb, startup]
 aliases: [connection-refused, restart-loop, slow-startup]
 scope: synthetic-private-case
 created: 2026-09-11
-updated: 2026-09-11
+updated: 2026-09-13
 ---
 
 # A liveness restart does not establish the startup root cause
@@ -177,6 +177,18 @@ or runtime configuration are identical.
   or merely postpone a permanent block; current evidence cannot choose.
 
 ## Root Cause And Contributing Factors
+
+```mermaid
+flowchart TD
+    A["Container runs but remains unready"] --> B["Liveness probe receives connection refused"]
+    B --> C["Restart threshold is reached"]
+    C --> D["Observed lifecycle trigger"]
+    A --> E["Startup completion remains unestablished"]
+    E --> F["Runtime stack or operation timing is needed"]
+    F --> G["Root cause is not established"]
+    G --> H["Incident remains open"]
+    I["Synchronous collection and index work during startup"] --> J["Source-proven design factor"]
+```
 
 - **Immediate lifecycle trigger:** liveness connection failures reached the
   restart threshold.

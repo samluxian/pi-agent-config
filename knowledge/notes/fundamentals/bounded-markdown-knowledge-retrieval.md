@@ -10,7 +10,7 @@ keywords: [context-window, index, knowledge-retrieval, markdown, progressive-dis
 aliases: [llm-wiki, note-search]
 scope: repository-public-case
 created: 2026-09-11
-updated: 2026-09-11
+updated: 2026-09-13
 ---
 
 # Bounded Markdown knowledge retrieval for coding agents
@@ -40,6 +40,16 @@ discover, rank, or follow it. [S2]
 ## Knowledge
 
 ### Retrieval Hierarchy
+
+```mermaid
+flowchart TD
+    Q["Concrete query terms"] --> R["Root topic metadata"]
+    R --> T["One topic index"]
+    T --> C["At most a few candidate notes"]
+    C --> N["Selected explanation and evidence"]
+    N --> V["Current-state validation"]
+    V --> P["Public source verification when needed"]
+```
 
 ```text
 bounded query terms

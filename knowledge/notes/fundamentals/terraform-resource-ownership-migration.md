@@ -10,7 +10,7 @@ keywords: [import, moved-block, removed-block, resource-address, state, terrafor
 aliases: [cross-state-migration, state-refactor, terraform-ownership]
 scope: public-source
 created: 2026-09-11
-updated: 2026-09-11
+updated: 2026-09-13
 ---
 
 # Preserve resource identity during Terraform ownership migrations
@@ -166,6 +166,19 @@ for a `removed` block is to remove the state entry and destroy the actual
 resource. [S5]
 
 ### Moving Between Separate State Files
+
+```mermaid
+flowchart TD
+    A["Remote object"] --> B["Exactly one state binding"]
+    B --> C{"Migration type"}
+    C -->|Address change in one state lineage| D["moved block"]
+    D --> E["Destination address without recreation"]
+    C -->|Ownership moves between states| F["Source removed with destroy = false"]
+    F --> G["Bounded temporary unmanaged window"]
+    G --> H["Destination resource and import block"]
+    H --> I["Fresh source and destination plans"]
+    I --> J["No unexpected add, change,<br/>destroy, or replace"]
+```
 
 HashiCorp documents two cross-state approaches: configuration-driven remove and
 import, or direct movement with the legacy state-move workflow. It recommends

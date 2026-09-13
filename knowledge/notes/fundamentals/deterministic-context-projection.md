@@ -10,7 +10,7 @@ keywords: [context-projection, tool-result, output-budget]
 aliases: [result-summarization, context-pipeline]
 scope: repository-public-case
 created: 2026-09-12
-updated: 2026-09-12
+updated: 2026-09-13
 ---
 
 # Deterministic context projection for tool results
@@ -41,6 +41,19 @@ and tests; an immutable public permalink is still pending.
 ## Knowledge
 
 ### Mechanism
+
+```mermaid
+flowchart TD
+    A["Executed tool result"] --> B{"Recognized tool and command shape?"}
+    B -->|Yes| C{"Complete input or complete artifact?"}
+    C -->|Yes| D{"Summary includes counts and omission metadata?"}
+    D -->|Yes| E{"Replacement is smaller than source?"}
+    E -->|Yes| F["Replace model-facing result"]
+    B -->|No| G["Return original result unchanged"]
+    C -->|No| G
+    D -->|No| G
+    E -->|No| G
+```
 
 A Pi result handler receives the executed tool name, input, content, error flag,
 and tool-specific details; a returned patch can replace only those result fields.

@@ -10,7 +10,7 @@ keywords: [deployment, persistentvolume, pvc, readwriteonce, rollout, statefulse
 aliases: [multi-attach, rwo-rollout, volume-safe-deployment]
 scope: public-source
 created: 2026-09-11
-updated: 2026-09-11
+updated: 2026-09-13
 ---
 
 # Select rollout strategy from the workload and volume contract
@@ -154,6 +154,20 @@ or storage exclusivity. Configure rollout behavior on the workload controller an
 writer ownership in the application/storage design.
 
 ### Strategy Matrix
+
+```mermaid
+flowchart TD
+    A["Workload, identity, volume,<br/>and fencing contract"] --> B{"Can old and new writers overlap safely?"}
+    B -->|Yes| C["Deployment RollingUpdate<br/>with intentional overlap"]
+    B -->|No| D["Deployment Recreate<br/>for upgrade ordering only"]
+    A --> E{"Need stable identity<br/>and per-replica storage?"}
+    E -->|Yes| F["StatefulSet RollingUpdate<br/>with ordinal readiness"]
+    A --> G["Validate access mode"]
+    G --> H["PVC binds"]
+    H --> I["Pod schedules"]
+    I --> J["Volume attaches and mounts"]
+    J --> K["Readiness after safe state access<br/>and application fencing"]
+```
 
 | Workload contract | Starting strategy | Required additional proof |
 | --- | --- | --- |

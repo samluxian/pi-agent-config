@@ -10,7 +10,7 @@ keywords: [intent-routing, adapters, validation]
 aliases: [typed-operations, fixed-argv]
 scope: repository-public-case
 created: 2026-09-12
-updated: 2026-09-12
+updated: 2026-09-13
 ---
 
 # Intent routing and adapter verification
@@ -37,6 +37,16 @@ not the domain allowlist or verification policy.
 ## Knowledge
 
 ### Route Before Rendering
+
+```mermaid
+flowchart TD
+    A["Agent request"] --> B["Typed operation and bounded fields"]
+    B --> C["Operation router"]
+    C --> D["Domain adapter validation"]
+    D --> E["Fixed argv or parser"]
+    E --> F["Structured projection"]
+    F --> G["Counts, omissions, and completeness metadata"]
+```
 
 ```text
 agent request

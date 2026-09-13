@@ -10,7 +10,7 @@ keywords: [argocd, deployment, downstream-pipeline, gitops, image-digest, reconc
 aliases: [direct-deploy, gitops-handoff, helm-to-gitops]
 scope: public-source
 created: 2026-09-11
-updated: 2026-09-11
+updated: 2026-09-13
 ---
 
 # Replacing direct deployment with a GitOps handoff
@@ -42,6 +42,19 @@ the downstream pipeline status. [S3]
 ## Knowledge
 
 ### Ownership Model
+
+```mermaid
+flowchart TD
+    A["Build and test artifact"] --> B["Publish immutable artifact reference"]
+    B --> C["Request bounded desired-state change"]
+    C --> D["Validate schema, render, and diff"]
+    D --> E["Review and merge versioned desired state"]
+    E --> F["Downstream result mirrored to upstream"]
+    E --> G["GitOps controller pulls desired state"]
+    G --> H["Controller reconciles managed resources"]
+    H --> I["Sync status"]
+    I --> J["Runtime behavior"]
+```
 
 A GitOps handoff separates artifact production from runtime reconciliation:
 

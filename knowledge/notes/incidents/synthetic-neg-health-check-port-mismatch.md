@@ -10,7 +10,7 @@ keywords: [application-load-balancer, backend-service, gke, health-check, neg]
 aliases: [503-no-healthy-backend, kubernetes-ready-load-balancer-unhealthy, wrong-health-check-port]
 scope: synthetic-private-case
 created: 2026-09-11
-updated: 2026-09-11
+updated: 2026-09-13
 ---
 
 # Kubernetes readiness does not prove standalone NEG backend health
@@ -120,6 +120,18 @@ health-check firewall port inventory. The URL map, NEG names, Pod selectors, and
 application artifact did not change.
 
 ## Investigation
+
+```mermaid
+flowchart TD
+    A["External load-balancer request"] --> B["Backend service"]
+    B --> C["Health check probes fixed port 80"]
+    C --> D["NEG endpoints listen on port 8181"]
+    D --> E["Backend endpoints remain unhealthy"]
+    E --> F["External response is 503"]
+    G["Pods and EndpointSlices are ready"] --> H["Kubernetes readiness is a separate evidence layer"]
+    H --> I["Align health check and firewall inventory to port 8181"]
+    I --> J["Backend becomes healthy and 503 ends"]
+```
 
 | Hypothesis | Evidence | Falsifier | Result |
 | --- | --- | --- | --- |

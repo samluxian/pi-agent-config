@@ -10,7 +10,7 @@ keywords: [argocd, hooks, job, migration, sync-phase, sync-wave]
 aliases: [database-migration-job, presync-job, rollout-ordering]
 scope: public-source
 created: 2026-09-11
-updated: 2026-09-11
+updated: 2026-09-13
 ---
 
 # Give migration Jobs one rollout-ordering owner
@@ -71,6 +71,19 @@ Set an explicit retry limit and active deadline from the migration's failure
 model. Unlimited waiting can block delivery while hiding a stuck dependency.
 
 ### Argo CD Ordering
+
+```mermaid
+flowchart TD
+    A["Argo CD owns reconciliation"] --> B["Use Argo CD hook annotations only"]
+    B --> C["PreSync prerequisite wave"]
+    C --> D["PreSync migration Job wave"]
+    D --> E["Job retries failed Pods up to backoffLimit"]
+    E --> F["Migration side effect"]
+    F --> G["Verify external schema or data state"]
+    G --> H["Sync workload after successful PreSync"]
+    H --> I["Verify application compatibility and readiness"]
+    D --> J["Failure or timeout stops sync;<br/>retain evidence per cleanup policy"]
+```
 
 Argo CD sync phases provide lifecycle order: `PreSync` runs before ordinary
 manifests, `Sync` runs after all `PreSync` hooks succeed, and `PostSync` runs after

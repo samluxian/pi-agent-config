@@ -10,7 +10,7 @@ keywords: [concurrency, gitlab-ci, resource-group, retry, runner, scheduling]
 aliases: [ci-capacity, job-throttling, retry-isolation]
 scope: public-source
 created: 2026-09-11
-updated: 2026-09-11
+updated: 2026-09-13
 ---
 
 # Bound CI concurrency without widening retry scope
@@ -42,6 +42,16 @@ job and allows zero, one, or two retries. [S3]
 ## Knowledge
 
 ### Control Layers
+
+```mermaid
+flowchart TD
+    A["Runner process: concurrent limits running jobs"] --> E["Execution capacity"]
+    B["Registered runner: limit narrows one runner entry"] --> E
+    C["Job acquisition: request_concurrency limits new-job requests"] --> F["Acquisition rate"]
+    G["parallel or matrix creates job instances"] --> E
+    E --> H["resource_group serializes matching critical-section jobs"]
+    H --> I["Retry the smallest idempotent job boundary"]
+```
 
 | Layer | GitLab control | Scope | What it does not prove |
 | --- | --- | --- | --- |

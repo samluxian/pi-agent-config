@@ -10,7 +10,7 @@ keywords: [prompt-guidelines, enforcement, trust-boundary]
 aliases: [prompt-policy, tool-allowlist]
 scope: repository-public-case
 created: 2026-09-12
-updated: 2026-09-12
+updated: 2026-09-13
 ---
 
 # Prompt guidance is not enforcement
@@ -37,6 +37,18 @@ in current local source and tests; an immutable public permalink is pending.
 ## Knowledge
 
 ### Two Different Mechanisms
+
+```mermaid
+flowchart TD
+    A["Prompt guidance"] --> B["Influences model selection and workflow"]
+    B --> C["May be followed, misunderstood, or ignored"]
+    C --> D["Cannot enforce host or approval boundaries"]
+    E["Schema and fixed operation builder"] --> F["Reject unsupported operation"]
+    F --> G["Execution gates, timeouts, and output budgets"]
+    G --> H["Approval and exact file-ownership checks"]
+    D --> I["Enforcement must exist outside the prompt"]
+    H --> I
+```
 
 Prompt guidance changes the information presented to a model. A custom tool's
 parameters define structured input that Pi validates after optional argument

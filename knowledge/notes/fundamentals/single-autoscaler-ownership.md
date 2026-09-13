@@ -10,7 +10,7 @@ keywords: [autoscaling, hpa, keda, replicas, scaledobject, scaletargetref]
 aliases: [autoscaler-conflict, hpa-keda-conflict, multiple-hpas]
 scope: public-source
 created: 2026-09-11
-updated: 2026-09-11
+updated: 2026-09-13
 ---
 
 # Keep one autoscaling control path per scale target
@@ -69,6 +69,19 @@ warns that applying a manifest containing `spec.replicas` while HPA is active ca
 produce thrashing or flapping behavior. [S3]
 
 ### Combine Signals Before Adding Writers
+
+```mermaid
+flowchart TD
+    M["CPU, custom, queue, or event signals"] --> D{"Choose one autoscaling owner"}
+    D --> A["One HPA combines supported metrics"]
+    D --> K["One KEDA ScaledObject owns activation and scaling"]
+    K --> H["KEDA-managed HPA"]
+    A --> S["Workload scale subresource"]
+    H --> S
+    S --> R["Deployment controller reconciles replicas"]
+    W["Second scaler or applied spec.replicas"] --> C["Competing writer"]
+    C --> S
+```
 
 One HPA can evaluate more than one metric. Kubernetes calculates a desired count
 for each metric and chooses the largest recommendation. [S1]

@@ -10,7 +10,7 @@ keywords: [applications-get, argocd, ci, jwt, rbac, status]
 aliases: [argocd-read-only, deployment-status-token, gitops-status-access]
 scope: public-source
 created: 2026-09-11
-updated: 2026-09-11
+updated: 2026-09-13
 ---
 
 # Grant CI only the GitOps status access it uses
@@ -42,6 +42,19 @@ denial attached to one subject. [S1]
 ## Knowledge
 
 ### Application Action Boundary
+
+```mermaid
+flowchart TD
+    A["CI token carries project-role identity"] --> B["Project-qualified role policy"]
+    B --> C["applications, get"]
+    C --> D["Project-qualified application object"]
+    D --> E["Target application status allowed"]
+    B --> F["sync, update, delete, and override are separate actions"]
+    B --> G["logs, get is a separate permission"]
+    H["Default policy and group mappings"] --> I["Effective authorization review"]
+    B --> I
+    I --> J["Explicit positive and negative access tests"]
+```
 
 Argo CD policies use subject, resource, action, object, and effect fields. The
 application resource supports distinct `get`, `sync`, `update`, and `delete`

@@ -10,7 +10,7 @@ keywords: [helm, json-schema, lint, semver, templates, values]
 aliases: [chart-api, shared-chart, values-contract]
 scope: public-source
 created: 2026-09-11
-updated: 2026-09-11
+updated: 2026-09-13
 ---
 
 # Treat a shared Helm chart as a versioned API
@@ -45,6 +45,19 @@ window or publish a breaking version with a clear upgrade path.
 ## Knowledge
 
 ### Two Contracts
+
+```mermaid
+flowchart TD
+    A["Consumer values"] --> B["Final .Values object"]
+    B --> C["Schema validation"]
+    B --> D["Template invariants"]
+    C --> E["Rendered Kubernetes objects"]
+    D --> E
+    E --> F["Local lint and render"]
+    E --> G["API-server acceptance"]
+    G --> H["Controller reconciliation"]
+    H --> I["Workload runtime health"]
+```
 
 ```text
 consumer values

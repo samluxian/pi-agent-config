@@ -10,7 +10,7 @@ keywords: [gke, iam, kubernetes-service-account, service-account-key, token, wor
 aliases: [keyless-workload-auth, wif-gke, workload-identity-federation]
 scope: public-source
 created: 2026-09-11
-updated: 2026-09-11
+updated: 2026-09-13
 ---
 
 # Prefer workload identity over service account key files
@@ -42,6 +42,21 @@ impersonation when compatibility or policy requires it. [S1] [S2]
 ## Knowledge
 
 ### Authentication And Authorization
+
+```mermaid
+flowchart TD
+    A["Pod"] --> B["Kubernetes ServiceAccount identity"]
+    B --> C["GKE metadata server"]
+    C --> D["Short-lived federated token"]
+    D --> E["Direct federated principal"]
+    D --> F["Permission to impersonate<br/>one IAM service account"]
+    E --> G["Least-privilege IAM allow policy"]
+    F --> H["IAM service account"]
+    H --> I["IAM service account permissions"]
+    G --> J["Permitted Google Cloud resource"]
+    I --> J
+    J --> K["Unrelated resources and actions denied"]
+```
 
 ```text
 Pod

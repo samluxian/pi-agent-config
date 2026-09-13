@@ -10,7 +10,7 @@ keywords: [coverage, fallow, refactoring]
 aliases: [crap-score, coverage-final]
 scope: repository-public-case
 created: 2026-09-12
-updated: 2026-09-12
+updated: 2026-09-13
 ---
 
 # Coverage-backed Fallow refactoring
@@ -47,6 +47,20 @@ permalink; they are not a general Fallow benchmark.
 - Keep the refactor within approved file ownership.
 
 ### Steps
+
+```mermaid
+flowchart TD
+    A["Repository state is understood"] --> B["Coverage test command succeeds"]
+    B --> C["Current report and passing tests"]
+    C --> D["Run Fallow with the exact report"]
+    D --> E["Compare counts and inspect surviving findings"]
+    E --> F["Refactor one reviewed mechanism"]
+    F --> G["Rerun tests and Fallow"]
+    G --> H["Record findings and passing-test counts"]
+    H --> I{"Provenance, tests, and result linkage present?"}
+    I -->|No| J["Stop"]
+    I -->|Yes| K["Use measured refactoring evidence"]
+```
 
 1. Generate the report and confirm tests pass:
 

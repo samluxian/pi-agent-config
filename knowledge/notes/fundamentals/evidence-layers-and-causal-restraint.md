@@ -10,7 +10,7 @@ keywords: [evidence-layers, causality, gitops]
 aliases: [desired-state, causal-inference]
 scope: repository-public-case
 created: 2026-09-12
-updated: 2026-09-12
+updated: 2026-09-13
 ---
 
 # Evidence layers and causal restraint
@@ -39,6 +39,17 @@ contract whose immutable public source permalink is pending.
 ## Knowledge
 
 ### Evidence Stack
+
+```mermaid
+flowchart TD
+    A["Source and tests"] --> B["Packaged or registered extension"]
+    B --> C["Intended configuration or desired state"]
+    C --> D["Tool invocation and result"]
+    D --> E["External system observation"]
+    E --> F["Runtime behavior in a defined time window"]
+    F --> G["State the strongest supported causal claim"]
+    G --> H["Name the missing discriminator"]
+```
 
 ```text
 source and tests

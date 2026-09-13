@@ -10,7 +10,7 @@ keywords: [delegation, parent-authority, subagent]
 aliases: [child-agent, worker-authority]
 scope: repository-public-case
 created: 2026-09-12
-updated: 2026-09-12
+updated: 2026-09-13
 ---
 
 # Keep authority with the subagent parent
@@ -39,6 +39,17 @@ to a parent decision rather than an authorization record.
 ## Knowledge
 
 ### Authority Flow
+
+```mermaid
+flowchart TD
+    A["User approval and exact scope"] --> B["Parent plans and delegates bounded work"]
+    B --> C["Child performs bounded task"]
+    C --> D["Child returns evidence or isolated edit result"]
+    D --> E["Child report is input, not authorization"]
+    E --> F["Parent checks scope and reconciles evidence"]
+    F --> G["Parent validates final state"]
+    G --> H["Parent delivers"]
+```
 
 ```text
 user approval and exact scope

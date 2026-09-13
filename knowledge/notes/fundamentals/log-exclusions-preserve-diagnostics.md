@@ -10,7 +10,7 @@ keywords: [audit-logs, cloud-logging, exclusions, log-router, sampling, sinks]
 aliases: [log-filtering, logging-cost-control, sink-exclusion]
 scope: public-source
 created: 2026-09-11
-updated: 2026-09-11
+updated: 2026-09-13
 ---
 
 # Design log exclusions around diagnostic evidence
@@ -40,6 +40,19 @@ routing, destination storage, retention, and Logs Explorer scope separately.
 ## Knowledge
 
 ### Logging Evidence Path
+
+```mermaid
+flowchart TD
+    A["Source emits entry"] --> B["Logging API receives entry"]
+    B --> C["Log Router evaluates each sink independently"]
+    C --> D["Sink inclusion filter"]
+    D --> E["Sink exclusions and sampling filters"]
+    E --> F["Excluded entry is not routed to this sink"]
+    E --> G["Retained entry reaches sink destination"]
+    C --> H["Other sinks evaluate the entry independently"]
+    H --> I["Another destination may retain the entry"]
+    G --> J["Retention, views, and query scope"]
+```
 
 ```text
 source emits entry
