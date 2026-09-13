@@ -40,9 +40,12 @@ Git 或 remote 操作。完整 authority boundary 以 [`AGENTS.md`](AGENTS.md) �
 ```
 
 Kubernetes、Argo CD、GitLab/GitHub、GCP 與 Git remotes 對 agent 維持唯讀。交付變更寫入
-repository 的 desired state，再走原有 MR、CI 與 GitOps 流程。Agent回報基礎設施時間時，會標示來源時區，
-並在已知使用者時區時先換算再比較或估計；未知時則明確保留UTC並詢問。完整規則以
-[`AGENTS.md`](AGENTS.md) 為準。
+repository 的 desired state，再走原有 MR、CI 與 GitOps 流程。Agent 只在明確需求、既有 contract
+或已證實的重複案例支持下新增複雜度；前兩個相似案例維持局部處理，第三個真實案例才考慮抽出共用
+contract。需求或 integration 尚未確定時，優先採用可逆且隔離的做法。Agent 回報基礎設施時間時，會標示來源時區，
+並在已知使用者時區時先換算再比較或估計；未知時則明確保留UTC並詢問。變更完成後，回覆固定
+保留 Summary；尚有工作才提供 Next step。驗證結果、缺口與具體風險只在適用時寫進 Summary。完整
+規則以 [`AGENTS.md`](AGENTS.md) 為準。
 
 Agent 會直接執行工具可存取且規則允許的唯讀檢查，整理證據並給出結論，不把診斷工作
 交回使用者。它可以先從既有 kube context 或 authenticated gcloud configuration 取得非敏感
@@ -105,7 +108,9 @@ Agent 產出的規格文件一律預設寫入 `<workspace-root>/docs/`。使用�
 指定 target repository 與路徑時，規格文件才能寫入該 repository。`<workspace-root>/docs/`
 是 user-owned work product，不屬於本 repository 的公開文件範圍。
 
-Initializer 不依賴固定的 workspace 名稱或使用者家目錄。
+Initializer 不依賴固定的 workspace 名稱或使用者家目錄。Workspace contract 也允許 Agent
+在使用者明確批准後修改指定的 `~/.bashrc`；Agent 必須先檢查檔案、保留無關設定，且不得
+讀取或修改 secrets、credentials 或其他家目錄檔案。
 
 ## 系統需求
 
@@ -160,7 +165,8 @@ Initializer 會建立或協調以下 workspace-local 資源：
 ```
 
 每次執行 initializer 都會重建 `AGENTS.md` 與 `.agents/skills` 相對 symlink，並重新安裝
-本 repository 管理的 extensions。`<workspace-root>/.pi/pi-agent-config-managed.json` 記錄上一版
+本 repository 管理的 extensions。`package.json` 的 `pi.extensions` 必須與 `extensions/` 目錄名稱
+完全一致，否則 initializer 會停止。`<workspace-root>/.pi/pi-agent-config-managed.json` 記錄上一版
 安裝的 extension 名稱；initializer 只刪除這份 manifest 與目前 source 列出的 extension，其他
 使用者自建 extension 會保留。若 `AGENTS.md` 或 `.agents/skills` 是一般檔案、目錄，或指向其他
 來源的 symlink，initializer 會在清除前停止。腳本也會重建 extension dependencies，並安裝

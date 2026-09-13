@@ -1,12 +1,6 @@
-**MR 標題**
-
 ```text
 [TICKET] <具體動作與變更結果>
 ```
-
-沒有 ticket evidence 時省略 `[TICKET]`；repository 已有標題慣例時優先沿用。
-
-**MR 內容**
 
 ```markdown
 ## 關聯項目
@@ -23,5 +17,6 @@
 
 ## Review 重點
 - <Reviewer 需要特別確認的行為、設定或風險>
-
 ```
+
+沒有 ticket evidence 時，在 title block 省略 `[TICKET]`；repository 已有標題慣例時優先沿用。

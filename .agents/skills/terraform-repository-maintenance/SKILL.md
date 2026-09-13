@@ -42,7 +42,8 @@ another layout until its backend, command, ownership, and review adapter exists.
    `apply`, import, state mutation, workspace mutation, or remote Git operations.
 6. For every affected root/environment pair, the parent or approved worker runs
    formatting, validation, and an unsaved remote-state plan with
-   `scripts/run-terraform.sh plan <service-path> <env>`. Keep plan evidence to
+   the supported `<terraform-repository>/scripts/run-terraform.sh plan <service-path> <env>`
+   helper. Keep plan evidence to
    resource addresses, action order, decision fields, warnings/errors, and the
    add/change/destroy/replace summary. Use
    `scripts/summarize_terraform_plan.py` for text plans. Require an

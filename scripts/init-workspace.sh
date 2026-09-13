@@ -105,6 +105,37 @@ if ((${#extension_names[@]} == 0)); then
   echo "error: no extensions found in: $extensions_source" >&2
   exit 1
 fi
+declared_extensions="$(PACKAGE_JSON="$dependencies_manifest" node <<'NODE'
+const fs = require("node:fs");
+const packagePath = process.env.PACKAGE_JSON;
+let packageJson;
+try {
+  packageJson = JSON.parse(fs.readFileSync(packagePath, "utf8"));
+} catch {
+  console.error(`error: invalid package manifest: ${packagePath}`);
+  process.exit(1);
+}
+const extensions = packageJson.pi?.extensions;
+if (!Array.isArray(extensions)) {
+  console.error(`error: package manifest must declare pi.extensions: ${packagePath}`);
+  process.exit(1);
+}
+const names = new Set();
+for (const extension of extensions) {
+  const match = typeof extension === "string" && /^\.\/extensions\/([A-Za-z0-9._-]+)$/.exec(extension);
+  if (!match || match[1] === "." || match[1] === ".." || names.has(match[1])) {
+    console.error(`error: invalid or duplicate pi.extensions entry: ${packagePath}`);
+    process.exit(1);
+  }
+  names.add(match[1]);
+}
+console.log([...names].sort().join("\n"));
+NODE
+)"
+if [[ "$(printf '%s\n' "${extension_names[@]}")" != "$declared_extensions" ]]; then
+  echo "error: extensions directory and package pi.extensions inventory differ: $dependencies_manifest" >&2
+  exit 1
+fi
 
 is_desired_extension() {
   local candidate="$1"

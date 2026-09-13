@@ -28,6 +28,7 @@ description: 依 repository evidence 撰寫繁體中文 MR 標題、描述、bra
 - 程式碼、命令、路徑、URL、API、設定鍵、resource name、角色名稱、
   error message 與其他 technical identifier 保持原文。
 - 標題須簡短且具體；只有 evidence 存在時才加入 ticket ID。
+- 回覆只能包含兩個 fenced code block，區塊外不得有任何文字：第一個使用 `text`，只放 MR 標題；第二個使用 `markdown`，放完整 MR 說明。這讓 Pi TUI 將 MR 文案顯示為原始 Markdown 語法。
 
 ## 安全與停止條件
 
@@ -37,8 +38,5 @@ credential、private key、`.env` 值或其他敏感資料。
 
 ## 固定輸出順序
 
-1. MR 標題
-2. 關聯項目
-3. 背景與目的
-4. 變更內容
-5. Review 重點
+1. `text` block：MR 標題
+2. `markdown` block：關聯項目、背景與目的、變更內容、Review 重點

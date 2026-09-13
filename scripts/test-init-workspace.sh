@@ -17,7 +17,10 @@ printf '%s\n' 'alpha-v1' > "$fixture_repo/extensions/alpha/index.ts"
 cat > "$fixture_repo/package.json" <<'JSON'
 {
   "name": "init-workspace-fixture",
-  "private": true
+  "private": true,
+  "pi": {
+    "extensions": ["./extensions/alpha"]
+  }
 }
 JSON
 cat > "$fake_bin/npm" <<'EOF'
@@ -96,6 +99,19 @@ if (JSON.stringify(manifest.extensions) !== JSON.stringify(["alpha"])) process.e
 NODE
 
 mv -- "$fixture_repo/extensions/alpha" "$fixture_repo/extensions/beta"
+if run_init >/dev/null 2>&1; then
+  echo "FAIL: extension inventory drift should block initialization" >&2
+  exit 1
+fi
+cat > "$fixture_repo/package.json" <<'JSON'
+{
+  "name": "init-workspace-fixture",
+  "private": true,
+  "pi": {
+    "extensions": ["./extensions/beta"]
+  }
+}
+JSON
 run_init >/dev/null
 [[ ! -e "$extensions_destination/alpha" ]]
 cmp -s -- "$fixture_repo/extensions/beta/index.ts" \

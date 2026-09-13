@@ -34,8 +34,8 @@ Use `references/troubleshooting-matrix.md` to select checks and
 `scripts/diagnostics_flow.sh` for fixed repository diagnostics. For Helm, prefer
 `.agents/shared/gitops/scripts/render_helm_values.sh`. Read
 `references/source-runtime-contract.md` only after mapping a running image to its
-deployed revision; read `references/gke-autopilot-resource-requests.md` only for
-a concrete resource-admission or scheduling finding.
+deployed revision. For a concrete resource-admission or scheduling finding,
+inspect workload resource requests and the relevant Kubernetes-layer evidence.
 
 ## Safety and Stop Conditions
 
