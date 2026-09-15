@@ -218,12 +218,13 @@ const fs = require("node:fs");
 const settingsPath = process.env.PI_SETTINGS;
 const packageSource = process.env.PI_PACKAGE;
 const packageDir = process.env.PI_PACKAGE_DIR;
-let registered = false;
+let childOnly = false;
 if (fs.existsSync(settingsPath)) {
   try {
     const settings = JSON.parse(fs.readFileSync(settingsPath, "utf8"));
-    registered = Array.isArray(settings.packages) && settings.packages.some((entry) =>
-      entry === packageSource || (entry && typeof entry === "object" && entry.source === packageSource));
+    childOnly = Array.isArray(settings.packages) && settings.packages.some((entry) =>
+      entry && typeof entry === "object" && entry.source === packageSource
+      && Array.isArray(entry.extensions) && entry.extensions.length === 0);
   } catch {
     console.log("settings-invalid");
     process.exit(0);
@@ -234,7 +235,7 @@ try {
   const manifest = JSON.parse(fs.readFileSync(`${packageDir}/package.json`, "utf8"));
   installed = manifest.name === "pi-web-access" && manifest.version === "0.23.0";
 } catch {}
-console.log(registered && installed ? "ready" : registered || installed ? "drifted" : "missing");
+console.log(childOnly && installed ? "ready" : childOnly || installed ? "drifted" : "missing");
 NODE
 }
 
@@ -392,11 +393,37 @@ NODE
   fi
 
   (cd "$workspace_root" && pi install -l "$web_access_package")
+  PI_SETTINGS="$pi_settings" PI_PACKAGE="$web_access_package" node <<'NODE'
+const fs = require("node:fs");
+const settingsPath = process.env.PI_SETTINGS;
+const packageSource = process.env.PI_PACKAGE;
+const settings = JSON.parse(fs.readFileSync(settingsPath, "utf8"));
+const packages = Array.isArray(settings.packages) ? settings.packages : [];
+const filtered = [];
+let found = false;
+for (const entry of packages) {
+  const matches = entry === packageSource
+    || (entry && typeof entry === "object" && entry.source === packageSource);
+  if (!matches) {
+    filtered.push(entry);
+    continue;
+  }
+  if (!found) {
+    filtered.push(entry && typeof entry === "object"
+      ? { ...entry, source: packageSource, extensions: [] }
+      : { source: packageSource, extensions: [] });
+    found = true;
+  }
+}
+if (!found) filtered.push({ source: packageSource, extensions: [] });
+settings.packages = filtered;
+fs.writeFileSync(settingsPath, `${JSON.stringify(settings, null, 2)}\n`);
+NODE
   if [[ "$(web_access_status)" != "ready" ]]; then
-    echo "error: project-local Pi package is not ready after install: $web_access_package" >&2
+    echo "error: child-only Pi package is not ready after install: $web_access_package" >&2
     exit 1
   fi
-  echo "Pi package ready: $web_access_package"
+  echo "Pi package ready for child-only use: $web_access_package"
   write_managed_manifest
   echo "Pi managed manifest written: $managed_manifest"
 fi

@@ -176,7 +176,9 @@ const WEB_ACCESS_EXTENSION = path.join(
 const CONTEXT_PIPELINE_EXTENSION = path.join(EXT_DIR, "..", "context-pipeline", "index.ts");
 const CUSTOM_TOOL_EXTENSIONS: Record<string, string> = {
 	web_search: WEB_ACCESS_EXTENSION,
+	source_check: WEB_ACCESS_EXTENSION,
 	fetch_content: WEB_ACCESS_EXTENSION,
+	get_search_content: WEB_ACCESS_EXTENSION,
 	kubectl_inspect: path.join(TOOLS_DIR, "environment-inspect.ts"),
 	gcloud_inspect: path.join(TOOLS_DIR, "environment-inspect.ts"),
 	safe_bash: path.join(TOOLS_DIR, "safe-bash.ts"),

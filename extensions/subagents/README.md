@@ -25,8 +25,8 @@ Pi 把 tool result 放回模型 context
 ```
 
 Extension 載入時會透過 `pi.registerTool()` 註冊一個名為 `subagent` 的 tool。Parent model
-看到這個 tool 後，可以像呼叫 `read` 或 `web_search` 一樣呼叫它。Extension 不會自己決定
-何時委派；是否委派、委派範圍和最後判斷仍由 parent 負責。
+看到這個 tool 後，可以像呼叫 `read` 一樣呼叫它。Extension 不會自己決定何時委派；是否
+委派、委派範圍和最後判斷仍由 parent 負責。
 
 ## 一次 subagent 呼叫怎麼執行
 
@@ -124,16 +124,19 @@ prompt、model、thinking level 與 exact tool allowlist。
 | Role | Model | 可用 tools | 工作範圍 |
 | --- | --- | --- | --- |
 | `scout` | `openai-codex/gpt-5.6-luna` | `read`, `grep`, `find`, `ls` | 讀取 local repository，整理檔案、caller 與結構。 |
-| `researcher` | `openai-codex/gpt-5.6-terra` | `web_search`, `fetch_content` | 搜尋外部資料並整理來源。 |
+| `researcher` | `openai-codex/gpt-5.6-terra` | `web_search`, `source_check`, `fetch_content`, `get_search_content` | 搜尋外部資料並整理來源。 |
 | `environment-scout` | `openai-codex/gpt-5.6-luna` | `kubectl_inspect`, `gcloud_inspect` | 對明確指定的 Kubernetes 或 GCP 目標做 structured read-only inspection。 |
 | `worker` | `openai-codex/gpt-5.6-terra` | `read`, `write`, `edit`, `safe_bash`, web tools, `subagent` | 只處理使用者已批准、repository 與 owned files 都明確的 isolated edit。 |
 
 `scout` 使用 `thinking: off`，讓 bounded repository lookup 以速度和成本為優先；其他角色維持
 `thinking: medium`。這個設定只關閉額外 thinking budget，不會移除 scout 的 read-only tools。
 
-`researcher` 與 `worker` 需要 web tools 時，extension會明確載入project-local
-`pi-web-access`。`environment-scout`與`worker`所需的custom tools也按profile加入；worker載入
-`safe_bash`時一併載入Context Pipeline的result hook，不依賴child自動發現extensions。
+Project settings 只保留 `pi-web-access` 的安裝位置，並用 package filter 阻止 parent
+載入其 extension。外部網站搜尋、抓取、claim check 與stored-content retrieval 都交給
+`researcher`；child 透過明確 path 載入project-local `pi-web-access`。`worker` 若需要自身
+allowlist內的web tools也使用相同path。`environment-scout`與`worker`所需的custom tools按
+profile加入；worker載入`safe_bash`時一併載入Context Pipeline的result hook，不依賴child
+自動發現extensions。
 
 ## Parent 和 child 的責任
 

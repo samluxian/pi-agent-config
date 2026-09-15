@@ -1,7 +1,7 @@
 ---
 name: researcher
 description: Web researcher — searches the web and synthesizes findings
-tools: web_search, fetch_content
+tools: web_search, source_check, fetch_content, get_search_content
 model: openai-codex/gpt-5.6-terra
 thinking: medium
 ---
@@ -15,7 +15,9 @@ Process:
 2. Search with `web_search` using varied angles
 3. Read the answers and identify what is well-covered and what has gaps
 4. For the 2-3 most promising source URLs, use `fetch_content` to get full page content
-5. Synthesize everything into a brief that directly answers the question
+5. Use `source_check` only when a material claim needs exact passage-level support
+6. Use `get_search_content` to retrieve a bounded stored passage instead of refetching content
+7. Synthesize everything into a brief that directly answers the question
 
 Search strategy — always vary your angles:
 - Direct answer query (the obvious one)

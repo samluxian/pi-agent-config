@@ -1,8 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import humanizerExtension, {
-	ALWAYS_ON_HUMANIZER_GUIDANCE,
-	ALWAYS_ON_MARKER,
 	buildHumanizerPrompt,
 	MAX_INPUT_BYTES,
 	MAX_INPUT_LINES,
@@ -13,6 +11,7 @@ import humanizerExtension, {
 function createHarness({ idle = true, hasUI = true, editorResult } = {}) {
 	let command;
 	const handlers = new Map();
+	const tools = [];
 	const sent = [];
 	const notifications = [];
 	const editorCalls = [];
@@ -22,6 +21,9 @@ function createHarness({ idle = true, hasUI = true, editorResult } = {}) {
 		},
 		registerCommand(name, definition) {
 			command = { name, ...definition };
+		},
+		registerTool(definition) {
+			tools.push(definition);
 		},
 		sendUserMessage(message) {
 			sent.push(message);
@@ -42,7 +44,7 @@ function createHarness({ idle = true, hasUI = true, editorResult } = {}) {
 	};
 
 	humanizerExtension(pi);
-	return { command, ctx, handlers, sent, notifications, editorCalls };
+	return { command, ctx, handlers, tools, sent, notifications, editorCalls };
 }
 
 async function runInlineRewrite(source) {
@@ -53,40 +55,12 @@ async function runInlineRewrite(source) {
 	return harness;
 }
 
-test("registers the /humanizer command and always-on hook without adding a tool", () => {
+test("registers only the manual /humanizer command", () => {
 	const harness = createHarness();
 	assert.equal(harness.command.name, "humanizer");
 	assert.match(harness.command.description, /English.*Traditional Chinese/);
-	assert.equal(typeof harness.handlers.get("before_agent_start"), "function");
-});
-
-test("injects concise humanizer guidance into every normal agent run", () => {
-	const harness = createHarness();
-	const hook = harness.handlers.get("before_agent_start");
-	const result = hook({
-		prompt: "Explain why this Pod is pending.",
-		systemPrompt: "BASE SYSTEM PROMPT",
-	});
-
-	assert.equal(result.systemPrompt, `BASE SYSTEM PROMPT\n\n${ALWAYS_ON_HUMANIZER_GUIDANCE}`);
-	assert.match(result.systemPrompt, /normal replies.*repository documentation/);
-	assert.match(result.systemPrompt, /Taiwan Traditional Chinese/);
-	assert.match(result.systemPrompt, /Preserve code, commands, flags/);
-	assert.equal(result.systemPrompt.split(ALWAYS_ON_MARKER).length - 1, 1);
-});
-
-test("does not duplicate guidance or the full explicit rewrite prompt", () => {
-	const harness = createHarness();
-	const hook = harness.handlers.get("before_agent_start");
-
-	assert.equal(hook({
-		prompt: buildHumanizerPrompt("source"),
-		systemPrompt: "BASE SYSTEM PROMPT",
-	}), undefined);
-	assert.equal(hook({
-		prompt: "normal request",
-		systemPrompt: `BASE SYSTEM PROMPT\n${ALWAYS_ON_MARKER}`,
-	}), undefined);
+	assert.equal(harness.handlers.size, 0);
+	assert.equal(harness.tools.length, 0);
 });
 
 test("builds a bilingual prompt that preserves facts and returns only the rewrite", () => {

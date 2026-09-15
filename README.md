@@ -170,7 +170,9 @@ Initializer 會建立或協調以下 workspace-local 資源：
 安裝的 extension 名稱；initializer 只刪除這份 manifest 與目前 source 列出的 extension，其他
 使用者自建 extension 會保留。若 `AGENTS.md` 或 `.agents/skills` 是一般檔案、目錄，或指向其他
 來源的 symlink，initializer 會在清除前停止。腳本也會重建 extension dependencies，並安裝
-pinned `npm:pi-web-access@0.23.0` project package。
+pinned `npm:pi-web-access@0.23.0` project package。Package registration 會固定使用
+`extensions: []` filter，因此 parent session 不載入web tools；`researcher` child 需要外部搜尋
+時才透過明確path載入package extension。
 
 Initializer 不管理 global Pi extensions 或 `~/.pi/agent/extensions`。
 
@@ -214,7 +216,7 @@ make workspace-check WORKSPACE_ROOT=<workspace-root>
 - Pi executable 的位置；
 - 每個受管理 extension 是 `ready`、`missing` 或 `drifted`；未受管理的 extension 顯示為 `unmanaged (preserved)`；
 - extension manifest 與 dependencies 狀態；
-- `pi-web-access@0.23.0` 是否已安裝並註冊。
+- `pi-web-access@0.23.0` 是否已安裝，且 registration 是否維持 child-only filter。
 
 ## 啟動 Pi
 
@@ -260,7 +262,8 @@ skill-owned deterministic helper 時，優先使用單一 bounded helper，避�
 
 ## Extension 文件
 
-根目錄 README 只列入口；每個 extension 的目的、運作流程與限制放在自己的目錄：
+根目錄 README 只列入口；每個 extension 的目的、運作流程與限制放在自己的目錄。`humanizer`
+只在使用者執行 `/humanizer` 時送出改寫要求，不會在一般 agent run 注入寫作規則：
 
 | Extension | 文件 |
 | --- | --- |

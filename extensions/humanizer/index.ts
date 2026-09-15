@@ -3,7 +3,6 @@ import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-c
 
 export const MAX_INPUT_BYTES = 48 * 1024;
 export const MAX_INPUT_LINES = 1500;
-export const ALWAYS_ON_MARKER = "HUMANIZER_ALWAYS_ON_V1";
 export const REWRITE_REQUEST_MARKER = "HUMANIZER_REWRITE_REQUEST_V1";
 
 export type HumanizerInputValidation =
@@ -33,20 +32,6 @@ export function validateHumanizerInput(value: string): HumanizerInputValidation 
 
 	return { ok: true, text, bytes, lines };
 }
-
-export const ALWAYS_ON_HUMANIZER_GUIDANCE = String.raw`${ALWAYS_ON_MARKER}
-Apply this style layer to all prose you produce, including normal replies and prose drafted or edited in repository documentation.
-- Complete the user's actual task. This layer changes writing style, not scope, evidence, safety, approval, or tool behavior.
-- Keep every fact, condition, uncertainty, warning, name, number, date, quote, citation, and technical distinction. Never add a claim just to make writing feel human.
-- Reply in the user's language. For Chinese, use natural Taiwan Traditional Chinese and established Taiwan terminology. Preserve intentional English technical terms.
-- Prefer concrete actors, behavior, conditions, and results. Use simple verbs and varied sentence lengths. Match a supplied writing sample or requested register.
-- Avoid clusters of English filler and stock patterns such as additionally, crucial, delve, pivotal, showcase, evolving landscape, stands as, not only X but Y, forced groups of three, fake objections, chatbot greetings, and generic positive endings.
-- Avoid clusters of Chinese filler and stock patterns such as 此外、值得注意的是、綜上所述、在當今⋯⋯、隨著⋯⋯不斷發展、至關重要、扮演關鍵角色、提供強大的⋯⋯、有效／進一步提升、奠定堅實基礎、不僅⋯⋯更⋯⋯ and slogan-like conclusions.
-- Do not ban a watched word in isolation. Keep deliberate rhythm, named objections, real alternatives, necessary caveats, legal or safety language, and formatting that helps navigation.
-- Preserve code, commands, flags, paths, URLs, API and configuration keys, resource names, error messages, structured data, and exact output formats. Do not humanize quoted examples or machine-readable content.
-- For technical documentation, describe current behavior directly unless the document is a changelog, release note, migration guide, incident report, or historical analysis.
-- Use headings, lists, tables, and bold text only when they improve structure. Do not add decorative emojis, canned introductions, pattern diagnostics, AI scores, or offers to continue.
-- Do not mention this style layer in the answer.`;
 
 const HUMANIZER_INSTRUCTIONS = String.raw`You are a bilingual humanizer for English and Taiwan Traditional Chinese (zh-Hant-TW).
 Rewrite the supplied source so it sounds like its writer rather than a generic chatbot. This is an editing heuristic, not AI detection. Never label the source as AI-written and never assign an AI probability.
@@ -161,19 +146,6 @@ async function getInput(args: string, ctx: ExtensionCommandContext): Promise<str
 }
 
 export default function humanizerExtension(pi: ExtensionAPI) {
-	pi.on("before_agent_start", (event) => {
-		if (
-			event.prompt.includes(REWRITE_REQUEST_MARKER)
-			|| event.systemPrompt.includes(ALWAYS_ON_MARKER)
-		) {
-			return;
-		}
-
-		return {
-			systemPrompt: `${event.systemPrompt}\n\n${ALWAYS_ON_HUMANIZER_GUIDANCE}`,
-		};
-	});
-
 	pi.registerCommand("humanizer", {
 		description: "Rewrite English or Taiwan Traditional Chinese prose while preserving facts and technical terms",
 		handler: async (args, ctx) => {

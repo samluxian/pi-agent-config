@@ -12,11 +12,9 @@ only for this repository's agent contract, not ordinary delivery work.
 
 1. Confirm this repository, branch, status, and requested behavior.
 2. State affected surfaces, success criteria, validation, and compatibility risk.
-3. Read before writing:
-   - `references/skill-design-contract.md` for skill structure and routing.
-   - `references/surface-contracts.md` for ownership boundaries.
-   - `references/public-repository-safety.md` for public-safe examples and identifiers.
-   - `references/regression-matrix.md` for required checks.
+3. Read `references/public-repository-safety.md` and
+   `references/regression-matrix.md`, then use `references/surface-contracts.md`
+   to load only the branch and linked reference needed for the changed surface.
 4. Propose the bounded patch and wait for explicit approval.
 5. Apply the smallest coherent change; update README for human-facing behavior.
 6. Run deterministic validation and compare context/routing budgets when relevant.

@@ -107,7 +107,7 @@ test("loads three read-only profiles plus the Terra medium worker", () => {
   assert.equal(agents.get("scout").subagentAgents, undefined);
   assert.equal(agents.get("researcher").model, "openai-codex/gpt-5.6-terra");
   assert.equal(agents.get("researcher").thinking, "medium");
-  assert.deepEqual(agents.get("researcher").tools, ["web_search", "fetch_content"]);
+  assert.deepEqual(agents.get("researcher").tools, ["web_search", "source_check", "fetch_content", "get_search_content"]);
   assert.equal(agents.get("environment-scout").model, "openai-codex/gpt-5.6-luna");
   assert.equal(agents.get("environment-scout").thinking, "medium");
   assert.deepEqual(agents.get("environment-scout").tools, ["kubectl_inspect", "gcloud_inspect"]);
@@ -204,7 +204,7 @@ async function assertChildArguments() {
         assert.equal(args[args.indexOf("--tools") + 1], "read,grep,find,ls");
         assert.equal(childEnv, undefined);
       } else if (agent.name === "researcher") {
-        assert.equal(args[args.indexOf("--tools") + 1], "web_search,fetch_content");
+        assert.equal(args[args.indexOf("--tools") + 1], "web_search,source_check,fetch_content,get_search_content");
         assert.ok(args.some((arg) => arg.endsWith("/.pi/npm/node_modules/pi-web-access/index.ts") || arg.endsWith("/npm/node_modules/pi-web-access/index.ts")));
         assert.equal(childEnv, undefined);
       } else if (agent.name === "environment-scout") {

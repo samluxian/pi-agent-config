@@ -50,7 +50,7 @@ printf '%s\n' '{"name":"pi-web-access","version":"0.23.0"}' > "$package_dir/pack
 EOF
 chmod +x "$fake_bin/npm" "$fake_bin/pi"
 mkdir -p "$workspace_root/.pi"
-printf '%s\n' '{"theme":"fixture-theme"}' > "$workspace_root/.pi/settings.json"
+printf '%s\n' '{"theme":"fixture-theme","packages":["npm:unmanaged-package@1.0.0"]}' > "$workspace_root/.pi/settings.json"
 
 run_init() {
   PATH="$fake_bin:$PATH" "$fixture_repo/scripts/init-workspace.sh" \
@@ -68,7 +68,10 @@ SETTINGS="$workspace_root/.pi/settings.json" node <<'NODE'
 const fs = require("node:fs");
 const settings = JSON.parse(fs.readFileSync(process.env.SETTINGS, "utf8"));
 if (settings.theme !== "fixture-theme") process.exit(1);
-if (!settings.packages?.includes("npm:pi-web-access@0.23.0")) process.exit(1);
+if (!settings.packages?.includes("npm:unmanaged-package@1.0.0")) process.exit(1);
+const matches = settings.packages?.filter((entry) =>
+  entry && typeof entry === "object" && entry.source === "npm:pi-web-access@0.23.0");
+if (matches?.length !== 1 || JSON.stringify(matches[0].extensions) !== "[]") process.exit(1);
 NODE
 
 printf '%s\n' 'workspace drift' > "$extensions_destination/alpha/index.ts"
@@ -80,6 +83,17 @@ grep -Fq 'Pi extension (alpha): drifted' <<<"$check_output"
 grep -Fq 'Pi extension (standalone.ts): unmanaged (preserved)' <<<"$check_output"
 grep -Fq 'Pi extension (unwanted): unmanaged (preserved)' <<<"$check_output"
 grep -Fq 'Pi package (pi-web-access@0.23.0): ready' <<<"$check_output"
+
+SETTINGS="$workspace_root/.pi/settings.json" node <<'NODE'
+const fs = require("node:fs");
+const settings = JSON.parse(fs.readFileSync(process.env.SETTINGS, "utf8"));
+settings.packages = settings.packages.map((entry) =>
+  entry?.source === "npm:pi-web-access@0.23.0" ? entry.source : entry);
+fs.writeFileSync(process.env.SETTINGS, `${JSON.stringify(settings, null, 2)}\n`);
+NODE
+check_output="$(run_init --check)"
+grep -Fq 'Pi package (pi-web-access@0.23.0): drifted' <<<"$check_output"
+run_init >/dev/null
 
 rm -rf -- "$workspace_root/.pi/npm/node_modules/pi-web-access"
 check_output="$(run_init --check)"
