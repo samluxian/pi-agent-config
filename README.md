@@ -275,6 +275,7 @@ skill-owned deterministic helper 時，優先使用單一 bounded helper，避�
 
 每個 skill 的適用範圍、停止條件與流程由該目錄的 `SKILL.md` 管理。這裡只保留 repository-owned human-facing 入口，避免把工作流程複製到根 README。External skills 保留 upstream layout 與內容；[`skills-lock.json`](skills-lock.json) 只作 installer inventory：
 
+- [`.agents/skills/application-ci-delivery/SKILL.md`](.agents/skills/application-ci-delivery/SKILL.md) — application Jib／rootless BuildKit build與GitOps handoff隔離
 - [`.agents/skills/context-window-retrospective/README.md`](.agents/skills/context-window-retrospective/README.md) — 手動使用 `/skill:context-window-retrospective`
 - [`.agents/skills/developer-activity-summary/README.md`](.agents/skills/developer-activity-summary/README.md)
 - [`.agents/skills/gitops-repo-audit/README.md`](.agents/skills/gitops-repo-audit/README.md)

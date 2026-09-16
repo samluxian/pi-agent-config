@@ -164,6 +164,7 @@ def test_window_and_reviewer() -> None:
     assert child[0]["input"] == 20
     assert child[0]["results"] == 1
     assert metrics["usage"]["missingFields"] == {}
+    assert metrics["usage"]["subagentOutcomes"] == {"completed": 1}
     assert metrics["toolResultVolume"]["records"] == [
         {
             "tool": "subagent",
@@ -304,6 +305,20 @@ def test_initiative_signals() -> None:
     assert "follow up" not in rendered
 
 
+def test_subagent_outcomes() -> None:
+    fixtures = [
+        ({"progress": {"status": "completed"}, "exitCode": 0}, "completed"),
+        ({"progress": {"status": "aborted", "error": "aborted by parent request"}}, "parentOrUserAborted"),
+        ({"progress": {"status": "failed", "timedOut": True}, "exitCode": 1}, "timeout"),
+        ({"progress": {"status": "completed", "timedOut": True}, "exitCode": 0}, "timeout"),
+        ({"progress": {"status": "aborted", "error": "parent request"}, "exitCode": 2}, "parentOrUserAborted"),
+        ({"progress": {"status": "failed"}, "exitCode": 2}, "processFailure"),
+        ({"progress": {}}, "unknown"),
+    ]
+    for result, expected in fixtures:
+        assert MODULE.subagent_outcome(result) == expected
+
+
 def test_file_loading() -> None:
     with tempfile.TemporaryDirectory() as directory:
         session = Path(directory) / "session.jsonl"
@@ -328,8 +343,9 @@ def main() -> None:
     test_window_and_reviewer()
     test_usage_grouping_and_volume()
     test_initiative_signals()
+    test_subagent_outcomes()
     test_file_loading()
-    print("OK: bounded active-window, usage, volume, reviewer, and initiative fixtures")
+    print("OK: bounded active-window, usage, volume, subagent, reviewer, and initiative fixtures")
 
 
 if __name__ == "__main__":
