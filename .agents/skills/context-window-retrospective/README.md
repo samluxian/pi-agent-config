@@ -1,15 +1,15 @@
 # Context Window Retrospective
 
 這個 skill 用有限的 session metrics 與目前可見對話回顧 Pi context window，找出重複讀取、
-無效重試、過量驗證、錯誤決策，以及需要使用者提醒才繼續的 initiative gap，再整理成可執行
-的改善計畫。Agent 執行規則以
+無效重試、過量驗證、錯誤決策，以及需要使用者提醒才繼續的 initiative gap，再整理成只針對
+Pi agent harness 的可執行改善計畫。Agent 執行規則以
 [`SKILL.md`](SKILL.md) 為準。
 
 ## 何時使用
 
 - 一段長工作完成後，想知道 context 花在哪裡。
 - Reviewer、重試或 compaction 次數偏高，需要分辨必要成本與浪費。
-- 想改善 skill、extension 或 parent planning，但暫時不修改它們。
+- 想改善 `AGENTS.md`、skill、extension、settings、validation、orchestration 或 parent planning，但暫時不修改它們。
 
 這是 manual skill。請明確執行：
 
@@ -20,6 +20,7 @@
 ## 不適用
 
 - 直接實作改善方案。
+- 規劃或修改 product、service、GitOps、infrastructure、cloud 或 runtime；這些只能作為 task outcome 或 remaining gap。
 - 分析 abandoned session branches。
 - 讀取完整 prompt、conversation、command output、diff 或 logs。
 - 評估使用者或開發者的工作表現。
@@ -35,7 +36,7 @@
 7. 檢查 Agent 是否反問可安全查得的 identifier、提早停止，或等使用者提醒才讀取 live、pipeline、state 或 validation evidence。
 8. 排除必要 approval、mutation handoff、缺少 authentication、secret boundary 與真實 scope ambiguity，避免把安全停點誤判成被動。
 9. 把問題分類為 task outcome、parent planning、reviewer、skill 或 extension。
-10. 依 correctness/safety、context/latency、便利性排序改善項目。
+10. 只針對 Pi agent harness，依 correctness/safety、context/latency、便利性排序改善項目；沒有可支持的 harness 改善時明確回報無項目。
 
 ## 資料邊界
 
@@ -60,5 +61,4 @@ python3 scripts/summarize_session_metrics.py --help
 
 ## 輸出
 
-結果包含目前成果、流程成本、必要與重複工作的區分、改善優先順序，以及一個最小的下一步。
-它不會自動修改 skill 或 extension。
+結果包含目前成果、流程成本、必要與重複工作的區分、Pi agent harness 改善優先順序，以及一個最小的 harness 下一步。產品與平台問題只列為 task outcome 或 remaining gap，不會成為 optimization action。它不會自動修改 agent 設定、skill 或 extension。

@@ -1,13 +1,14 @@
 ---
 name: context-window-retrospective
-description: Review the current Pi context window with bounded workflow metrics and produce an optimization plan.
+description: Review the current Pi context window with bounded workflow metrics and propose improvements only to the Pi agent harness.
 disable-model-invocation: true
 ---
 
 # Context Window Retrospective
 
 Analyze how the active context window completed its work. Separate outcomes from
-workflow quality. Propose improvements; do not implement them without approval.
+workflow quality. Propose improvements only to the Pi agent harness; do not
+implement them without approval.
 
 ## Evidence Boundary
 
@@ -56,13 +57,34 @@ approval, mutation handoff, missing authentication, secret boundaries, ambiguous
 scope, or a failed decisive check as passivity. Name the exact owning rule, skill,
 extension, or parent decision that caused a supported gap.
 
+## Harness-Only Optimization Boundary
+
+Product, service, delivery, GitOps, infrastructure, cloud, and runtime findings
+may appear only as `task outcome` evidence or remaining gaps. Never turn them
+into an optimization action or next-step mutation of a target repository.
+
+Optimization candidates must improve a Pi agent harness surface:
+
+- `AGENTS.md` or another agent instruction contract
+- a skill, reference, asset, or deterministic skill script
+- a Pi extension or context/subagent pipeline
+- settings, session, model, validation, or orchestration policy
+- agent-facing tests, fixtures, README guidance, or maintenance checks
+
+When target-system evidence reveals a repeated workflow weakness, generalize the
+lesson to its owning harness surface without copying private identifiers or
+proposing the target-system fix. If no supported harness improvement exists,
+state that the optimization plan has no item rather than substituting product
+work.
+
 ## Optimization Plan
 
 Prioritize `P0` correctness/safety, `P1` latency/context cost, then `P2`
-convenience. For each item name the triggering evidence, owning surface, exact
-proposed behavior, deterministic test, expected benefit, and overfitting risk.
-Prefer one coherent existing-surface update over duplicated rules or a new
-extension. Wait for explicit approval before modifying skills or extensions.
+convenience. For each item name the triggering evidence, owning harness surface,
+exact proposed behavior, deterministic test, expected benefit, and overfitting
+risk. Prefer one coherent existing-surface update over duplicated rules or a new
+extension. Wait for explicit approval before modifying agent skills, extensions,
+configuration, scripts, tests, or documentation.
 
 ## Output
 
@@ -81,5 +103,5 @@ Optimization plan:
 - P0/P1/P2 change, owner, validation, benefit, and risk
 
 Next step:
-- One exact approval or investigation action
+- One exact approval or investigation action for the Pi agent harness; never a product, delivery, infrastructure, cloud, or runtime mutation
 ```
