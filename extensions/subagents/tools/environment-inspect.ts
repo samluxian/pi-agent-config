@@ -24,6 +24,7 @@ interface CommandSpec {
 
 type KubectlOperation =
 	| "current_context"
+	| "context_names"
 	| "namespaces"
 	| "nodes"
 	| "workloads"
@@ -37,6 +38,7 @@ type KubectlOperation =
 
 type GcloudOperation =
 	| "active_context"
+	| "visible_projects"
 	| "gke_clusters"
 	| "gke_cluster"
 	| "compute_disks"
@@ -163,6 +165,7 @@ function buildPodLogCommands(input: Record<string, unknown>, base: string[]): Co
 
 const kubectlOperationBuilders: Record<KubectlOperation, KubectlBuilder> = {
 	current_context: () => kubectlCommand("current context", ["config", "current-context"]),
+	context_names: () => kubectlCommand("context names", ["config", "get-contexts", "-o", "name"]),
 	namespaces: (_input, base) => kubectlCommand("namespaces", [...base, "get", "namespaces", "-o", "wide"]),
 	nodes: (_input, base) => kubectlCommand("nodes", [...base, "get", "nodes", "-o", "wide"]),
 	workloads: (input) => kubectlCommand("workloads", namespacedGet(input.context, input.namespace, "deployments,statefulsets,daemonsets", input.selector, WORKLOAD_COLUMNS)),
@@ -211,7 +214,7 @@ function buildLoggingCommands(input: Record<string, unknown>, project: string): 
 	return gcloudCommand("Cloud Logging", ["logging", "read", filter, `--project=${project}`, `--freshness=${freshness}`, `--limit=${limit}`, "--order=desc", "--format=json(timestamp,severity,resource.type,logName,textPayload,jsonPayload.message)"]);
 }
 
-const gcloudOperationBuilders: Record<Exclude<GcloudOperation, "active_context">, GcloudBuilder> = {
+const gcloudOperationBuilders: Record<Exclude<GcloudOperation, "active_context" | "visible_projects">, GcloudBuilder> = {
 	gke_clusters: (_input, project) => gcloudCommand("GKE clusters", ["container", "clusters", "list", `--project=${project}`, "--format=table(name,location,status,currentMasterVersion,currentNodeVersion,autopilot.enabled)"]),
 	gke_cluster: (input, project) => gcloudCommand("GKE cluster", ["container", "clusters", "describe", requireName(input.cluster, "cluster"), `--location=${requireName(input.location, "location")}`, `--project=${project}`, "--format=json(name,location,status,currentMasterVersion,currentNodeVersion,autopilot,releaseChannel,network,subnetwork,privateClusterConfig,workloadIdentityConfig,addonsConfig,resourceLabels)"]),
 	compute_disks: (_input, project) => gcloudCommand("Compute disks", ["compute", "disks", "list", `--project=${project}`, "--format=table(name,zone.basename(),region.basename(),type.basename(),sizeGb,status,users.len())"]),
@@ -224,9 +227,10 @@ const gcloudOperationBuilders: Record<Exclude<GcloudOperation, "active_context">
 };
 
 export function buildGcloudCommands(input: Record<string, unknown>): CommandSpec[] {
-	if (input.operation === "active_context") return gcloudCommand("active gcloud context", ["config", "list", "account,core/project", "--format=json"]);
+	if (input.operation === "active_context") return gcloudCommand("active gcloud context", ["config", "list", "--format=json(core.account,core.project)"]);
+	if (input.operation === "visible_projects") return gcloudCommand("visible projects (up to 100)", ["projects", "list", "--limit=100", "--format=json(projectId,name,lifecycleState)"]);
 	const project = requireProject(input.project);
-	const builder = gcloudOperationBuilders[input.operation as Exclude<GcloudOperation, "active_context">];
+	const builder = gcloudOperationBuilders[input.operation as Exclude<GcloudOperation, "active_context" | "visible_projects">];
 	if (!builder) throw new Error(`Unsupported gcloud_inspect operation: ${String(input.operation)}`);
 	return builder(input, project);
 }
@@ -291,7 +295,7 @@ export default function environmentInspect(pi: ExtensionAPI) {
 		label: "Kubectl Inspect",
 		description: "Run one structured, read-only Kubernetes inspection. No arbitrary kubectl arguments, secret/config data, exec, port-forward, or mutations.",
 		parameters: Type.Object({
-			operation: StringEnum(["current_context", "namespaces", "nodes", "workloads", "pods", "services", "ingresses", "events", "storage", "pod_logs", "auth_can_i"] as const),
+			operation: StringEnum(["current_context", "context_names", "namespaces", "nodes", "workloads", "pods", "services", "ingresses", "events", "storage", "pod_logs", "auth_can_i"] as const),
 			context: Type.Optional(Type.String()),
 			namespace: Type.Optional(Type.String()),
 			selector: Type.Optional(Type.String()),
@@ -312,7 +316,7 @@ export default function environmentInspect(pi: ExtensionAPI) {
 		label: "Gcloud Inspect",
 		description: "Run one structured, read-only GCP inspection. No arbitrary gcloud arguments, credentials, secrets, SSH, get-credentials, IAM/config changes, or mutations.",
 		parameters: Type.Object({
-			operation: StringEnum(["active_context", "gke_clusters", "gke_cluster", "compute_disks", "compute_disk", "project_quotas", "service_accounts", "asset_inventory", "activity_history", "logging"] as const),
+			operation: StringEnum(["active_context", "visible_projects", "gke_clusters", "gke_cluster", "compute_disks", "compute_disk", "project_quotas", "service_accounts", "asset_inventory", "activity_history", "logging"] as const),
 			project: Type.Optional(Type.String()),
 			cluster: Type.Optional(Type.String()),
 			location: Type.Optional(Type.String()),

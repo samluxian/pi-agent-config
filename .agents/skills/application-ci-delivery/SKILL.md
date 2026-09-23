@@ -33,10 +33,18 @@ edit`. Never read credentials or prove authorization by printing tokens.
    - image repository and immutable tag input;
    - build inputs, outputs, and dependency DAG;
    - GitOps project, ref, configuration path, environment, and fleet selector.
-5. Query the LLM Wiki for stable mechanisms when identity, BuildKit, Jib, or a
+5. For GitLab Kubernetes executor builds that move only some jobs to a dedicated
+   pool, identify four separate contracts before choosing the change: runner
+   manager placement, default job Pod placement, opt-in build job Pod placement,
+   and narrowly allowed scheduling overrides. Runner tags select a runner, not
+   a build process inside a Pod. Prefer one shared CI template for repeated
+   opt-in build jobs; preserve ordinary job placement. Confirm the node pool
+   exists before opt-in jobs run, and validate expanded jobs and rollout order.
+   Do not apply this executor-specific pattern to unrelated CI systems.
+6. Query the LLM Wiki for stable mechanisms when identity, BuildKit, Jib, or a
    known toolchain failure is involved. Wiki notes are precedent, not proof of
    the target's current configuration.
-6. Before choosing validation commands, perform a bounded capability preflight
+7. Before choosing validation commands, perform a bounded capability preflight
    for repository wrappers and required parsers/CLIs. Record unavailable tools
    once and use the narrowest available alternative; do not repeatedly probe or
    install tools during the task.

@@ -45,11 +45,14 @@ repository 的 desired state，再走原有 MR、CI 與 GitOps 流程。Agent �
 contract。需求或 integration 尚未確定時，優先採用可逆且隔離的做法。Agent 回報基礎設施時間時，會標示來源時區，
 並在已知使用者時區時先換算再比較或估計；未知時則明確保留UTC並詢問。變更完成後，回覆固定
 保留 Summary；尚有工作才提供 Next step。驗證結果、缺口與具體風險只在適用時寫進 Summary。完整
-規則以 [`AGENTS.md`](AGENTS.md) 為準。
+修改 repository 檔案後，回報會附上僅含英文小寫的建議 commit message；不會代為 commit。
+完整規則以 [`AGENTS.md`](AGENTS.md) 為準。
 
 Agent 會直接執行工具可存取且規則允許的唯讀檢查，整理證據並給出結論，不把診斷工作
 交回使用者。它可以先從既有 kube context 或 authenticated gcloud configuration 取得非敏感
-context、account 與 project identifiers，再執行具名、欄位化且有輸出上限的資源查詢；不會
+context、account 與 project identifiers；若目前設定無法唯一定位，可列出最多 100 個
+kube context 名稱或登入身分可見的 GCP projects（可見不代表擁有），再執行具名、欄位化
+且有輸出上限的資源查詢。多個合理目標或證據衝突時才詢問使用者；不會
 讀取 raw kubeconfig、token 或 credential。Terraform MR 或 pipeline identifier 已知時，Agent
 也會讀取實際 pipeline 與 plan job，分開回報 CI plan 和 local plan。無法存取目標環境時會
 明確說明限制。只有使用者明確要求時才提供操作命令；需要使用者處理的操作則先說明動作

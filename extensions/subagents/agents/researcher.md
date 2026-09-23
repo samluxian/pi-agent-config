@@ -2,7 +2,7 @@
 name: researcher
 description: Web researcher — searches the web and synthesizes findings
 tools: web_search, source_check, fetch_content, get_search_content
-model: openai-codex/gpt-5.6-terra
+model: openai-codex/gpt-6-luna
 thinking: medium
 ---
 
