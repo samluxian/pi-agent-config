@@ -93,6 +93,41 @@ has an identified shared owner and multiple intended consumers. Service-specific
 exceptions stay in the service file. Confirm merge order and override behavior
 with a render.
 
+## Secret Field Inventory And Fillable Templates
+
+For a request to identify required Secret fields from code or prepare a YAML
+structure for the operator to fill, use this order before recommending removal:
+
+1. Identify the exact application, environment, and mounted file or environment
+   variable reference from tracked deployment configuration. Do not read Secret
+   payloads, ignored config files, credential files, or actual values.
+2. Search tracked application code and safe configuration sources for property
+   injections, binding classes, framework connection properties, config imports,
+   dependency-backed auto-configuration, and their active consumers. Include
+   cache and data-store clients even when application code only injects framework
+   templates. Record source paths for each conclusion.
+3. Compare property paths with tracked non-secret deployment config and runtime
+   environment variable names. Distinguish keys already provided there from
+   candidate Secret-owned keys; a property name alone does not prove ownership.
+4. Classify each candidate as startup-required, feature-required (with its
+   activation condition), non-secret deployment config, bound-but-unused, or
+   unproven. Distinguish injection defaults from feature readiness. Do not label
+   a key safe to delete without confirming its callers and effective precedence;
+   a security credential with an empty or placeholder fallback deserves explicit
+   caution even if startup succeeds.
+5. In a fillable Markdown/YAML template, use synthetic placeholders only; label
+   optional feature sections explicitly. Keep non-secret keys out of the Secret
+   template unless documenting a temporary override and its migration risk.
+   Warn that completed templates belong only in a protected operator workflow.
+   If effective values or authentication mode are unknown, ask for key names or
+   a user-confirmed non-secret value, never the Secret value itself.
+
+For example, a framework connection URI may be a Secret candidate when it can
+contain credentials; a host can be public configuration. Neither is proven
+required in the Secret merely because the dependency exists. A commented-out
+feature key must not be presented as required, and a required feature key must
+not remain commented when the operator confirms that feature is used.
+
 ## Alias Shape
 
 Use the aliases declared by `Chart.yaml`; do not add `beta` merely because
