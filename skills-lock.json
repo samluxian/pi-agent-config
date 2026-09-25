@@ -12,6 +12,12 @@
       "sourceType": "github",
       "skillPath": "fallow/skills/fallow-review/SKILL.md",
       "computedHash": "0c294cb25dc56c138be1d6376cc6ee85f6a58d2835170cbd1812b8f19a741bf7"
+    },
+    "no-ai-slop-zh-tw": {
+      "source": "slivenred/no-ai-slop-zh-TW",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "1b5b963ca0176f9bdb886687fc10d3f329d14fa07267625cf1e0127a7c63f0b1"
     }
   }
 }

@@ -1,0 +1,4 @@
+interface:
+  display_name: "/no-ai-slop-zh-tw"
+  short_description: "去除繁體中文 AI 腔，同時保留作者原本的語氣。"
+  default_prompt: "使用 $no-ai-slop-zh-tw 編修這份繁體中文草稿，刪除 AI 腔並保留我的個人語氣。"

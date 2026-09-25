@@ -64,10 +64,11 @@ Repository-specific exceptions:
   operations, and remotes. Preserve unrelated changes and update user-facing docs
   when setup, inventory, triggers, or maintenance policy changes.
 - **Presentation repository:** after the user names one target and approves direct
-  edits, tracked slides, notes, docs, and assets may be changed on its clean
-  `main` or `master`. Excludes product, deployment, chart, infrastructure,
-  dependency, lock, build/runtime config, generated, ignored, secret, Git, and
-  remote surfaces.
+  edits, tracked slides, notes, docs, and assets may be changed on its `main` or
+  `master`. Unrelated existing changes may remain only when approved target files
+  are unchanged; preserve and do not touch those existing changes. Excludes
+  product, deployment, chart, infrastructure, dependency, lock, build/runtime
+  config, generated, ignored, secret, Git, and remote surfaces.
 
 ## Repository and Workspace Safety
 

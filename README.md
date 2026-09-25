@@ -15,8 +15,9 @@ artifacts、caches 或 git-ignored temporary files，也不允許 agent commit�
 或操作 remotes。
 
 投影片 repository 另有窄範圍例外：使用者明確指定一個 presentation target repository，
-並核准直接修改目前的 `main` 或 `master` branch 後，agent 可以在乾淨工作樹中修改 tracked
-slide source、speaker notes、documentation 與 slide assets。例外只適用於指定 repository
+並核准直接修改目前的 `main` 或 `master` branch 後，agent 可以修改 tracked slide source、
+speaker notes、documentation 與 slide assets。工作樹可以保留不相關的既有變更，但核准的
+目標檔案本身必須沒有既有變更，且 agent 不得碰觸其他變更。例外只適用於指定 repository
 和核准範圍，不包含產品、部署、chart、infrastructure 或其他 target repositories，也不包含
 依賴、lockfiles、build/runtime configuration、generated/git-ignored files、secrets、credentials、
 Git 或 remote 操作。完整 authority boundary 以 [`AGENTS.md`](AGENTS.md) 為準。
@@ -284,6 +285,7 @@ skill-owned deterministic helper 時，優先使用單一 bounded helper，避�
 - [`.agents/skills/kubernetes-platform-delivery/README.md`](.agents/skills/kubernetes-platform-delivery/README.md)
 - [`.agents/skills/llm-wiki/README.md`](.agents/skills/llm-wiki/README.md) — 手動使用 `/skill:llm-wiki`
 - [`.agents/skills/mr-summary/README.md`](.agents/skills/mr-summary/README.md)
+- [`.agents/skills/no-ai-slop-zh-tw/README.md`](.agents/skills/no-ai-slop-zh-tw/README.md) — external skill，繁體中文 AI 腔偵測與編修
 - [`.agents/skills/orchestrator/README.md`](.agents/skills/orchestrator/README.md)
 - [`.agents/skills/pi-agent-maintenance/README.md`](.agents/skills/pi-agent-maintenance/README.md)
 - [`.agents/skills/runtime-dependency-diagnostics/README.md`](.agents/skills/runtime-dependency-diagnostics/README.md)
