@@ -3,7 +3,7 @@ name: worker
 description: General-purpose approval-gated worker — reads, writes, and edits code
 tools: read, write, edit, safe_bash, web_search, fetch_content, subagent
 subagent_agents: scout, researcher, environment-scout
-model: openai-codex/gpt-5.6-terra
+model: openai-codex/gpt-6-luna
 thinking: medium
 ---
 

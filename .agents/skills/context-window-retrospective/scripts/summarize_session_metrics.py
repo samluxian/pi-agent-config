@@ -92,6 +92,28 @@ def add_usage(target: Counter[str], usage: Any) -> bool:
     return True
 
 
+def subagent_outcome(result: dict[str, Any]) -> str:
+    progress = result.get("progress")
+    progress = progress if isinstance(progress, dict) else {}
+    status = str(progress.get("status") or "").lower()
+    error = progress.get("error")
+    error = error.lower() if isinstance(error, str) else ""
+    if bool(progress.get("timedOut")) or "timed out" in error or status == "timeout":
+        return "timeout"
+    if status in {"aborted", "cancelled", "canceled"} or any(
+        marker in error for marker in ("aborted by parent", "parent request", "user request")
+    ):
+        return "parentOrUserAborted"
+    exit_code = result.get("exitCode")
+    if status == "completed" and exit_code in {None, 0}:
+        return "completed"
+    if isinstance(exit_code, int) and not isinstance(exit_code, bool) and exit_code != 0:
+        return "processFailure"
+    if status in {"failed", "error"}:
+        return "processFailure"
+    return "unknown"
+
+
 def text_volume(content: Any) -> tuple[int, int]:
     if isinstance(content, str):
         return len(content.encode("utf-8")), 0
@@ -137,6 +159,7 @@ def summarize(entries: list[dict[str, Any]]) -> dict[str, Any]:
     conversation_turns: list[dict[str, Any]] = []
     parent_usage: dict[tuple[str, str, str], Counter[str]] = defaultdict(Counter)
     subagent_usage: dict[tuple[str, str], Counter[str]] = defaultdict(Counter)
+    subagent_outcomes: Counter[str] = Counter()
     tool_result_volume: dict[str, Counter[str]] = defaultdict(Counter)
     usage_missing_fields: Counter[str] = Counter()
     thinking_level = "unrecorded-session-default"
@@ -218,6 +241,7 @@ def summarize(entries: list[dict[str, Any]]) -> dict[str, Any]:
                 model if isinstance(model, str) else "unknown",
             )
             subagent_usage[child_key]["results"] += 1
+            subagent_outcomes[subagent_outcome(result)] += 1
             usage = result.get("usage")
             if not add_usage(subagent_usage[child_key], usage):
                 usage_missing_fields["subagentUsage"] += 1
@@ -295,6 +319,8 @@ def summarize(entries: list[dict[str, Any]]) -> dict[str, Any]:
             "parentByModelThinking": parent_rows,
             "parentRecordsTruncated": parent_truncated,
             "subagentsByAgentModel": child_rows,
+            "subagentOutcomes": dict(sorted(subagent_outcomes.items())),
+            "subagentOutcomeSemantics": "bounded structured metadata only; ambiguous records remain unknown",
             "subagentRecordsTruncated": child_truncated,
             "missingFields": dict(sorted(usage_missing_fields.items())),
             "semantics": [
@@ -341,6 +367,7 @@ def render_text(metrics: dict[str, Any]) -> str:
         f"tool_result_volume={json.dumps(metrics['toolResultVolume'], sort_keys=True)}",
         f"parent_usage={json.dumps(usage['parentByModelThinking'], sort_keys=True)}",
         f"subagent_usage={json.dumps(usage['subagentsByAgentModel'], sort_keys=True)}",
+        f"subagent_outcomes={json.dumps(usage['subagentOutcomes'], sort_keys=True)}",
         f"usage_missing_fields={json.dumps(usage['missingFields'], sort_keys=True)}",
         f"usage_semantics={json.dumps(usage['semantics'], sort_keys=True)}",
         f"initiative_signals={json.dumps(initiative, sort_keys=True)}",

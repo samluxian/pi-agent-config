@@ -101,19 +101,19 @@ test("applies an explicit nested child allowlist without inheriting it into othe
 test("loads three read-only profiles plus the Terra medium worker", () => {
   const agents = profiles();
   assert.deepEqual([...agents.keys()].sort(), ["environment-scout", "researcher", "scout", "worker"]);
-  assert.equal(agents.get("scout").model, "openai-codex/gpt-5.6-luna");
+  assert.equal(agents.get("scout").model, "openai-codex/gpt-6-luna");
   assert.equal(agents.get("scout").thinking, "off");
   assert.deepEqual(agents.get("scout").tools, ["read", "grep", "find", "ls"]);
   assert.equal(agents.get("scout").subagentAgents, undefined);
-  assert.equal(agents.get("researcher").model, "openai-codex/gpt-5.6-terra");
+  assert.equal(agents.get("researcher").model, "openai-codex/gpt-6-luna");
   assert.equal(agents.get("researcher").thinking, "medium");
   assert.deepEqual(agents.get("researcher").tools, ["web_search", "source_check", "fetch_content", "get_search_content"]);
-  assert.equal(agents.get("environment-scout").model, "openai-codex/gpt-5.6-luna");
+  assert.equal(agents.get("environment-scout").model, "openai-codex/gpt-6-luna");
   assert.equal(agents.get("environment-scout").thinking, "medium");
   assert.deepEqual(agents.get("environment-scout").tools, ["kubectl_inspect", "gcloud_inspect"]);
   assert.match(agents.get("environment-scout").systemPrompt, /use the existing kube context and authenticated gcloud configuration/);
   assert.match(agents.get("environment-scout").systemPrompt, /Never retrieve Secret or ConfigMap contents, tokens, credentials/);
-  assert.equal(agents.get("worker").model, "openai-codex/gpt-5.6-terra");
+  assert.equal(agents.get("worker").model, "openai-codex/gpt-6-luna");
   assert.equal(agents.get("worker").thinking, "medium");
   assert.deepEqual(agents.get("worker").tools, ["read", "write", "edit", "safe_bash", "web_search", "fetch_content", "subagent"]);
   assert.deepEqual(agents.get("worker").subagentAgents, ["scout", "researcher", "environment-scout"]);
@@ -298,11 +298,28 @@ test("builds only fixed read-only kubectl and gcloud argv", () => {
     command: "kubectl",
     args: ["config", "current-context"],
   }]);
+  assert.deepEqual(buildKubectlCommands({ operation: "context_names" }), [{
+    label: "context names",
+    command: "kubectl",
+    args: ["config", "get-contexts", "-o", "name"],
+  }]);
   assert.deepEqual(buildGcloudCommands({ operation: "active_context" }), [{
     label: "active gcloud context",
     command: "gcloud",
-    args: ["config", "list", "account,core/project", "--format=json"],
+    args: ["config", "list", "--format=json(core.account,core.project)"],
   }]);
+  assert.deepEqual(buildGcloudCommands({ operation: "visible_projects" }), [{
+    label: "visible projects (up to 100)",
+    command: "gcloud",
+    args: ["projects", "list", "--limit=100", "--format=json(projectId,name,lifecycleState)"],
+  }]);
+  for (const spec of [
+    ...buildKubectlCommands({ operation: "context_names" }),
+    ...buildGcloudCommands({ operation: "active_context" }),
+    ...buildGcloudCommands({ operation: "visible_projects" }),
+  ]) {
+    assert.doesNotMatch(spec.args.join(" "), /get-credentials|auth print|config view|secrets|token|--account=/i);
+  }
   const pods = buildKubectlCommands({ operation: "pods", namespace: "apps", selector: "app=api" });
   assert.equal(pods[0].label, "pods");
   assert.equal(pods[0].command, "kubectl");

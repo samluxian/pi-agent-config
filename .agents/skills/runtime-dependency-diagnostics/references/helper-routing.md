@@ -18,7 +18,9 @@ Use when the user provides an explicit Kubernetes context and namespace. Add
 With `--service`, the helper resolves an exact Deployment first, then an exact
 Service, and derives the Pod selector and ServiceAccounts from live fields. It
 queries events only for the resolved workload and selected Pods. It stops instead
-of guessing a label or ServiceAccount from the supplied name.
+of guessing a label or ServiceAccount from the supplied name. If a manual
+selector query fails, stop: never retry with an empty selector that would scan
+unrelated Pods. Verify the exact selector from the workload before retrying.
 
 Without `--project`, treat skipped GCP checks as intentionally out of scope, not
 as evidence that the dependencies are healthy.
@@ -42,7 +44,10 @@ question. Log output is bounded by age, lines, and UTF-8 bytes. Previous logs ar
 queried only when the selected container status has a restart or terminated
 `lastState`. The helper does not print env, Secret values, ConfigMap payloads,
 full pod YAML, or full describe output; application logs can still contain
-sensitive data, so quote only the necessary summary.
+sensitive data, so quote only the necessary summary. When a structured log
+reports an exception, extract a small explicit cause chain and relevant message
+fields; do not print full JSON records or unbounded stack traces. Expand the
+window once only when the first bounded result identifies a specific gap.
 
 ## Desired-State Inventory
 

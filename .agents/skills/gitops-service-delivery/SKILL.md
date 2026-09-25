@@ -37,6 +37,9 @@ as the structural reference, not as a source of service-specific values.
   proven shared application configuration.
 - Never copy identities, endpoints, secret references, resources, probes, image
   versions, or environment enablement from the reference service.
+- When asked for required Secret fields or a fillable configuration template, use
+  the source-to-deployment inventory in the service contract before classifying
+  keys; do not inspect Secret payloads or infer requirements from field names.
 
 ## Delivery Flow
 

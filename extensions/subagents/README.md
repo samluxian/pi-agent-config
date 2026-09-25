@@ -123,10 +123,10 @@ prompt、model、thinking level 與 exact tool allowlist。
 
 | Role | Model | 可用 tools | 工作範圍 |
 | --- | --- | --- | --- |
-| `scout` | `openai-codex/gpt-5.6-luna` | `read`, `grep`, `find`, `ls` | 讀取 local repository，整理檔案、caller 與結構。 |
-| `researcher` | `openai-codex/gpt-5.6-terra` | `web_search`, `source_check`, `fetch_content`, `get_search_content` | 搜尋外部資料並整理來源。 |
-| `environment-scout` | `openai-codex/gpt-5.6-luna` | `kubectl_inspect`, `gcloud_inspect` | 對明確指定的 Kubernetes 或 GCP 目標做 structured read-only inspection。 |
-| `worker` | `openai-codex/gpt-5.6-terra` | `read`, `write`, `edit`, `safe_bash`, web tools, `subagent` | 只處理使用者已批准、repository 與 owned files 都明確的 isolated edit。 |
+| `scout` | `openai-codex/gpt-6-luna` | `read`, `grep`, `find`, `ls` | 讀取 local repository，整理檔案、caller 與結構。 |
+| `researcher` | `openai-codex/gpt-6-luna` | `web_search`, `source_check`, `fetch_content`, `get_search_content` | 搜尋外部資料並整理來源。 |
+| `environment-scout` | `openai-codex/gpt-6-luna` | `kubectl_inspect`, `gcloud_inspect` | 對明確指定的 Kubernetes 或 GCP 目標做 structured read-only inspection。 |
+| `worker` | `openai-codex/gpt-6-luna` | `read`, `write`, `edit`, `safe_bash`, web tools, `subagent` | 只處理使用者已批准、repository 與 owned files 都明確的 isolated edit。 |
 
 `scout` 使用 `thinking: off`，讓 bounded repository lookup 以速度和成本為優先；其他角色維持
 `thinking: medium`。這個設定只關閉額外 thinking budget，不會移除 scout 的 read-only tools。

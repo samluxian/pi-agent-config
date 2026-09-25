@@ -86,8 +86,10 @@ does not prove a sibling target is clean.
   unshared, understood, current, contained in the target ref, and has a bounded
   new diff. Explain that its next push recreates the remote branch and needs a new
   MR.
-- Suggest a commit message when repository files change, with a ticket prefix only
-  when the request, branch, or approved scope supplies one. Never create a commit.
+- After repository files change, always include a suggested commit message in the
+  final report. Use only lowercase English letters, digits, spaces, and standard
+  commit punctuation; add a lowercase ticket prefix only when the request, branch,
+  or approved scope supplies one. Never create a commit.
 
 `<workspace-root>` is the opened Pi workspace. `<skills-repo>` owns this contract,
 skills, helpers, and documentation. `<target-repo>` is a separate product,
