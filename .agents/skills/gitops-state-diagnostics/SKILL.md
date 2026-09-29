@@ -32,8 +32,12 @@ runtime evidence separate.
    and variable keys). Vendor documentation and CI configuration form a hypothesis;
    target event metadata decides the direction. If no target event is available,
    stop with an unproven conclusion and request a controlled user-operated check.
-7. Stop after the cause or next decisive check is supported. Hand repository
-   fixes to the appropriate implementation workflow.
+7. Do not stop at a symptom or after one probe if an available, permitted,
+   bounded read-only check can distinguish the leading explanations. Run that
+   check before concluding. Stop when the first divergence and cause are
+   supported, or a specific next decisive check is blocked by a stop condition;
+   label the conclusion unproven in the latter case. Hand repository fixes to
+   the appropriate implementation workflow.
 
 Use `references/troubleshooting-matrix.md` to select checks and
 `scripts/diagnostics_flow.sh` for fixed repository diagnostics. For Helm, prefer
@@ -66,5 +70,8 @@ Uncertainty:
 - Missing evidence or falsifying check
 
 Recommended action:
-- One safe next step; identify implementation handoff if needed
+- One safe next step; identify implementation handoff if needed. When the next
+  decisive check requires user access, give one bounded read-only command only
+  for a known target, its expected signal, and what non-secret result to return;
+  otherwise name the missing target detail or describe the check.
 ```

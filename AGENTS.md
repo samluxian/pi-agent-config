@@ -30,8 +30,12 @@ project skills instead of this always-loaded contract.
   hypothesis, and next check or fix.
 - Run the smallest permitted read-only check that supports a material claim.
   Do not imply that inaccessible evidence was checked.
-- Provide runnable commands only when explicitly requested. This never permits a
-  prohibited mutation or secret access.
+- Provide runnable commands only when explicitly requested, except when a
+  diagnostic check cannot be run by the agent and must be performed by the user:
+  give one bounded, read-only, non-secret command for a known target, its expected
+  signal, and what result to return. If the target is unresolved or no safe
+  command can be given, ask for the missing detail or describe the check instead.
+  Never provide a prohibited mutation or secret-access command.
 - Treat infrastructure timestamps as timezone-sensitive. State the source zone;
   convert to the user's known zone, or keep UTC explicit and ask.
 - For risky DevOps operations, recommend one user-operated action and explain its

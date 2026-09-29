@@ -25,8 +25,12 @@ Identify the failing runtime edge with bounded, read-only evidence.
 6. Test the leading explanation against an aligned healthy or earlier-failure
    baseline before calling it causal. A count, last log, source diff, or total
    deploy duration is not a measured runtime cause by itself.
-7. Stop at the first supported failing edge or next decisive check. Hand repository
-   changes to the appropriate implementation workflow.
+7. Do not stop at a symptom or after one probe if an available, permitted,
+   bounded read-only check can distinguish the leading explanations. Run that
+   check before concluding. Stop at the first supported failing edge and cause,
+   or when the next decisive check is blocked by a stop condition; label the
+   conclusion unproven in the latter case. Hand repository changes to the
+   appropriate implementation workflow.
 
 Use `references/helper-routing.md` to select helpers. Load only the relevant deep
 reference:
@@ -50,7 +54,10 @@ mapped to the deployed image. Naming alone is never dependency evidence.
 
 Report the first failing edge, observed mechanism, immediate trigger,
 source-proven design factor, incident-causality grade, falsifying evidence,
-uncertainty, correct fix surface, and one safe next check. Do not raise a report's
-certainty above the underlying evidence. Use
+uncertainty, correct fix surface, and one safe next check. If that check requires
+user access, give one bounded read-only command only for a known target, its
+expected signal, and what non-secret result to return; otherwise name the
+missing target detail or describe the check. Do not raise a report's certainty
+above the underlying evidence. Use
 `assets/runtime-incident-report-template.md` only when the user requests a
 written incident report or RD handoff.
