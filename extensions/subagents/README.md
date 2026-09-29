@@ -135,7 +135,7 @@ Project settings 只保留 `pi-web-access` 的安裝位置，並用 package filt
 載入其 extension。外部網站搜尋、抓取、claim check 與stored-content retrieval 都交給
 `researcher`；child 透過明確 path 載入project-local `pi-web-access`。`worker` 若需要自身
 allowlist內的web tools也使用相同path。`environment-scout`與`worker`所需的custom tools按
-profile加入；worker載入`safe_bash`時一併載入Context Pipeline的result hook，不依賴child
+profile加入；worker載入`safe_bash`時不額外載入result hook，不依賴child
 自動發現extensions。
 
 ## Parent 和 child 的責任
@@ -167,8 +167,8 @@ parent contract 和 role prompt 約束。
 `environment-scout` 不接受任意 shell command。它只會從固定 operations 產生直接 argv，
 要求明確的 context、namespace、project、location 或 resource identifier，並封鎖 Secret、
 ConfigMap contents、credentials 與 mutation operations。Kubernetes pods、workloads、services、
-events、pod logs 和 Cloud Logging 會先通過 Context Pipeline 的 deterministic processor；其餘
-operation套用共用text budget。Structured結果由Context Pipeline依schema縮減，先保留status、
+events、pod logs 和 Cloud Logging 會先通過subagents的deterministic processor；其餘
+operation套用subagents的text budget。Structured結果依schema縮減，先保留status、
 counts、completeness與omitted metadata，整體上限為120行／24 KiB，不再盲切JSON。Command
 failure diagnostics限制為120行／8 KiB。所有路徑都會遮罩常見token、password、JWT與
 private-key patterns。Tool-result details只保存check label、command name、processor name、
@@ -187,7 +187,7 @@ Child 使用 JSON mode，stdout 會輸出一連串 events。Extension 解析這�
 
 執行期間，extension透過tool update把簡短進度交給parent。Child結束後，只取最後一段
 assistant text；final image blocks不會直接轉送，child必須先把相關image evidence寫成文字結論。
-文字先redact再透過Context Pipeline共用的UTF-8-safe budget處理：單一child最多400行／16 KiB；
+文字先redact再透過subagents的UTF-8-safe budget處理：單一child最多400行／16 KiB；
 parallel aggregate最多600行／24 KiB，先為每個child保留公平份額，再把短結果未使用的容量分給
 較長結果，避免一個verbose結果隱藏其他task。Head與tail evidence都保留。
 

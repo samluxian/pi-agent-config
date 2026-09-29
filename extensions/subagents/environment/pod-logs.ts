@@ -1,6 +1,6 @@
 import { Buffer } from "node:buffer";
 import { boundedRedactedNamedValue, boundedRedactedText, redactSensitiveText } from "../redaction.ts";
-import type { EnvironmentProcessorResult } from "../types.ts";
+import type { EnvironmentProcessorResult } from "../environment-types.ts";
 
 const MAX_STRING_CHARS = 2_048;
 const MAX_OBJECT_KEYS = 30;

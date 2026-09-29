@@ -25,7 +25,7 @@ import environmentInspect, {
   redactSensitiveText,
 } from "./tools/environment-inspect.ts";
 import { dangerousCommandReason } from "./tools/safe-bash.ts";
-import { SUBAGENT_RESULT_BUDGET } from "../context-pipeline/text-budget.ts";
+import { SUBAGENT_RESULT_BUDGET } from "./text-budget.ts";
 
 function profiles() {
   return new Map(loadAgents().map((agent) => [agent.name, agent]));
@@ -214,7 +214,7 @@ async function assertChildArguments() {
       } else {
         assert.equal(args[args.indexOf("--tools") + 1], "read,write,edit,safe_bash,web_search,fetch_content,subagent");
         assert.ok(args.some((arg) => arg.endsWith("/tools/safe-bash.ts")));
-        assert.ok(args.some((arg) => arg.endsWith("/context-pipeline/index.ts")));
+        assert.equal(args.filter((arg) => arg === "--extension").length, 3);
         assert.ok(args.some((arg) => arg.endsWith("/.pi/npm/node_modules/pi-web-access/index.ts") || arg.endsWith("/npm/node_modules/pi-web-access/index.ts")));
         assert.ok(args.some((arg) => arg.endsWith("/subagents/index.ts")));
         assert.equal(childEnv.PI_SUBAGENT_ALLOWED, "scout,researcher,environment-scout");

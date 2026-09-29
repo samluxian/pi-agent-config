@@ -1,7 +1,7 @@
 import { Buffer } from "node:buffer";
 import { createHash } from "node:crypto";
 import { boundedRedactedText } from "../redaction.ts";
-import type { EnvironmentProcessorResult } from "../types.ts";
+import type { EnvironmentProcessorResult } from "../environment-types.ts";
 
 const MAX_GROUPS = 25;
 type JsonObject = Record<string, any>;

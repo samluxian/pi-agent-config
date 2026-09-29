@@ -108,4 +108,3 @@ and source emission must be checked separately.
 ## Related Notes
 
 - [Deterministic context projection for tool results](deterministic-context-projection.md)
-- [Coverage-backed Fallow refactoring](../runbooks/coverage-backed-fallow-refactoring.md)

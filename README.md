@@ -270,18 +270,15 @@ skill-owned deterministic helper 時，優先使用單一 bounded helper，避�
 
 ## Extension 文件
 
-根目錄 README 只列入口；每個 extension 的目的、運作流程與限制放在自己的目錄。`humanizer`
-只在使用者執行 `/humanizer` 時送出改寫要求，不會在一般 agent run 注入寫作規則：
+根目錄 README 只列入口；extension 的目的、運作流程與限制放在自己的目錄。
 
 | Extension | 文件 |
 | --- | --- |
-| `context-pipeline` | [`extensions/context-pipeline/README.md`](extensions/context-pipeline/README.md) |
-| `humanizer` | [`extensions/humanizer/README.md`](extensions/humanizer/README.md) |
 | `subagents` | [`extensions/subagents/README.md`](extensions/subagents/README.md) |
 
 ## Skill 入口
 
-每個 skill 的適用範圍、停止條件與流程由該目錄的 `SKILL.md` 管理。這裡只保留 repository-owned human-facing 入口，避免把工作流程複製到根 README。External skills 保留 upstream layout 與內容；[`skills-lock.json`](skills-lock.json) 只作 installer inventory：
+每個 skill 的適用範圍、停止條件與流程由該目錄的 `SKILL.md` 管理。這裡只保留 repository-owned human-facing 入口，避免把工作流程複製到根 README。External skills 保留 upstream layout 與內容；[`skills-lock.json`](skills-lock.json) 只作 installer inventory，目前只管理 `no-ai-slop-zh-tw`：
 
 - [`.agents/skills/application-ci-delivery/SKILL.md`](.agents/skills/application-ci-delivery/SKILL.md) — application Jib／rootless BuildKit build與GitOps handoff隔離
 - [`.agents/skills/context-window-retrospective/README.md`](.agents/skills/context-window-retrospective/README.md) — 手動使用 `/skill:context-window-retrospective`

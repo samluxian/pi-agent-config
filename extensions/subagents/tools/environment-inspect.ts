@@ -1,12 +1,12 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { StringEnum } from "@earendil-works/pi-ai";
 import { Type } from "typebox";
-import { processEnvironmentOutput } from "../../context-pipeline/environment-processors.ts";
-import { boundEnvironmentError, boundEnvironmentStructured, boundEnvironmentText } from "../../context-pipeline/environment/output-budget.ts";
-import { redactSensitiveText } from "../../context-pipeline/redaction.ts";
+import { processEnvironmentOutput } from "../environment-processors.ts";
+import { boundEnvironmentError, boundEnvironmentStructured, boundEnvironmentText } from "../environment/output-budget.ts";
+import { redactSensitiveText } from "../redaction.ts";
 
-export { boundEnvironmentText as boundOutput } from "../../context-pipeline/environment/output-budget.ts";
-export { redactSensitiveText } from "../../context-pipeline/redaction.ts";
+export { boundEnvironmentText as boundOutput } from "../environment/output-budget.ts";
+export { redactSensitiveText } from "../redaction.ts";
 
 const COMMAND_TIMEOUT_MS = 30_000;
 const NAME_PATTERN = /^[a-zA-Z0-9][a-zA-Z0-9._-]{0,252}$/;

@@ -1,7 +1,7 @@
 import { summarizeGcloudLogging } from "./environment/gcloud-logging.ts";
 import { summarizeKubernetesProjection } from "./environment/kubernetes.ts";
 import { summarizePodLogs } from "./environment/pod-logs.ts";
-import type { EnvironmentProcessorInput, EnvironmentProcessorResult } from "./types.ts";
+import type { EnvironmentProcessorInput, EnvironmentProcessorResult } from "./environment-types.ts";
 
 export function processEnvironmentOutput(input: EnvironmentProcessorInput): EnvironmentProcessorResult | undefined {
 	try {

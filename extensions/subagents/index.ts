@@ -13,8 +13,8 @@ import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-a
 import { getMarkdownTheme, parseFrontmatter, withFileMutationQueue } from "@earendil-works/pi-coding-agent";
 import { Container, Markdown, Spacer, Text, visibleWidth } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
-import { boundTextEvidence, SUBAGENT_RESULT_BUDGET, SUBAGENT_TOOL_OUTPUT_BUDGET } from "../context-pipeline/text-budget.ts";
-import { boundedRedactedText, redactSensitiveText } from "../context-pipeline/redaction.ts";
+import { boundTextEvidence, SUBAGENT_RESULT_BUDGET, SUBAGENT_TOOL_OUTPUT_BUDGET } from "./text-budget.ts";
+import { boundedRedactedText, redactSensitiveText } from "./redaction.ts";
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -173,7 +173,6 @@ const WEB_ACCESS_EXTENSION = path.join(
 	"pi-web-access",
 	"index.ts",
 );
-const CONTEXT_PIPELINE_EXTENSION = path.join(EXT_DIR, "..", "context-pipeline", "index.ts");
 const CUSTOM_TOOL_EXTENSIONS: Record<string, string> = {
 	web_search: WEB_ACCESS_EXTENSION,
 	source_check: WEB_ACCESS_EXTENSION,
@@ -307,7 +306,6 @@ export async function buildPiArgs(
 		} else if (CUSTOM_TOOL_EXTENSIONS[tool]) {
 			allowlist.push(tool);
 			extensionPaths.add(CUSTOM_TOOL_EXTENSIONS[tool]);
-			if (tool === "safe_bash") extensionPaths.add(CONTEXT_PIPELINE_EXTENSION);
 		}
 	}
 

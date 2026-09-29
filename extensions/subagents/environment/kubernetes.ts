@@ -1,6 +1,6 @@
 import { Buffer } from "node:buffer";
 import { boundedRedactedText } from "../redaction.ts";
-import type { EnvironmentProcessorResult } from "../types.ts";
+import type { EnvironmentProcessorResult } from "../environment-types.ts";
 
 const MAX_ITEMS = 40;
 const MAX_IDENTITIES = 100;

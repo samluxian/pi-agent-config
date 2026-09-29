@@ -5,7 +5,7 @@ from this index.
 
 | Topic | Keywords | When to search | Index |
 | --- | --- | --- | --- |
-| agent-architecture | adapters, authority, context-projection, coverage, enforcement, evidence-layers, fallow, subagent | Designing Pi extension architecture, delegating bounded work, interpreting agent evidence, or reviewing coverage-backed refactoring | [Index](topics/agent-architecture/INDEX.md) |
+| agent-architecture | adapters, authority, context-projection, enforcement, evidence-layers, subagent | Designing Pi extension architecture, delegating bounded work, or interpreting agent evidence | [Index](topics/agent-architecture/INDEX.md) |
 | ci-pipelines | buildkit, cluster-context, concurrency, ebadf, gitlab-ci, nodejs, resource-group, retry, rootless, runner, scheduling, yarn-pnp | Building images without Docker-in-Docker, diagnosing CI toolchain regressions or runner saturation, serializing critical jobs, sizing parallel work, or limiting retry scope | [Index](topics/ci-pipelines/INDEX.md) |
 | cloud-identity | adc, artifact-registry, gke, iam, kubernetes-service-account, registry-writer, service-account-key, wif-gke, workload-identity | Designing GKE workload or CI runner access, authorizing Artifact Registry, replacing exported service account keys, or reviewing Kubernetes-to-IAM authorization | [Index](topics/cloud-identity/INDEX.md) |
 | data-reliability | backup, cutover, datastore, migration, recovery, rpo, rto | Planning a datastore change, defining recovery objectives, validating restore behavior, or setting a cutover and fallback boundary | [Index](topics/data-reliability/INDEX.md) |
