@@ -60,8 +60,10 @@ kube context 名稱或登入身分可見的 GCP projects（可見不代表擁有
 不把症狀或第一個 probe 當成結論。一般只有使用者明確要求才提供操作命令；例外是下一個
 關鍵檢查因存取或權限邊界只能由使用者執行，且目標已知、指令安全唯讀時，Agent 會主動
 給一條有範圍的指令、預期訊號與需回傳的非機密結果。目標不明或無安全指令時，只描述
-缺少的資訊或檢查方式。使用者明確要求 GCP／IAM 變更指令，且目標已知、範圍明確並符合
-最小權限時，Agent 可提供供使用者自行執行的指令與風險說明，但不會代為執行。
+缺少的資訊或檢查方式。使用者明確要求 GCP／IAM 變更或 Helm 安裝指令，且目標已知、
+範圍明確時，Agent 可提供供使用者自行執行的指令與風險說明，但不會代為執行；IAM 仍須
+符合最小權限。提供 Helm 安裝指令前，須確認 Workload Identity 綁定及 Secret Manager
+最小讀取權限；無法確認時須標明尚未證實就緒，render 通過不代表兩項前提已成立。
 其他禁止的變更或機密存取指令仍不提供；機密禁讀、修改核准及遠端唯讀限制不變。
 
 ## 公開內容安全
@@ -91,9 +93,10 @@ Scanner 只回報類別與位置，不輸出 terms。完整規則與 Git history
 
 [`knowledge/README.md`](knowledge/README.md) 是純 Markdown 知識庫入口。Agent 會先查 compact
 keyword indexes，只讀取命中的 topic index 與最多三篇 notes；wiki 不會整批放進 system prompt
-或 context。所有 wiki 內容與 note templates 使用英文，寫完後依 pinned
-[No AI Slop writing contract](.agents/skills/llm-wiki/references/writing-style.md) 編修。這個檢查不能
-刪除技術細節、證據等級或不確定性。
+或 context。所有 wiki 內容與 note templates 使用英文，寫完後載入專案安裝的
+[英文 No AI Slop skill](.agents/skills/no-ai-slop/SKILL.md)，依
+[wiki 寫作規格](.agents/skills/llm-wiki/references/writing-style.md) 做最小幅度風格編修與評估。
+它不是完整的文法檢查器，也不能刪除技術細節、證據等級或不確定性。
 
 查詢由 workspace contract 自動要求，不必載入 skill。新增或維護筆記時，明確使用
 `/skill:llm-wiki`。Wiki 只提供 prior knowledge；目前 artifact、configuration、deployment 與
@@ -279,7 +282,10 @@ skill-owned deterministic helper 時，優先使用單一 bounded helper，避�
 
 ## Skill 入口
 
-每個 skill 的適用範圍、停止條件與流程由該目錄的 `SKILL.md` 管理。這裡只保留 repository-owned human-facing 入口，避免把工作流程複製到根 README。External skills 保留 upstream layout 與內容；[`skills-lock.json`](skills-lock.json) 只作 installer inventory，目前只管理 `no-ai-slop-zh-tw`：
+每個 skill 的適用範圍、停止條件與流程由該目錄的 `SKILL.md` 管理。這裡只保留 repository-owned human-facing 入口，避免把工作流程複製到根 README。External skills 保留 upstream layout 與內容；英文 `no-ai-slop` 由 repository 固定 upstream commit
+`000650b156983f5159695b441477f4e63b25dc85` 的 `SKILL.md`、`eval.md` 與 MIT `LICENSE`，
+由 Pi 自動探索並用於 wiki 寫作流程；[`skills-lock.json`](skills-lock.json) 只作 installer inventory，
+目前只管理 `no-ai-slop-zh-tw`：
 
 - [`.agents/skills/application-ci-delivery/SKILL.md`](.agents/skills/application-ci-delivery/SKILL.md) — application Jib／rootless BuildKit build與GitOps handoff隔離
 - [`.agents/skills/context-window-retrospective/README.md`](.agents/skills/context-window-retrospective/README.md) — 手動使用 `/skill:context-window-retrospective`
@@ -291,6 +297,7 @@ skill-owned deterministic helper 時，優先使用單一 bounded helper，避�
 - [`.agents/skills/kubernetes-platform-delivery/README.md`](.agents/skills/kubernetes-platform-delivery/README.md)
 - [`.agents/skills/llm-wiki/README.md`](.agents/skills/llm-wiki/README.md) — 手動使用 `/skill:llm-wiki`
 - [`.agents/skills/mr-summary/README.md`](.agents/skills/mr-summary/README.md)
+- [`.agents/skills/no-ai-slop/SKILL.md`](.agents/skills/no-ai-slop/SKILL.md) — pinned upstream external skill，英文風格編修
 - [`.agents/skills/no-ai-slop-zh-tw/README.md`](.agents/skills/no-ai-slop-zh-tw/README.md) — external skill，繁體中文 AI 腔偵測與編修
 - [`.agents/skills/orchestrator/README.md`](.agents/skills/orchestrator/README.md)
 - [`.agents/skills/pi-agent-maintenance/README.md`](.agents/skills/pi-agent-maintenance/README.md)

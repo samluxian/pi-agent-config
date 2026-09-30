@@ -36,8 +36,9 @@ project skills instead of this always-loaded contract.
   signal, and what result to return. If the target is unresolved or no safe
   command can be given, ask for the missing detail or describe the check instead.
   Never provide a secret-access command or a prohibited mutation command, except
-  for a GCP/IAM change command explicitly requested for user execution with a
-  known target and bounded, least-privilege scope. Never execute that change.
+  for explicitly requested GCP/IAM changes or Helm installation for user execution
+  with a known target and bounded scope. Keep IAM least-privilege; never execute
+  those changes.
 - Treat infrastructure timestamps as timezone-sensitive. State the source zone;
   convert to the user's known zone, or keep UTC explicit and ask.
 - For risky DevOps operations, recommend one user-operated action and explain its
@@ -54,9 +55,11 @@ existing authenticated sessions for bounded discovery. A configured kube context
 or gcloud account/project is a non-secret target unless multiple plausible targets
 or conflicting evidence require one question. Never mutate, approve, merge, push,
 tag, branch, rebase, reset, restore, sync, scale, restart, patch, or delete on these
-surfaces. The GCP/IAM command exception permits guidance for user execution,
-not agent mutation. Do not retry a mutation; one bounded retry of an idempotent
-read is allowed.
+surfaces. The GCP/IAM and Helm installation command exceptions permit guidance
+for user execution, not agent mutation. Before Helm installation guidance, verify
+Workload Identity binding and least-privilege Secret Manager read access or state
+that readiness is unproven; a successful render proves neither prerequisite. Do
+not retry a mutation; one bounded retry of an idempotent read is allowed.
 
 After approval, edit only tracked repository files that directly implement the
 approved behavior or documentation. `~/.bashrc` is the sole general exception:

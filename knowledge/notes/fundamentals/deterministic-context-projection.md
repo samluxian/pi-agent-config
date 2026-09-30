@@ -10,7 +10,7 @@ keywords: [context-projection, tool-result, output-budget]
 aliases: [result-summarization, context-pipeline]
 scope: repository-public-case
 created: 2026-09-12
-updated: 2026-09-13
+updated: 2026-09-30
 ---
 
 # Deterministic context projection for tool results
@@ -66,9 +66,10 @@ and tool-specific details; a returned patch can replace only those result fields
    budget prunes content;
 4. retain a replacement only when it is smaller than the source.
 
-A processor error, unsupported command, mismatched result kind, or an expansion
-is a fail-open outcome: return the original result unchanged. This choice is
-repository behavior, not a Pi product guarantee.
+A processor error, unsupported command, mismatched result kind, or a replacement
+larger than the original result triggers fail-open behavior: return the original
+result unchanged. This choice is repository behavior, not a Pi product
+guarantee.
 
 ### Trust Boundary
 

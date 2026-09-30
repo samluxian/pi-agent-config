@@ -42,7 +42,7 @@ freshness 判斷；aliases、狀態與人工 review 用來補足這些限制。
 
 - [`SKILL.md`](SKILL.md)：Agent retrieval 與維護流程。
 - [`references/note-contract.md`](references/note-contract.md)：metadata、內容與來源規格。
-- [`references/writing-style.md`](references/writing-style.md)：英文與 pinned No AI Slop 寫作規格。
+- [`references/writing-style.md`](references/writing-style.md)：英文與 pinned No AI Slop 寫作規格；編修時載入已安裝的 [`no-ai-slop`](../no-ai-slop/SKILL.md) 與其 `eval.md`。
 - [`references/private-to-synthetic.md`](references/private-to-synthetic.md)：private 經驗的重新建構規則。
 - [`assets/fundamental-note.md`](assets/fundamental-note.md)：基礎知識模板。
 - [`assets/incident-note.md`](assets/incident-note.md)：事故／問題模板。
@@ -52,7 +52,7 @@ freshness 判斷；aliases、狀態與人工 review 用來補足這些限制。
 
 - V1 不包含網站、static site generator、vector database、embedding、RAG service 或外部 SaaS。
 - `knowledge/` 與 note templates 的人類可讀內容一律使用英文，並通過 pinned No AI Slop
-  editing 與 evaluation；維護說明可保留繁體中文。
+  風格編修與 evaluation；這不是完整的文法檢查，維護說明可保留繁體中文。
 - Wiki 是 prior knowledge，不是目前部署狀態、版本或健康度的證據。
 - Public repository 不保存 private source link、名稱、原始 log、設定、payload 或可重識別拓撲。
 - `verified` incident 必須有根因、resolution 與 behavior-level validation；否則保持 `open`。

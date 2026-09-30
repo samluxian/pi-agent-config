@@ -39,8 +39,12 @@ approval boundary.
    applicable, index entry, and validation. Wait for explicit approval.
 4. Create the note from the narrowest template in `assets/`, update exactly one
    topic index, and add a root topic only when no existing topic applies.
-5. Write all wiki prose and metadata in English. Apply the pinned No AI Slop
-   editing and evaluation pass without weakening technical precision or evidence.
+5. Write all wiki prose and metadata in English. Read the pinned
+   `../no-ai-slop/SKILL.md` and `../no-ai-slop/eval.md`; edit the draft for
+   English writing style with the smallest effective changes, then evaluate it.
+   Preserve technical claims, citations, evidence grade, uncertainty, and the
+   wiki note format; the upstream response format does not replace this workflow.
+   This is not a comprehensive grammar check.
 6. Run `scripts/wiki.py check` and the public-safety check. A private-case note
    also requires a semantic re-identification review.
 

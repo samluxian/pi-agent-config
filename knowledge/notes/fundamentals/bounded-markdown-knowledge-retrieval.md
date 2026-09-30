@@ -5,12 +5,12 @@ type: fundamental
 status: verified
 topic: llm-agents
 summary: A compact keyword index can route an agent to a few atomic Markdown notes without loading the full knowledge base.
-when_to_read: Designing or using a repository knowledge base when full-corpus context would be wasteful or distort retrieval.
+when_to_read: Designing or using a repository knowledge base when loading the full corpus would waste context or distort retrieval.
 keywords: [context-window, index, knowledge-retrieval, markdown, progressive-disclosure]
 aliases: [llm-wiki, note-search]
 scope: repository-public-case
 created: 2026-09-11
-updated: 2026-09-13
+updated: 2026-09-30
 ---
 
 # Bounded Markdown knowledge retrieval for coding agents

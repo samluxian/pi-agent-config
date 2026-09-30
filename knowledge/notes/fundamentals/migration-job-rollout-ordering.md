@@ -10,7 +10,7 @@ keywords: [argocd, hooks, job, migration, sync-phase, sync-wave]
 aliases: [database-migration-job, presync-job, rollout-ordering]
 scope: public-source
 created: 2026-09-11
-updated: 2026-09-13
+updated: 2026-09-30
 ---
 
 # Give migration Jobs one rollout-ordering owner
@@ -56,9 +56,9 @@ the next.
 
 ### Kubernetes Job Semantics
 
-Kubernetes Jobs represent one-off tasks that run to completion. A Job creates one
-or more Pods and retries execution until the required number terminate
-successfully. `backoffLimit` sets the retry limit before the Job is failed. [S1]
+Kubernetes Jobs represent one-off tasks that run to completion. A Job creates
+one or more Pods and retries failed attempts until the required number of Pods
+complete successfully. `backoffLimit` sets the retry limit before the Job is failed. [S1]
 
 A retry repeats program side effects. The migration must therefore be one of:
 
