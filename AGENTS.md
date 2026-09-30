@@ -7,8 +7,6 @@ project skills instead of this always-loaded contract.
 
 - Before editing, inspect the target files and their closest callers, defaults,
   tests, or defining contracts.
-- For a change spanning behavior surfaces or an external contract, state the
-  goal, assumptions, affected files, success criteria, and validation first.
 - Ask one short scope question if the request requires an unrequested repository,
   surface, or behavior.
 - Add complexity only for a stated requirement, existing contract, or repeated
@@ -46,9 +44,26 @@ project skills instead of this always-loaded contract.
 
 ## Approval and Mutation Boundary
 
-Use `analyze -> propose bounded patch and validation -> wait for explicit approval
--> edit`. Approval must be an unambiguous direct user instruction and applies only
-to the described scope.
+Use spec-driven development: `investigate -> align spec -> wait for explicit
+approval -> recheck target -> implement -> verify against spec`.
+
+Before any edit, present a spec with the problem and goal, scope and non-goals,
+expected behavior and acceptance criteria, assumptions and unresolved questions,
+implementation direction, affected files, and validation. Resolve questions that
+change scope, behavior, or acceptance before implementation. Approval must be an
+unambiguous direct user instruction for the presented spec; a request to start a
+new task is not approval of a spec that has not been presented.
+
+Keep small-change specs in the conversation. For cross-file, architectural, or
+high-risk changes, save the approved spec under `<workspace-root>/docs/` before
+implementation, subject to the document ownership rules below. Do not require
+spec approval for permitted read-only research, queries, or diagnosis.
+
+Implement only the approved spec. If behavior, scope, or acceptance criteria must
+change, stop, present the spec delta, and wait for renewed approval. In-scope
+implementation details need no renewed approval. Report each acceptance criterion
+as met, unmet, or unverified with supporting evidence. Spec approval never expands
+repository ownership or overrides safety and mutation boundaries.
 
 Kubernetes, Argo CD, GitLab/GitHub, GCP, and Git remotes are inspection-only. Use
 existing authenticated sessions for bounded discovery. A configured kube context

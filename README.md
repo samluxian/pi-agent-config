@@ -34,11 +34,27 @@ Git 或 remote 操作。完整 authority boundary 以 [`AGENTS.md`](AGENTS.md) �
 | [`extensions/`](extensions/) | 在 Pi runtime 中註冊事件、指令或工具的程式。 |
 | [`scripts/`](scripts/) | Workspace 初始化與 deterministic checks。 |
 
-這些規則預設採用 human-in-the-loop 流程：
+這些規則採用輕量 Spec-Driven Development（SDD），先對焦規格，再實作：
 
 ```text
-分析 → 提出修改範圍、驗證與風險 → 等待批准 → 重新檢查 target repo branch/status → 修改 → 獨立驗證
+唯讀調查 → 對焦 spec → 明確核准 → 重新檢查 target repo branch/status → 依 spec 修改 → 按驗收條件驗證
 ```
+
+修改前，Agent 會提出問題與目標、範圍與不做的事、預期行為與驗收條件、假設與待確認問題，
+以及實作方向、受影響檔案與驗證方式。會影響範圍、行為或驗收的問題必須先釐清；最初的任務
+請求不等於核准尚未提出的 spec。
+
+小修改使用對話中的短 spec。例如修正文案，可直接列出目標段落、保留內容與驗收方式，
+等使用者確認後修改，不必產生多份文件。跨檔案、架構或高風險修改則在核准後、實作前，
+依下方文件 ownership 規則將 spec 保存至 workspace `docs/`。純查詢、研究與唯讀診斷
+不需要等待 spec 核准。
+
+實作若需要改變行為、範圍或驗收條件，Agent 會停止、提出 spec 差異並重新取得核准；
+已核准範圍內的實作細節不必反覆詢問。完成後逐項回報驗收條件是否達成、未達成或尚未驗證，
+並附上證據或缺口。
+
+常駐規則由 `AGENTS.md` 管理；既有領域 skills 補充設計與驗證，不另設 SDD skill。
+這是文字行為契約，不是 runtime 強制攔截機制，也不放寬既有安全與修改權限。
 
 Kubernetes、Argo CD、GitLab/GitHub、GCP 與 Git remotes 對 agent 維持唯讀。交付變更寫入
 repository 的 desired state，再走原有 MR、CI 與 GitOps 流程。Agent 只在明確需求、既有 contract
