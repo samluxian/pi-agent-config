@@ -19,7 +19,8 @@ layout until its ownership, discovery, render, and validation adapter exists.
 - Identify the target repository, branch, working tree, staged state, service,
   environments, current chart version, and Argo CD project/discovery path.
 - For delivery files, stop on `main`, `master`, `release`, protected, or shared
-  branches. Require exact approval before editing.
+  branches. Follow the root authorization contract for direct edit requests;
+  resolve scope and safety gaps before editing.
 - Treat the service's pinned application chart dependency as its API; do not
   infer support from the latest shared chart checkout.
 

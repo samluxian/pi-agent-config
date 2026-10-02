@@ -1,8 +1,5 @@
 import { Buffer } from "node:buffer";
 
-export const SUBAGENT_RESULT_BUDGET = Object.freeze({ maxLines: 400, maxBytes: 16 * 1024 });
-export const SUBAGENT_TOOL_OUTPUT_BUDGET = Object.freeze({ maxLines: 600, maxBytes: 24 * 1024 });
-
 export interface TextBudget {
 	maxLines: number;
 	maxBytes: number;

@@ -24,7 +24,7 @@ subagents，讓 parent 保留 context、權限判斷與最後決策。Agent 執�
 ## 怎麼運作
 
 1. Parent 先定義 decision、known facts、knowledge gaps、paths、budget 與 stop condition。
-2. 每個 child task 使用 `GOAL`、`INPUT`、`DO`、`DO NOT`、`STOP`、`RETURN`。
+2. 每個 child task 參考[輕量任務契約](assets/task-contract.md)，交代目標、背景、範圍、限制、方法、完成條件與預期回報；小任務可合併欄位，不新增格式 blocker 或 spec 流程。
 3. 最多平行執行四個互相獨立的 read-only tasks。
 4. Worker 維持 single mode。
 5. Parent 對照 primary evidence，處理 conflicts、stale evidence 與 unsupported claims。

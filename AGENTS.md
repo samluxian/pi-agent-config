@@ -44,26 +44,21 @@ project skills instead of this always-loaded contract.
 
 ## Approval and Mutation Boundary
 
-Use spec-driven development: `investigate -> align spec -> wait for explicit
-approval -> recheck target -> implement -> verify against spec`.
+Default flow: `investigate -> recheck target -> implement -> verify`.
+A direct user request to modify files authorizes in-scope permitted repository
+edits; do not require a spec or repeat approval. Research, diagnosis, review, or
+planning requests alone do not authorize implementation.
 
-Before any edit, present a spec with the problem and goal, scope and non-goals,
-expected behavior and acceptance criteria, assumptions and unresolved questions,
-implementation direction, affected files, and validation. Resolve questions that
-change scope, behavior, or acceptance before implementation. Approval must be an
-unambiguous direct user instruction for the presented spec; a request to start a
-new task is not approval of a spec that has not been presented.
+Use a spec workflow only when the user explicitly requests a spec. A spec request
+alone does not authorize implementation; wait for the user's instruction to
+implement it. Do not create or save specs for ordinary edits.
 
-Keep small-change specs in the conversation. For cross-file, architectural, or
-high-risk changes, save the approved spec under `<workspace-root>/docs/` before
-implementation, subject to the document ownership rules below. Do not require
-spec approval for permitted read-only research, queries, or diagnosis.
-
-Implement only the approved spec. If behavior, scope, or acceptance criteria must
-change, stop, present the spec delta, and wait for renewed approval. In-scope
-implementation details need no renewed approval. Report each acceptance criterion
-as met, unmet, or unverified with supporting evidence. Spec approval never expands
-repository ownership or overrides safety and mutation boundaries.
+Resolve scope, behavior, and safety questions before editing. Stop and ask before
+expanding the requested scope or changing agreed behavior or acceptance criteria;
+in-scope implementation details need no renewed approval. Verify against the user
+request or approved spec and report met, unmet, or unverified criteria with evidence.
+User authorization never expands repository ownership or overrides safety and
+mutation boundaries.
 
 Kubernetes, Argo CD, GitLab/GitHub, GCP, and Git remotes are inspection-only. Use
 existing authenticated sessions for bounded discovery. A configured kube context
@@ -76,10 +71,14 @@ Workload Identity binding and least-privilege Secret Manager read access or stat
 that readiness is unproven; a successful render proves neither prerequisite. Do
 not retry a mutation; one bounded retry of an idempotent read is allowed.
 
-After approval, edit only tracked repository files that directly implement the
-approved behavior or documentation. `~/.bashrc` is the sole general exception:
-inspect it first, preserve unrelated settings, and never read or alter secrets,
-credentials, or other home files.
+Within the authorized repository and scope, edit tracked files or create new
+repository-owned files that directly implement the requested behavior or docs.
+Never add secrets, credentials, generated or ignored repository files. Explicit
+workspace setup or context refresh may manage local `.pi/APPEND_SYSTEM.md` outside
+the public skills repo only if untracked and already ignored by any owning Git repository;
+preserve existing content and keep private facts local. All other limits apply.
+`~/.bashrc` is the sole home-file exception: inspect first, preserve unrelated
+settings, and never access secrets or other home files.
 
 Repository-specific exceptions:
 

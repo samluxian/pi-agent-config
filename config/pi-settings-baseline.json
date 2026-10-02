@@ -1,11 +1,5 @@
 {
   "defaultThinkingLevel": "low",
-  "thinkingBudgets": {
-    "minimal": 512,
-    "low": 2048,
-    "medium": 8192,
-    "high": 16384
-  },
   "showCacheMissNotices": true,
   "compaction": {
     "enabled": true,

@@ -35,8 +35,9 @@ another layout until its backend, command, ownership, and review adapter exists.
    descriptions in Traditional Chinese; preserve commands and identifiers.
    For imports, ownership transfers, saved plans, or failed applies, load
    `references/state-handoffs-and-recovery.md` before proposing commands.
-4. For edits, propose exact files, plan expectation, IAM/network/runtime risk, and
-   validation; wait for explicit approval and require a non-protected branch.
+4. For requested edits, identify exact files, plan expectation, IAM/network/runtime
+   risk, and validation. Follow the root authorization contract without repeat
+   approval; resolve scope/safety gaps and require a non-protected branch.
 5. Apply the smallest approved change. During structural cleanup, preserve state
    addresses, `for_each` keys, and exact infrastructure identifiers. Never run
    `apply`, import, state mutation, workspace mutation, or remote Git operations.

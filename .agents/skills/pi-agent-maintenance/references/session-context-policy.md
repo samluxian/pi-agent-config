@@ -29,8 +29,9 @@ risks, and the next action; discard replaceable exploration.
 | `high` | Rare high-risk or highly ambiguous design where alternatives and blast radius cannot be bounded at `medium` |
 
 Escalate because the task requires deeper reasoning, not because output is long.
-Return to `low` after the uncertain decision is resolved. Keep concrete token
-budgets in the optional settings baseline, not duplicated across skills.
+Return to `low` after the uncertain decision is resolved. The optional settings
+baseline does not override thinking token budgets. Pi/provider defaults still
+apply; removing a repository override does not provide unlimited thinking.
 
 ## Model Use
 
@@ -57,8 +58,10 @@ wall-clock deadline per child.
 
 ## Context And Metrics
 
-- Tool-output limits must be explicit, visible, and recoverable through a narrow
-  rerun or protected temp archive.
+- Subagent final text and parallel aggregate are not clipped by this extension;
+  retain redaction and completeness metadata. Prefer useful synthesis over raw
+  output. Underlying tool, preview, compaction, and provider limits still apply
+  and must be distinguished from final-result completeness.
 - Historical compaction must preserve tool-call/result pairing and persisted
   session truth.
 - Metrics belong in non-context session entries. Track at least turn latency,

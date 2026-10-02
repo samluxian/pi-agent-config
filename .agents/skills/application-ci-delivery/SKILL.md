@@ -17,8 +17,9 @@ Kubernetes ServiceAccount or IAM provisioning, registry creation, shared chart
 APIs, or live infrastructure. Treat those as prerequisites and route platform
 changes to their owning workflow.
 
-Follow `analyze -> propose bounded patch and validation -> wait for approval ->
-edit`. Never read credentials or prove authorization by printing tokens.
+Follow the root authorization contract: analyze, implement the requested bounded
+change, then validate. Ask before expanding scope; do not require another approval
+for a direct modification request. Never read credentials or print tokens.
 
 ## Discovery
 

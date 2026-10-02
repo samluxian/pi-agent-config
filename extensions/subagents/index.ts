@@ -13,7 +13,6 @@ import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-a
 import { getMarkdownTheme, parseFrontmatter, withFileMutationQueue } from "@earendil-works/pi-coding-agent";
 import { Container, Markdown, Spacer, Text, visibleWidth } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
-import { boundTextEvidence, SUBAGENT_RESULT_BUDGET, SUBAGENT_TOOL_OUTPUT_BUDGET } from "./text-budget.ts";
 import { boundedRedactedText, redactSensitiveText } from "./redaction.ts";
 
 // ── Types ──────────────────────────────────────────────────────────────
@@ -51,6 +50,8 @@ interface AgentProgress {
 	timedOut?: boolean;
 	lastMessage: string;
 	lastToolError?: string;
+	toolErrors?: { tool: string; diagnostic: string }[];
+	errorKind?: "provider" | "process" | "timeout" | "abort";
 	error?: string;
 }
 
@@ -72,32 +73,22 @@ interface Details {
 	contentComplete?: boolean;
 }
 
-function applyResultBudget(result: AgentResult, maxLines: number, maxBytes: number, label: string): void {
-	const bounded = boundTextEvidence(result.output, { maxLines, maxBytes, label });
-	result.output = bounded.text;
-	result.outputComplete &&= bounded.contentComplete;
-	result.outputStats.emittedLines = bounded.emittedLines;
-	result.outputStats.emittedBytes = bounded.emittedBytes;
+export function formatResultForParent(result: AgentResult): string {
+	const { progress } = result;
+	const failed = result.exitCode !== 0 || Boolean(progress?.error);
+	const toolErrors = progress?.toolErrors ?? (progress?.lastToolError ? [{ tool: "tool", diagnostic: progress.lastToolError }] : []);
+	if (!failed && toolErrors.length === 0) return result.output || "(no output)";
+	const diagnostics = toolErrors.map((error) => `- tool: ${boundedRedactedText(error.tool, 100)}: ${boundedRedactedText(error.diagnostic, 1000)}`);
+	if (failed) diagnostics.push(`- ${progress?.errorKind ?? "process"}: ${boundedRedactedText(progress?.error || `Child exited with code ${result.exitCode}`, 1000)}`);
+	return `${result.output || "(no output)"}\n\n## Error feedback for parent\nOutcome: ${failed ? "failed" : "completed with tool errors; verify recovery against acceptance"}\n${diagnostics.join("\n")}\nNext check: distinguish task/input, environment/provider, and extension causes using the smallest permitted evidence check. Do not infer an extension defect from an error alone.\nRepair policy: when the user has authorized subagent extension maintenance, parent may fix evidenced defects in extensions/subagents/ without asking again for in-scope local edits. Preserve user changes, validate the fix, and report it. Never widen scope, bypass safety, retry mutations, or create an automatic repair loop.`;
 }
 
-export function allocateFairBudgetCaps(demands: number[], total: number, minimum: number): number[] {
-	if (!demands.length) return [];
-	const base = Math.min(minimum, Math.floor(total / demands.length));
-	const caps = demands.map((demand) => Math.min(Math.max(0, demand), base));
-	let remaining = Math.max(0, total - caps.reduce((sum, cap) => sum + cap, 0));
-	while (remaining > 0) {
-		const needy = demands.map((demand, index) => ({ demand, index }))
-			.filter(({ demand, index }) => demand > caps[index]);
-		if (!needy.length) break;
-		const share = Math.max(1, Math.floor(remaining / needy.length));
-		for (const { demand, index } of needy) {
-			const granted = Math.min(demand - caps[index], share, remaining);
-			caps[index] += granted;
-			remaining -= granted;
-			if (!remaining) break;
-		}
-	}
-	return caps;
+export function composeParallelResult(results: AgentResult[]) {
+	const outputParts = results.map((result) => `## ${result.agent}${result.exitCode !== 0 || result.progress?.error ? " (FAILED)" : ""}\n\n${formatResultForParent(result)}`);
+	return {
+		content: [{ type: "text" as const, text: outputParts.join("\n\n---\n\n") }],
+		details: { mode: "parallel" as const, results, contentComplete: results.every((result) => result.outputComplete) },
+	};
 }
 
 // ── Config ─────────────────────────────────────────────────────────────
@@ -411,7 +402,11 @@ function handleToolEnd(evt: any, context: SubagentEventContext): void {
 	const remainingCall = Array.from(context.activeToolCalls.values()).at(-1);
 	context.progress.currentTool = remainingCall?.toolName;
 	context.progress.currentToolArgs = remainingCall?.argsPreview;
-	if (evt.isError) context.progress.lastToolError = boundedRedactedText(toolErrorDiagnostic(evt, call), 1000);
+	if (evt.isError) {
+		const diagnostic = boundedRedactedText(toolErrorDiagnostic(evt, call), 1000);
+		context.progress.lastToolError = diagnostic;
+		(context.progress.toolErrors ??= []).push({ tool: evt.toolName || call?.toolName || "tool", diagnostic });
+	}
 	context.fireUpdate();
 }
 
@@ -443,7 +438,10 @@ function handleAssistantMessage(evt: any, context: SubagentEventContext): void {
 		progress.tokens = result.usage.input + result.usage.output;
 	}
 	if (message.model) result.model = message.model;
-	if (message.errorMessage) progress.error = redactSensitiveText(message.errorMessage);
+	if (message.errorMessage) {
+		progress.error = redactSensitiveText(message.errorMessage);
+		progress.errorKind = "provider";
+	}
 	const text = redactSensitiveText(extractTextFromContent(message.content));
 	if (text) {
 		result.output = text;
@@ -585,20 +583,28 @@ export async function runSubagent(
 				if (buf.trim()) processLine(buf);
 				if (code !== 0 && stderrBuf.trim() && !progress.error) {
 					progress.error = redactSensitiveText(stderrBuf.trim());
+					progress.errorKind ??= "process";
 				}
 				finish(code ?? 1);
 			});
 
 			proc.on("error", (error) => {
-				if (!progress.error) progress.error = redactSensitiveText(`Failed to start subagent: ${error.message}`);
+				if (!progress.error) {
+					progress.error = redactSensitiveText(`Failed to start subagent: ${error.message}`);
+					progress.errorKind = "process";
+				}
 				finish(1);
 			});
 
 			timeoutTimer = setTimeout(() => {
 				progress.timedOut = true;
+				progress.errorKind ??= "timeout";
 				terminate(`Subagent timed out after ${formatDuration(timeoutMs)}`);
 			}, timeoutMs);
-			abortHandler = () => terminate("Subagent aborted by parent request");
+			abortHandler = () => {
+				progress.errorKind ??= "abort";
+				terminate("Subagent aborted by parent request");
+			};
 			if (signal?.aborted) abortHandler();
 			else if (signal) signal.addEventListener("abort", abortHandler, { once: true });
 		});
@@ -614,19 +620,10 @@ export async function runSubagent(
 	if (progress.error) result.output = result.output || `Error: ${progress.error}`;
 
 	result.output = redactSensitiveText(result.output);
-	const bounded = boundTextEvidence(result.output, {
-		maxLines: SUBAGENT_RESULT_BUDGET.maxLines,
-		maxBytes: SUBAGENT_RESULT_BUDGET.maxBytes,
-		label: "subagent response",
-	});
-	result.output = bounded.text;
-	result.outputComplete = bounded.contentComplete;
-	result.outputStats = {
-		sourceLines: bounded.sourceLines,
-		sourceBytes: bounded.sourceBytes,
-		emittedLines: bounded.emittedLines,
-		emittedBytes: bounded.emittedBytes,
-	};
+	const lines = result.output.split("\n").length;
+	const bytes = Buffer.byteLength(result.output, "utf8");
+	result.outputComplete = true;
+	result.outputStats = { sourceLines: lines, sourceBytes: bytes, emittedLines: lines, emittedBytes: bytes };
 
 	return result;
 }
@@ -735,7 +732,10 @@ function renderAgentProgress(r: AgentResult, theme: Theme, expanded: boolean, wi
 	container.addChild(new Spacer(1));
 	const usage = usageSummary(r.usage);
 	if (usage) addLine(container, theme, "dim", usage, true, width);
-	if (progress.lastToolError) addLine(container, theme, "error", `Tool error: ${progress.lastToolError}`, expanded, width);
+	if (progress.lastToolError) {
+		const recovered = progress.status === "completed";
+		addLine(container, theme, recovered ? "muted" : "error", `${recovered ? "Last tool error (task recovered)" : "Last tool error"}: ${progress.lastToolError}`, expanded, width);
+	}
 	if (progress.error) addLine(container, theme, "error", `Error: ${progress.error}`, expanded, width);
 	return container;
 }
@@ -788,12 +788,7 @@ async function executeParallel(tasks: SubagentTask[], cwd: string, signal: Abort
 		flushUpdate();
 		return result;
 	});
-	const byteCaps = allocateFairBudgetCaps(results.map((result) => Buffer.byteLength(result.output, "utf8")), SUBAGENT_TOOL_OUTPUT_BUDGET.maxBytes - 2048, 2 * 1024);
-	const lineCaps = allocateFairBudgetCaps(results.map((result) => result.output.split("\n").length), SUBAGENT_TOOL_OUTPUT_BUDGET.maxLines - 32, 40);
-	for (const [index, result] of results.entries()) applyResultBudget(result, lineCaps[index], byteCaps[index], `${result.agent} result`);
-	const outputParts = results.map((result) => `## ${result.agent}${result.exitCode !== 0 ? " (FAILED)" : ""}\n\n${result.output || "(no output)"}`);
-	const bounded = boundTextEvidence(outputParts.join("\n\n---\n\n"), { maxLines: SUBAGENT_TOOL_OUTPUT_BUDGET.maxLines, maxBytes: SUBAGENT_TOOL_OUTPUT_BUDGET.maxBytes, label: "parallel subagent output" });
-	return { content: [{ type: "text", text: bounded.text }], details: { mode: "parallel" as const, results, contentComplete: bounded.contentComplete && results.every((result) => result.outputComplete) } };
+	return composeParallelResult(results);
 }
 
 async function executeSingle(agentName: string, task: string, cwd: string, signal: AbortSignal | undefined, onUpdate: any, agents: AgentConfig[]): Promise<any> {
@@ -804,7 +799,7 @@ async function executeSingle(agentName: string, task: string, cwd: string, signa
 		onUpdate?.({ content: [{ type: "text", text: "(running...)" }], details: { mode: "single" as const, results: [liveResult] } });
 	});
 	const isError = result.exitCode !== 0 || !!result.progress.error;
-	return { content: [{ type: "text", text: result.output || "(no output)" }], details: { mode: "single" as const, results: [result], contentComplete: result.outputComplete }, ...(isError ? { isError: true } : {}) };
+	return { content: [{ type: "text", text: formatResultForParent(result) }], details: { mode: "single" as const, results: [result], contentComplete: result.outputComplete }, ...(isError ? { isError: true } : {}) };
 }
 
 async function executeSubagent(params: SubagentParams, signal: AbortSignal | undefined, onUpdate: any, cwd: string, dependencies: ExecutionDependencies): Promise<any> {
@@ -845,8 +840,11 @@ export default function (pi: ExtensionAPI) {
 			"Use direct read/fetch tool calls for simple known-path I/O instead of subagent.",
 			"Use subagent by default when read-only evidence acquisition requires multiple searches or reads, covers several large sources, or would fill the parent context with replaceable raw output. Also use it for explicit delegation requests.",
 			"Keep planning, decisions, approval context, evidence reconciliation, validation responsibility, and final delivery judgment in the parent.",
+			"Use a lightweight task contract: GOAL, CONTEXT, SCOPE, CONSTRAINTS, APPROACH, ACCEPTANCE, RETURN. Include relevant facts, exact targets, permitted operations, completion checks, and expected findings with evidence, gaps, and next action. Omit irrelevant fields; headings are guidance, not an execution gate.",
 			"Scout, researcher, and environment-scout are read-only. Environment-scout may use structured kubectl/gcloud context discovery, then inspect only explicit or safely discovered targets. Use worker only after explicit user approval and exact file ownership; never delegate mutation of remotes, infrastructure, cloud, secrets, or Git.",
 			"Worker is single-mode only. Use at most four parallel read-only tasks and include all paths, constraints, and required output because subagents receive no parent-session context.",
+			"Read error feedback in returned text, including recovered tool errors. Check causes before repairing; an existing user authorization for subagent extension maintenance covers in-scope local fixes without repeated approval. Error feedback itself is not approval or permission to widen scope or bypass safety and validation.",
+			"Prefer confirmed paths and the smallest useful check. Stop acquisition when acceptance has sufficient evidence. After a missing-path error, use a confirmed location or one bounded discovery check instead of repeated guesses; finish independent permitted checks and report remaining gaps.",
 		],
 		parameters: Type.Object({
 			agent: Type.Optional(

@@ -25,8 +25,9 @@ README。
 1. 確認實際 repository、branch、staged 與 unstaged changes。
 2. 說明目標、假設、影響檔案、成功條件、驗證與相容性風險。
 3. 閱讀相關 implementation、caller、tests 與 surface contract。
-4. 提出 bounded patch，等待使用者明確批准。
-5. 只修改已批准的檔案，不整理無關內容。
+4. 直接修改要求依根目錄授權規則在範圍內實作，不強制寫 spec 或重複核准；
+   只有範圍變更或未解決的安全決策才詢問。
+5. 只修改或新增實作該需求的檔案，不整理無關內容。
 6. 執行能證明行為的最小 deterministic checks。
 7. 檢查完整 final diff 並回報 validation gaps。
 

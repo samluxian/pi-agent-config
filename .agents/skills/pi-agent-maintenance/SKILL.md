@@ -15,7 +15,8 @@ only for this repository's agent contract, not ordinary delivery work.
 3. Read `references/public-repository-safety.md` and
    `references/regression-matrix.md`, then use `references/surface-contracts.md`
    to load only the branch and linked reference needed for the changed surface.
-4. Propose the bounded patch and wait for explicit approval.
+4. Follow the root authorization contract: implement a direct modification request
+   in scope; ask only for scope changes or unresolved safety decisions.
 5. Apply the smallest coherent change; update README for human-facing behavior.
 6. Run deterministic validation and compare context/routing budgets when relevant.
 

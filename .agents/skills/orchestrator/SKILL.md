@@ -33,9 +33,21 @@ Use ASD-STE100-inspired Simplified Technical English without claiming full
 compliance. Use short active sentences, one instruction per sentence, and
 explicit nouns instead of ambiguous pronouns.
 
-Structure each child prompt as `GOAL`, `INPUT`, `DO`, `DO NOT`, `STOP`, and
-`RETURN`. State exact paths, allowed operations, evidence and output limits, and
-blocker behavior. Tell the child to stop and report instead of widening scope.
+Use the lightweight [task contract](assets/task-contract.md): `GOAL`, `CONTEXT`,
+`SCOPE`, `CONSTRAINTS`, `APPROACH`, `ACCEPTANCE`, and `RETURN`. Include the decision,
+verified facts, exact targets, permitted operations, completion checks, and
+expected evidence and gaps. For small tasks, combine relevant fields into a few
+sentences. Headings are guidance, not a schema or dispatch gate; this is not a
+separate spec or approval step.
+
+Prefer confirmed paths and the smallest check that answers the question. Stop
+acquisition when acceptance has sufficient evidence; do not scan an entire SDK
+for a narrow compatibility question. After a missing-path error, use a confirmed
+package location or one bounded discovery check instead of repeating guesses.
+Finish independent permitted checks when one source is unavailable; report the
+gap without widening scope. Request a concise synthesis, not arbitrary token or
+line quotas. Parent verifies evidence and acceptance; the template alone cannot
+guarantee quality.
 
 ## Flow
 

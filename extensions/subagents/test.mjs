@@ -6,7 +6,8 @@ import { join } from "node:path";
 import { PassThrough } from "node:stream";
 import test from "node:test";
 import subagents, {
-  allocateFairBudgetCaps,
+  composeParallelResult,
+  formatResultForParent,
   buildPiArgs,
   createExecutionGate,
   DEFAULT_MAX_CONCURRENCY,
@@ -25,7 +26,6 @@ import environmentInspect, {
   redactSensitiveText,
 } from "./tools/environment-inspect.ts";
 import { dangerousCommandReason } from "./tools/safe-bash.ts";
-import { SUBAGENT_RESULT_BUDGET } from "./text-budget.ts";
 
 function profiles() {
   return new Map(loadAgents().map((agent) => [agent.name, agent]));
@@ -136,12 +136,61 @@ test("clamps concurrency and gives the worker enough time for bounded edits", ()
   assert.equal(WORKER_SUBAGENT_TIMEOUT_MS, 2 * DEFAULT_SUBAGENT_TIMEOUT_MS);
 });
 
-test("redistributes unused aggregate budget without hiding a sibling", () => {
-  assert.deepEqual(allocateFairBudgetCaps([100, 20_000], 22_000, 2_048), [100, 20_000]);
-  const caps = allocateFairBudgetCaps([10_000, 10_000, 10_000, 100], 22_000, 2_048);
-  assert.equal(caps[3], 100);
-  assert.equal(caps.reduce((sum, cap) => sum + cap, 0), 22_000);
-  assert.ok(caps.slice(0, 3).every((cap) => cap > 2_048));
+test("preserves full parallel results, ordering, failures, and completeness", () => {
+  const outputs = ["證據🧪\n".repeat(2000), "long evidence\n".repeat(3000), "", "last sibling"];
+  const results = outputs.map((output, index) => ({
+    agent: `child-${index}`, output, exitCode: index === 1 ? 1 : 0, outputComplete: index !== 1,
+  }));
+  const response = composeParallelResult(results);
+  assert.equal(response.content[0].text, results.map((result) =>
+    `## ${result.agent}${result.exitCode !== 0 ? " (FAILED)" : ""}\n\n${formatResultForParent(result)}`,
+  ).join("\n\n---\n\n"));
+  assert.ok(Buffer.byteLength(response.content[0].text) > 24 * 1024);
+  assert.ok(response.content[0].text.split("\n").length > 600);
+  assert.deepEqual(results.map((result) => result.output), outputs);
+  assert.equal(response.details.contentComplete, false);
+  results[1].outputComplete = true;
+  assert.equal(composeParallelResult(results).details.contentComplete, true);
+});
+
+test("returns redacted error feedback even when the child omits its errors", () => {
+  const result = {
+    agent: "scout", exitCode: 0, output: "Evidence collected", outputComplete: true,
+    progress: { status: "completed", toolErrors: [
+      { tool: "read", diagnostic: "Path not found: example/missing" },
+      { tool: "grep", diagnostic: "password=do-not-print" },
+    ] },
+  };
+  const text = formatResultForParent(result);
+  assert.match(text, /Evidence collected/);
+  assert.match(text, /completed with tool errors; verify recovery/);
+  assert.match(text, /read: Path not found/);
+  assert.match(text, /grep: .*REDACTED/);
+  assert.doesNotMatch(text, /do-not-print/);
+  assert.match(text, /when the user has authorized/);
+  assert.match(composeParallelResult([result]).content[0].text, /Error feedback for parent/);
+  result.progress = {};
+  assert.equal(formatResultForParent(result), "Evidence collected");
+  for (const errorKind of ["provider", "process", "timeout", "abort"]) {
+    result.progress = { errorKind, error: "token=do-not-print" };
+    const failure = formatResultForParent(result);
+    assert.match(failure, /Outcome: failed/);
+    assert.ok(failure.includes(`- ${errorKind}:`));
+    assert.doesNotMatch(failure, /do-not-print/);
+    assert.match(composeParallelResult([result]).content[0].text, /scout \(FAILED\)/);
+  }
+  result.exitCode = 2;
+  result.progress = {};
+  assert.match(formatResultForParent(result), /Child exited with code 2/);
+});
+
+test("task contract guidance does not add required fields or completion hooks", () => {
+  const { tool, handlers } = extensionHarness();
+  assert.match(tool.promptGuidelines.join("\n"), /GOAL, CONTEXT, SCOPE, CONSTRAINTS, APPROACH, ACCEPTANCE, RETURN/);
+  assert.match(tool.promptGuidelines.join("\n"), /not an execution gate/);
+  assert.equal(tool.parameters.properties.task.type, "string");
+  assert.equal(tool.parameters.properties.task.minLength, 1);
+  assert.equal(handlers.size, 0);
 });
 
 test("prevents worker execution from overlapping sibling subagent calls", () => {
@@ -501,6 +550,10 @@ test("redacts child tool previews and retains bounded tool errors", async () => 
   assert.doesNotMatch(result.progress.recentTools[0].args, /do-not-print/);
   assert.match(result.progress.lastToolError, /REDACTED/);
   assert.match(result.progress.lastToolError, /validation failed/);
+  assert.equal(result.progress.toolErrors.length, 1);
+  assert.equal(result.progress.toolErrors[0].tool, "safe_bash");
+  assert.match(formatResultForParent(result), /completed with tool errors/);
+  assert.doesNotMatch(formatResultForParent(result), /do-not-print/);
   assert.doesNotMatch(result.progress.lastToolError, /do-not-print/);
 });
 
@@ -566,9 +619,9 @@ test("parses a successful fake child result without a provider call", async () =
   assert.equal(result.usage.turns, 1);
 });
 
-test("redacts and bounds a large child response with explicit completeness", async () => {
+test("redacts but preserves a large child response with explicit completeness", async () => {
   const scout = profiles().get("scout");
-  const childText = `password=do-not-print\n${"evidence-line\n".repeat(2000)}final conclusion`;
+  const childText = `password=do-not-print\n${"證據🧪 evidence-line\n".repeat(2000)}final conclusion`;
   const proc = fakeProcess({
     successEvent: {
       type: "message_end",
@@ -587,13 +640,33 @@ test("redacts and bounds a large child response with explicit completeness", asy
       return proc;
     },
   });
-  assert.equal(result.outputComplete, false);
-  assert.ok(result.outputStats.sourceBytes > result.outputStats.emittedBytes);
-  assert.ok(Buffer.byteLength(result.output, "utf8") <= SUBAGENT_RESULT_BUDGET.maxBytes);
-  assert.match(result.output, /content_complete=false/);
+  assert.equal(result.outputComplete, true);
+  assert.equal(result.output, redactSensitiveText(childText));
+  assert.equal(result.outputStats.sourceBytes, result.outputStats.emittedBytes);
+  assert.equal(result.outputStats.sourceLines, result.outputStats.emittedLines);
+  assert.ok(Buffer.byteLength(result.output, "utf8") > 16 * 1024);
+  assert.ok(result.output.split("\n").length > 400);
+  assert.doesNotMatch(result.output, /content_complete=false/);
   assert.match(result.output, /final conclusion/);
   assert.match(result.output, /REDACTED/);
   assert.doesNotMatch(result.output, /do-not-print/);
+});
+
+test("distinguishes a recovered task from a failed task in tool-error display", () => {
+  const tool = toolHarness();
+  const theme = { fg: (_color, text) => text, bold: (text) => text };
+  const result = {
+    agent: "scout", task: "Inspect a known path", output: "", usage: {},
+    progress: { status: "completed", toolCount: 2, tokens: 10, durationMs: 20,
+      recentTools: [], lastToolError: "Path not found: example/missing" },
+  };
+  const render = () => tool.renderResult(
+    { details: { mode: "single", results: [result] } }, { expanded: true }, theme,
+  ).render(120).join("\n");
+  assert.match(render(), /Last tool error \(task recovered\): Path not found/);
+  result.progress.status = "failed";
+  assert.match(render(), /Last tool error: Path not found/);
+  assert.doesNotMatch(render(), /task recovered/);
 });
 
 test("times out a child and escalates from SIGTERM to SIGKILL", async () => {
@@ -610,6 +683,8 @@ test("times out a child and escalates from SIGTERM to SIGKILL", async () => {
   assert.equal(result.progress.status, "failed");
   assert.equal(result.progress.timeoutMs, 5);
   assert.equal(result.progress.timedOut, true);
+  assert.equal(result.progress.errorKind, "timeout");
+  assert.match(formatResultForParent(result), /- timeout:/);
   assert.match(result.progress.error, /Subagent timed out after/);
 });
 
@@ -629,4 +704,6 @@ test("propagates an existing parent abort to the child", async () => {
   assert.equal(result.exitCode, 1);
   assert.equal(result.progress.status, "failed");
   assert.equal(result.progress.error, "Subagent aborted by parent request");
+  assert.equal(result.progress.errorKind, "abort");
+  assert.match(formatResultForParent(result), /- abort:/);
 });

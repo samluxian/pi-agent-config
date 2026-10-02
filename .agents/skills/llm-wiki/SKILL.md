@@ -35,8 +35,9 @@ approval boundary.
    `references/private-to-synthetic.md`.
 2. Choose one atomic note and one topic. Update an existing note when it has the
    same mechanism and scope; do not create near-duplicates.
-3. Propose the note path, evidence grade, sources, synthetic transformation when
-   applicable, index entry, and validation. Wait for explicit approval.
+3. Identify the note path, evidence grade, sources, synthetic transformation when
+   applicable, index entry, and validation. Follow the root authorization contract:
+   proceed for requested note edits; do not turn a lookup into an unsolicited write.
 4. Create the note from the narrowest template in `assets/`, update exactly one
    topic index, and add a root topic only when no existing topic applies.
 5. Write all wiki prose and metadata in English. Read the pinned

@@ -151,6 +151,12 @@ Parent 保留：
 
 Child 只執行 task 內寫明的工作。啟動 child 不代表把 parent 的權限或責任一起交出去。
 
+Parent 使用[輕量任務契約](../../.agents/skills/orchestrator/assets/task-contract.md)交代
+`GOAL`、`CONTEXT`、`SCOPE`、`CONSTRAINTS`、`APPROACH`、`ACCEPTANCE`、`RETURN`。
+小任務可以合併欄位；這是提示指引，不是新的 schema gate、spec 或重複批准流程。
+Child 回報結論、可查證來源、完成條件狀態、驗證與缺口；parent 仍需核對。
+優先使用已確認路徑，證據足夠就停止，不為一個窄問題掃描整套 SDK。
+
 `worker` profile 雖然有 `write` 和 `edit`，extension 不會從自然語言中自行證明使用者已批准，
 也不會自動判斷 file ownership 是否合理。這些條件必須由 parent 在呼叫前確認並寫進 task。
 如果 parent 沒有完成這一步，不能把 worker 的 prompt 當成 approval mechanism。
@@ -187,13 +193,15 @@ Child 使用 JSON mode，stdout 會輸出一連串 events。Extension 解析這�
 
 執行期間，extension透過tool update把簡短進度交給parent。Child結束後，只取最後一段
 assistant text；final image blocks不會直接轉送，child必須先把相關image evidence寫成文字結論。
-文字先redact再透過subagents的UTF-8-safe budget處理：單一child最多400行／16 KiB；
-parallel aggregate最多600行／24 KiB，先為每個child保留公平份額，再把短結果未使用的容量分給
-較長結果，避免一個verbose結果隱藏其他task。Head與tail evidence都保留。
+文字先 redact，extension 不再依行數或 bytes 截斷單一 child 或 parallel aggregate。
+Parallel 結果保留輸入順序、各 child 的完整文字與失敗標記。較大的回報會增加 parent context
+與 token 成本；child 應整理證據而不是直接貼 raw logs。
 
-`details.results`記錄`outputComplete`及source/emitted lines與bytes；model-facing aggregate另有
-`contentComplete`。任何省略都會出現`content_complete=false` marker。Temporary child session
-結束後刪除，不另存raw response。Parent model看到bounded result，不是child conversation。
+`details.results` 保留 `outputComplete` 及 redact 後的 source/emitted lines 與 bytes；
+model-facing aggregate 另有 `contentComplete`。這些只表示 extension 是否省略 final text，
+不代表任務成功、證據充分或 child tools 沒有截斷資料。Environment tools、進度預覽、Pi
+compaction 與 provider/model 的限制仍獨立存在。Temporary child session 結束後刪除，
+不另存 raw response。Parent 收到 final text，不是完整 child conversation。
 
 ## Timeout、abort 與錯誤
 
@@ -207,8 +215,22 @@ parallel aggregate最多600行／24 KiB，先為每個child保留公平份額，
 Parent 中止 tool call 或 child 超時時，extension 先送 `SIGTERM`，等待三秒後仍未結束才送
 `SIGKILL`。Spawn error、provider error、非零 exit code、timeout 與 abort 都會讓該 task
 標成 failed。單次tool error會保留在progress中；若child之後成功恢復且process正常結束，
-不會僅因該次tool error把整個task改標failed。Parallel mode會保留每一項task的成功或失敗
+不會僅因該次tool error把整個task改標failed。UI 保留最後一次 tool error 供診斷，
+成功結束時會標示 task 已恢復，不表示整個 task 失敗。Parallel mode會保留每一項task的成功或失敗
 結果，不會因為其中一項失敗就假裝整批成功。
+
+## 錯誤回饋與修正
+
+Extension 會將 tool errors 主動附在 single／parallel 的 model-facing 回報，即使 child
+final text 沒提到錯誤，parent 也會收到。每筆保留 tool 名稱及 redacted diagnostic；
+provider、process、timeout、abort 另外標示。成功結束但曾有 tool error，會要求 parent
+依 acceptance 核對是否真的恢復，不把 process completed 當成問題已解決。
+
+Parent 先以最小查證區分 task/input、environment/provider 與 extension 缺陷。
+使用者已授權 subagent extension 維護時，`extensions/subagents/` 內有證據支持的
+local 修正不重複詢問；回饋本身不是授權，也不啟動 child 自我修改或無限修復循環。
+保留使用者變更、驗證修正並回報；擴大範圍、安全限制及 remote mutation 規則不變。
+這是可觀測的 feedback 流程，不保證模型會自動正確診斷或修復每個錯誤。
 
 ## 安裝與驗證
 

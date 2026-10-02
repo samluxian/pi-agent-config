@@ -34,27 +34,27 @@ Git 或 remote 操作。完整 authority boundary 以 [`AGENTS.md`](AGENTS.md) �
 | [`extensions/`](extensions/) | 在 Pi runtime 中註冊事件、指令或工具的程式。 |
 | [`scripts/`](scripts/) | Workspace 初始化與 deterministic checks。 |
 
-這些規則採用輕量 Spec-Driven Development（SDD），先對焦規格，再實作：
+預設直接依使用者的修改要求實作，不強制先寫 spec 或再確認一次：
 
 ```text
-唯讀調查 → 對焦 spec → 明確核准 → 重新檢查 target repo branch/status → 依 spec 修改 → 按驗收條件驗證
+調查 → 重新檢查 target repo branch/status → 範圍內修改 → 驗證
 ```
 
-修改前，Agent 會提出問題與目標、範圍與不做的事、預期行為與驗收條件、假設與待確認問題，
-以及實作方向、受影響檔案與驗證方式。會影響範圍、行為或驗收的問題必須先釐清；最初的任務
-請求不等於核准尚未提出的 spec。
+直接要求修改即授權該 repository 與範圍內的本機檔案變更，也可以建立實作所需的新檔，
+不必先由使用者建立或追蹤。查詢、診斷、review 或規劃本身不授權實作。目標或安全條件
+不明時仍須先釐清；若要擴大範圍或改變約定行為、驗收條件，才停止並詢問。範圍內的
+實作細節不需要反覆核准。
 
-小修改使用對話中的短 spec。例如修正文案，可直接列出目標段落、保留內容與驗收方式，
-等使用者確認後修改，不必產生多份文件。跨檔案、架構或高風險修改則在核准後、實作前，
-依下方文件 ownership 規則將 spec 保存至 workspace `docs/`。純查詢、研究與唯讀診斷
-不需要等待 spec 核准。
+只有使用者明確要求「寫 spec」或「用 spec 規劃」時，才使用
+[`spec-planning`](.agents/skills/spec-planning/SKILL.md)；也可用 `/skill:spec-planning` 明確載入。
+Skill 使用固定的 [spec 模板](.agents/skills/spec-planning/assets/spec-template.md)，
+規劃完成後等待使用者要求實作，不把「寫 spec」當成修改產品檔案的授權。
+普通修改不自動產生 spec 文件；需要保存 spec 時遵守下方文件 ownership 規則。
 
-實作若需要改變行為、範圍或驗收條件，Agent 會停止、提出 spec 差異並重新取得核准；
-已核准範圍內的實作細節不必反覆詢問。完成後逐項回報驗收條件是否達成、未達成或尚未驗證，
-並附上證據或缺口。
-
-常駐規則由 `AGENTS.md` 管理；既有領域 skills 補充設計與驗證，不另設 SDD skill。
-這是文字行為契約，不是 runtime 強制攔截機制，也不放寬既有安全與修改權限。
+常駐授權與安全規則由 `AGENTS.md` 管理；領域 skills 補充設計與驗證，不另設重複核准。
+Secret、credential、generated／ignored 檔案、branch、repository ownership、Git 與遠端
+mutation 的限制不變。這是文字行為契約，不是 runtime 強制攔截機制。
+完成後依使用者要求或已核准 spec 回報驗收結果與證據缺口。
 
 Kubernetes、Argo CD、GitLab/GitHub、GCP 與 Git remotes 對 agent 維持唯讀。交付變更寫入
 repository 的 desired state，再走原有 MR、CI 與 GitOps 流程。Agent 只在明確需求、既有 contract
@@ -162,6 +162,31 @@ nvm use default
 
 ## 初始化
 
+### 由 Agent 啟動
+
+明確要求「初始化 workspace」或使用 `/skill:workspace-init`，由
+[`workspace-init`](.agents/skills/workspace-init/SKILL.md) 沿用既有 initializer，
+再讓目前的 agent 盤點 workspace 直接子專案，建立本機 `.pi/APPEND_SYSTEM.md`。
+不額外啟動付費 LLM session；只要求建立背景時，不執行套件安裝。
+
+背景只記錄有證據的 project path、責任、工具與使用者別名，不記錄 secrets、state、
+部署狀態或任務 spec。內容上限為 80 行／6 KiB；普通初始化保留既有背景，只有明確要求
+更新時才調整。私有內容不得複製到本公開 repository。
+
+寫入前由唯讀 helper 檢查 Git 與 symlink 邊界：destination 必須在本公開 repository 外；
+如果位於 Git repository，必須事先 ignored 且 untracked，否則停止，不代改 ignore 規則
+或 Git。Workspace 不在 Git 內只能證明目前沒有 Git owner，不能保證未來不被加入 Git。
+Workspace 定義與 initializer 一致：明確指定的目錄，或本 repository 的上一層；
+不取 Git root，也不要求 workspace 或子專案被 Git 追蹤。不檢查父層 `.git` 目錄；
+Git 明確回報不是 repository 時即可接受，其他 Git 錯誤仍停止。
+Destination 的 Git privacy 檢查獨立保留，不用來決定 workspace 路徑。
+
+Pi 在 project trust 後載入此檔；project `APPEND_SYSTEM.md` 會取代同名 global 檔案，
+不是合併。建立後需 reload 並以新 context 驗證背景確實生效。Shell initializer 本身
+不產生背景，也不會自行叫用 agent；下方 CLI 路徑保留原行為。
+
+### 直接使用 CLI
+
 在這個 repository 執行：
 
 ```bash
@@ -265,7 +290,15 @@ session 要執行：
 ## Token 與驗證成本
 
 [`config/pi-settings-baseline.json`](config/pi-settings-baseline.json) 把 routine work 的
-thinking 預設設為 `low`，並顯示明顯的 prompt-cache miss。Pi 的 project settings 會覆蓋
+thinking 預設設為 `low`，並顯示明顯的 prompt-cache miss；不再覆寫 `thinkingBudgets`。
+這會沿用 Pi/provider 的預設預算，不代表無限 token。Baseline 是 opt-in，既有 workspace
+若曾採用自訂預算，需自行移除已合併的覆寫；本次不修改本機 settings。
+Subagent final text 與 parallel aggregate 不再由 extension 截斷；較長回報會增加 context 成本。
+Parent 以[輕量任務契約](.agents/skills/orchestrator/assets/task-contract.md)交代目標、範圍、
+完成條件與回報，不增加格式 blocker。Tool／provider／process／timeout／abort 錯誤會
+主動回填給 parent；已授權的 subagent extension local 修正不重複詢問，但需先查證原因
+並驗證修正，不啟動無限自動修復。逾時、併發、安全權限與底層工具限制仍保留。
+Pi 的 project settings 會覆蓋
 全域設定；要在既有 workspace 採用最小設定，可把以下 keys 合併進
 `<workspace-root>/.pi/settings.json`，不要覆蓋原有 packages 或個人選項：
 
@@ -317,6 +350,8 @@ skill-owned deterministic helper 時，優先使用單一 bounded helper，避�
 - [`.agents/skills/no-ai-slop-zh-tw/README.md`](.agents/skills/no-ai-slop-zh-tw/README.md) — external skill，繁體中文 AI 腔偵測與編修
 - [`.agents/skills/orchestrator/README.md`](.agents/skills/orchestrator/README.md)
 - [`.agents/skills/pi-agent-maintenance/README.md`](.agents/skills/pi-agent-maintenance/README.md)
+- [`.agents/skills/spec-planning/SKILL.md`](.agents/skills/spec-planning/SKILL.md) — 明確要求寫 spec 時使用固定模板；支援 `/skill:spec-planning`
+- [`.agents/skills/workspace-init/SKILL.md`](.agents/skills/workspace-init/SKILL.md) — agent-assisted 初始化與本機私有 workspace 背景；支援 `/skill:workspace-init`
 - [`.agents/skills/runtime-dependency-diagnostics/README.md`](.agents/skills/runtime-dependency-diagnostics/README.md)
 - [`.agents/skills/service-architecture-mapping/README.md`](.agents/skills/service-architecture-mapping/README.md)
 - [`.agents/skills/shared-helm-chart-maintenance/README.md`](.agents/skills/shared-helm-chart-maintenance/README.md)
