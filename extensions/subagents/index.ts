@@ -1,8 +1,8 @@
 /**
  * Minimal subagents extension.
  *
- * Registers a single `subagent` tool with bounded evidence agents, an
- * read-only evidence agents and one approval-gated editing worker.
+ * Registers a single `subagent` tool with bounded read-only evidence agents;
+ * the parent owns all edits.
  * Supports single and bounded parallel evidence execution with verbal output only.
  */
 import { spawn } from "node:child_process";
@@ -104,33 +104,9 @@ const CONFIG_PATH = path.join(EXT_DIR, "config.json");
 export const DEFAULT_MAX_CONCURRENCY = 4;
 export const MAX_SUBAGENT_TASKS = 4;
 export const DEFAULT_SUBAGENT_TIMEOUT_MS = 5 * 60 * 1000;
-export const WORKER_SUBAGENT_TIMEOUT_MS = 10 * 60 * 1000;
 const DEFAULT_TERMINATE_GRACE_MS = 3000;
-const ALLOWED_AGENT_NAMES = new Set(["scout", "researcher", "environment-scout", "worker"]);
+const ALLOWED_AGENT_NAMES = new Set(["scout", "researcher", "environment-scout"]);
 const THINKING_LEVELS = new Set<ThinkingLevel>(["off", "minimal", "low", "medium", "high", "xhigh", "max"]);
-
-export function createExecutionGate() {
-	let active = 0;
-	let exclusiveRole: "worker" | undefined;
-
-	return {
-		enter(role?: "worker"): (() => void) | undefined {
-			if (exclusiveRole || (role && active > 0)) return undefined;
-			active++;
-			if (role) exclusiveRole = role;
-			let released = false;
-			return () => {
-				if (released) return;
-				released = true;
-				active--;
-				if (role) exclusiveRole = undefined;
-			};
-		},
-		state() {
-			return { active, exclusiveRole };
-		},
-	};
-}
 
 export function normalizeConfig(value: unknown): ExtensionConfig {
 	const raw = value && typeof value === "object"
@@ -171,8 +147,6 @@ const CUSTOM_TOOL_EXTENSIONS: Record<string, string> = {
 	get_search_content: WEB_ACCESS_EXTENSION,
 	kubectl_inspect: path.join(TOOLS_DIR, "environment-inspect.ts"),
 	gcloud_inspect: path.join(TOOLS_DIR, "environment-inspect.ts"),
-	safe_bash: path.join(TOOLS_DIR, "safe-bash.ts"),
-	subagent: path.join(EXT_DIR, "index.ts"),
 };
 
 // ── Agent Discovery & Registration ────────────────────────────────────
@@ -191,7 +165,7 @@ function parseAgentProfile(filePath: string): AgentConfig {
 		throw new Error(`Invalid subagent profile: ${filePath}. name, description, model, and thinking are required.`);
 	}
 	if (!ALLOWED_AGENT_NAMES.has(name)) {
-		throw new Error(`Unsupported subagent profile: ${name}. Allowed agents: scout, researcher, environment-scout, worker.`);
+		throw new Error(`Unsupported subagent profile: ${name}. Allowed agents: scout, researcher, environment-scout.`);
 	}
 	const subagentAgents = parseAgentList(frontmatter.subagent_agents);
 	return {
@@ -512,9 +486,7 @@ export async function runSubagent(
 		onUpdate?.(progress);
 	}, 150);
 
-	const defaultTimeoutMs = agent.name === "worker"
-		? WORKER_SUBAGENT_TIMEOUT_MS
-		: DEFAULT_SUBAGENT_TIMEOUT_MS;
+	const defaultTimeoutMs = DEFAULT_SUBAGENT_TIMEOUT_MS;
 	const timeoutMs = Math.max(1, options.timeoutMs ?? defaultTimeoutMs);
 	progress.timeoutMs = timeoutMs;
 	const terminateGraceMs = Math.max(0, options.terminateGraceMs ?? DEFAULT_TERMINATE_GRACE_MS);
@@ -744,7 +716,7 @@ function renderAgentProgress(r: AgentResult, theme: Theme, expanded: boolean, wi
 
 type SubagentTask = { agent: string; task: string; cwd?: string };
 type SubagentParams = { agent?: string; task?: string; tasks?: SubagentTask[]; cwd?: string };
-type ExecutionDependencies = { agents: AgentConfig[]; maxConcurrency: number; gate: ReturnType<typeof createExecutionGate> };
+type ExecutionDependencies = { agents: AgentConfig[]; maxConcurrency: number };
 
 function availableAgentNames(agents: AgentConfig[]): string {
 	return agents.map((agent) => agent.name).join(", ") || "none";
@@ -770,7 +742,6 @@ function validateParallelTasks(tasks: SubagentTask[], agents: AgentConfig[]): vo
 	if (tasks.length > MAX_SUBAGENT_TASKS) throw new Error(`Too many subagent tasks: ${tasks.length}. Maximum is ${MAX_SUBAGENT_TASKS}.`);
 	for (const task of tasks) {
 		requireAgent(agents, task.agent);
-		if (task.agent === "worker") throw new Error("Worker is single-mode only to prevent concurrent repository commands or edits.");
 	}
 }
 
@@ -806,21 +777,14 @@ async function executeSubagent(params: SubagentParams, signal: AbortSignal | und
 	const hasParallel = (params.tasks?.length ?? 0) > 0;
 	const hasSingle = Boolean(params.agent && params.task);
 	if (Number(hasParallel) + Number(hasSingle) !== 1) throw new Error("Provide exactly one mode: (agent + task) for single mode, or tasks[] for parallel mode.");
-	const release = dependencies.gate.enter(hasSingle && params.agent === "worker" ? "worker" : undefined);
-	if (!release) throw new Error("Worker single-mode execution cannot overlap another subagent call.");
-	try {
-		return await (hasParallel
-			? executeParallel(params.tasks!, cwd, signal, onUpdate, dependencies)
-			: executeSingle(params.agent!, params.task!, params.cwd ?? cwd, signal, onUpdate, dependencies.agents));
-	} finally {
-		release();
-	}
+	return hasParallel
+		? executeParallel(params.tasks!, cwd, signal, onUpdate, dependencies)
+		: executeSingle(params.agent!, params.task!, params.cwd ?? cwd, signal, onUpdate, dependencies.agents);
 }
 
 export default function (pi: ExtensionAPI) {
 	const config = loadConfig();
 	const maxConcurrency = config.maxConcurrency;
-	const executionGate = createExecutionGate();
 	let agents = loadAgents();
 	const childAllowlist = process.env.PI_SUBAGENT_ALLOWED
 		?.split(",")
@@ -834,23 +798,23 @@ export default function (pi: ExtensionAPI) {
 		name: "subagent",
 		label: "Subagent",
 		description:
-			"Run scout, researcher, or environment-scout for bounded read-only evidence, or worker for an explicitly approved isolated file edit. Include all context because children receive no parent-session context.",
-		promptSnippet: "Run bounded evidence or an approval-gated worker task",
+			"Run scout, researcher, or environment-scout for bounded read-only evidence. The parent owns edits. Include all context because children receive no parent-session context.",
+		promptSnippet: "Run bounded read-only evidence tasks",
 		promptGuidelines: [
-			"Use direct read/fetch tool calls for simple known-path I/O instead of subagent.",
-			"Use subagent by default when read-only evidence acquisition requires multiple searches or reads, covers several large sources, or would fill the parent context with replaceable raw output. Also use it for explicit delegation requests.",
-			"Keep planning, decisions, approval context, evidence reconciliation, validation responsibility, and final delivery judgment in the parent.",
+			"Use direct read/fetch tool calls for simple known-path I/O (one or two small reads) instead of subagent.",
+			"Use subagent when read-only evidence needs multiple searches or reads, spans large sources, or would fill parent context with replaceable output; also use it for explicit delegation. Give scout a confirmed repository/directory, precise question, bounded search depth, and concise evidence format. Split only independent searches into parallel tasks.",
+			"Keep planning, decisions, approval context, evidence reconciliation, validation responsibility, and final delivery judgment in the parent; the parent owns edits.",
 			"Use a lightweight task contract: GOAL, CONTEXT, SCOPE, CONSTRAINTS, APPROACH, ACCEPTANCE, RETURN. Include relevant facts, exact targets, permitted operations, completion checks, and expected findings with evidence, gaps, and next action. Omit irrelevant fields; headings are guidance, not an execution gate.",
-			"Scout, researcher, and environment-scout are read-only. Environment-scout may use structured kubectl/gcloud context discovery, then inspect only explicit or safely discovered targets. Use worker only after explicit user approval and exact file ownership; never delegate mutation of remotes, infrastructure, cloud, secrets, or Git.",
-			"Worker is single-mode only. Use at most four parallel read-only tasks and include all paths, constraints, and required output because subagents receive no parent-session context.",
+			"Scout, researcher, and environment-scout are read-only. Environment-scout may use structured kubectl/gcloud context discovery, then inspect only explicit or safely discovered targets. Never delegate mutations.",
+			"Use at most four parallel read-only tasks and include all paths, constraints, and required output because subagents receive no parent-session context.",
 			"Read error feedback in returned text, including recovered tool errors. Check causes before repairing; an existing user authorization for subagent extension maintenance covers in-scope local fixes without repeated approval. Error feedback itself is not approval or permission to widen scope or bypass safety and validation.",
 			"Prefer confirmed paths and the smallest useful check. Stop acquisition when acceptance has sufficient evidence. After a missing-path error, use a confirmed location or one bounded discovery check instead of repeated guesses; finish independent permitted checks and report remaining gaps.",
 		],
 		parameters: Type.Object({
 			agent: Type.Optional(
-				Type.String({ description: "Agent to invoke: scout, researcher, environment-scout, or worker (SINGLE mode)", minLength: 1 }),
+				Type.String({ description: "Agent to invoke: scout, researcher, or environment-scout (SINGLE mode)", minLength: 1 }),
 			),
-			task: Type.Optional(Type.String({ description: "Bounded evidence, review, or edit task (SINGLE mode)", minLength: 1 })),
+			task: Type.Optional(Type.String({ description: "Bounded read-only evidence or review task (SINGLE mode)", minLength: 1 })),
 			tasks: Type.Optional(
 				Type.Array(
 					Type.Object({
@@ -868,7 +832,7 @@ export default function (pi: ExtensionAPI) {
 		}),
 
 		async execute(_toolCallId, params, signal, onUpdate, ctx) {
-			return executeSubagent(params, signal, onUpdate, ctx.cwd, { agents, maxConcurrency, gate: executionGate });
+			return executeSubagent(params, signal, onUpdate, ctx.cwd, { agents, maxConcurrency });
 		},
 
 		// ── Render: tool call header ──

@@ -7,11 +7,9 @@ accuracy requires it.
 
 ## Required Editing Pass
 
-Draft the complete technical meaning first. Read the installed
-`../../no-ai-slop/SKILL.md` and `../../no-ai-slop/eval.md` before editing;
-apply the edit workflow to the English wiki draft, not the upstream response
-format. The skill is a style editor, not a comprehensive grammar checker.
-Its source is Peter Yang's No AI Slop skill, pinned at commit
+Draft the complete technical meaning first. Apply the editing principles below
+to the English wiki draft. This is not a comprehensive grammar checker.
+The principles are adapted from Peter Yang's No AI Slop skill at commit
 [`000650b156983f5159695b441477f4e63b25dc85`](https://github.com/petergyang/no-ai-slop/blob/000650b156983f5159695b441477f4e63b25dc85/skills/no-ai-slop/SKILL.md):
 
 1. Preserve the claim, evidence grade, uncertainty, technical detail, and writer's
@@ -30,10 +28,8 @@ Its source is Peter Yang's No AI Slop skill, pinned at commit
    navigate evidence. Do not remove a necessary contrast or caveat merely because
    its grammar resembles a discouraged pattern.
 
-Run the installed `../../no-ai-slop/eval.md` after editing. Its pinned
-[upstream source](https://github.com/petergyang/no-ai-slop/blob/000650b156983f5159695b441477f4e63b25dc85/skills/no-ai-slop/eval.md)
-asks whether the edit preserves meaning and voice, uses concrete facts and direct
-verbs, removes named slop patterns, and still reads naturally to a colleague.
+After editing, assess whether the text preserves meaning and voice, uses concrete
+facts and direct verbs, removes named slop patterns, and still reads naturally to a colleague.
 Fix every failed check before publishing the note.
 
 ## Deterministic And Human Checks

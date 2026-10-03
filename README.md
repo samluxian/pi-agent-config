@@ -45,11 +45,8 @@ Git 或 remote 操作。完整 authority boundary 以 [`AGENTS.md`](AGENTS.md) �
 不明時仍須先釐清；若要擴大範圍或改變約定行為、驗收條件，才停止並詢問。範圍內的
 實作細節不需要反覆核准。
 
-只有使用者明確要求「寫 spec」或「用 spec 規劃」時，才使用
-[`spec-planning`](.agents/skills/spec-planning/SKILL.md)；也可用 `/skill:spec-planning` 明確載入。
-Skill 使用固定的 [spec 模板](.agents/skills/spec-planning/assets/spec-template.md)，
-規劃完成後等待使用者要求實作，不把「寫 spec」當成修改產品檔案的授權。
-普通修改不自動產生 spec 文件；需要保存 spec 時遵守下方文件 ownership 規則。
+只有使用者明確要求「寫 spec」或「用 spec 規劃」時才撰寫規格；
+規劃完成後等待使用者要求實作。普通修改不自動產生 spec 文件。
 
 常駐授權與安全規則由 `AGENTS.md` 管理；領域 skills 補充設計與驗證，不另設重複核准。
 Secret、credential、generated／ignored 檔案、branch、repository ownership、Git 與遠端
@@ -89,34 +86,20 @@ kube context 名稱或登入身分可見的 GCP projects（可見不代表擁有
 `<organization>`、`<service>` 與 `example.test` 等 placeholders；私人 target-repository 證據
 只留在當次調查，不複製回本 repository。
 
-執行通用檢查：
-
-```bash
-npm run test:public-safety
-```
-
-需要比對組織專用名詞時，把一行一個 literal term 的檔案放在 repository 外，再執行：
-
-```bash
-PI_PUBLIC_SAFETY_TERMS_FILE=/path/outside/repository/private-terms.txt \
-  npm run test:public-safety
-```
-
-Scanner 只回報類別與位置，不輸出 terms。完整規則與 Git history 限制見
-[public repository safety contract](.agents/skills/pi-agent-maintenance/references/public-repository-safety.md)。
+公開內容不得含私人識別資訊；刪除工作流程專用的檢查工具後，公開安全審查仍須人工執行。
+此要求不會清除既有 Git history。
 
 ## LLM Wiki
 
-[`knowledge/README.md`](knowledge/README.md) 是純 Markdown 知識庫入口。Agent 會先查 compact
-keyword indexes，只讀取命中的 topic index 與最多三篇 notes；wiki 不會整批放進 system prompt
-或 context。所有 wiki 內容與 note templates 使用英文，寫完後載入專案安裝的
-[英文 No AI Slop skill](.agents/skills/no-ai-slop/SKILL.md)，依
+[`knowledge/README.md`](knowledge/README.md) 是純 Markdown 知識庫入口。相關過往知識可能
+有幫助時，Agent 可選用 lookup：先查 compact keyword indexes，只讀取命中的 topic index
+與最多三篇 notes；wiki 不會整批放進 system prompt 或 context。所有 wiki 內容與 note templates 使用英文，寫完後依
 [wiki 寫作規格](.agents/skills/llm-wiki/references/writing-style.md) 做最小幅度風格編修與評估。
 它不是完整的文法檢查器，也不能刪除技術細節、證據等級或不確定性。
 
-查詢由 workspace contract 自動要求，不必載入 skill。新增或維護筆記時，明確使用
-`/skill:llm-wiki`。Wiki 只提供 prior knowledge；目前 artifact、configuration、deployment 與
-runtime state 仍須用對應 evidence layer 驗證。
+Lookup 是選用流程，不是一般排錯或外部研究前的必做關卡，也不授權寫入筆記。
+新增或維護筆記時，明確使用 `/skill:llm-wiki`。Wiki 只提供 prior knowledge；目前 artifact、
+configuration、deployment 與 runtime state 仍須用對應 evidence layer 驗證。
 
 ## Workspace 配置
 
@@ -164,9 +147,8 @@ nvm use default
 
 ### 由 Agent 啟動
 
-明確要求「初始化 workspace」或使用 `/skill:workspace-init`，由
-[`workspace-init`](.agents/skills/workspace-init/SKILL.md) 沿用既有 initializer，
-再讓目前的 agent 盤點 workspace 直接子專案，建立本機 `.pi/APPEND_SYSTEM.md`。
+明確要求「初始化 workspace」時，可使用下方 initializer，
+再由目前的 agent 盤點 workspace 直接子專案，建立本機 `.pi/APPEND_SYSTEM.md`。
 不額外啟動付費 LLM session；只要求建立背景時，不執行套件安裝。
 
 背景只記錄有證據的 project path、責任、工具與使用者別名，不記錄 secrets、state、
@@ -294,7 +276,7 @@ thinking 預設設為 `low`，並顯示明顯的 prompt-cache miss；不再覆�
 這會沿用 Pi/provider 的預設預算，不代表無限 token。Baseline 是 opt-in，既有 workspace
 若曾採用自訂預算，需自行移除已合併的覆寫；本次不修改本機 settings。
 Subagent final text 與 parallel aggregate 不再由 extension 截斷；較長回報會增加 context 成本。
-Parent 以[輕量任務契約](.agents/skills/orchestrator/assets/task-contract.md)交代目標、範圍、
+Parent 以輕量任務契約交代目標、範圍、
 完成條件與回報，不增加格式 blocker。Tool／provider／process／timeout／abort 錯誤會
 主動回填給 parent；已授權的 subagent extension local 修正不重複詢問，但需先查證原因
 並驗證修正，不啟動無限自動修復。逾時、併發、安全權限與底層工具限制仍保留。
@@ -328,31 +310,14 @@ skill-owned deterministic helper 時，優先使用單一 bounded helper，避�
 | Extension | 文件 |
 | --- | --- |
 | `subagents` | [`extensions/subagents/README.md`](extensions/subagents/README.md) |
+| `plan-mode` | [`extensions/plan-mode/README.md`](extensions/plan-mode/README.md) — `/plan` 限制成唯讀規劃；subagent 只允許 scout、environment-scout、researcher，執行需另行明確授權。 |
 
 ## Skill 入口
 
-每個 skill 的適用範圍、停止條件與流程由該目錄的 `SKILL.md` 管理。這裡只保留 repository-owned human-facing 入口，避免把工作流程複製到根 README。External skills 保留 upstream layout 與內容；英文 `no-ai-slop` 由 repository 固定 upstream commit
-`000650b156983f5159695b441477f4e63b25dc85` 的 `SKILL.md`、`eval.md` 與 MIT `LICENSE`，
-由 Pi 自動探索並用於 wiki 寫作流程；[`skills-lock.json`](skills-lock.json) 只作 installer inventory，
-目前只管理 `no-ai-slop-zh-tw`：
+每個 skill 的適用範圍、停止條件與流程由該目錄的 `SKILL.md` 管理。保留的 repository-owned skills：
 
-- [`.agents/skills/application-ci-delivery/SKILL.md`](.agents/skills/application-ci-delivery/SKILL.md) — application Jib／rootless BuildKit build與GitOps handoff隔離
-- [`.agents/skills/context-window-retrospective/README.md`](.agents/skills/context-window-retrospective/README.md) — 手動使用 `/skill:context-window-retrospective`
-- [`.agents/skills/developer-activity-summary/README.md`](.agents/skills/developer-activity-summary/README.md)
-- [`.agents/skills/gitops-repo-audit/README.md`](.agents/skills/gitops-repo-audit/README.md)
-- [`.agents/skills/gitops-service-delivery/README.md`](.agents/skills/gitops-service-delivery/README.md)
-- [`.agents/skills/gitops-state-diagnostics/README.md`](.agents/skills/gitops-state-diagnostics/README.md)
-- [`.agents/skills/helm-dependency-upgrade/README.md`](.agents/skills/helm-dependency-upgrade/README.md)
-- [`.agents/skills/kubernetes-platform-delivery/README.md`](.agents/skills/kubernetes-platform-delivery/README.md)
-- [`.agents/skills/llm-wiki/README.md`](.agents/skills/llm-wiki/README.md) — 手動使用 `/skill:llm-wiki`
-- [`.agents/skills/mr-summary/README.md`](.agents/skills/mr-summary/README.md)
-- [`.agents/skills/no-ai-slop/SKILL.md`](.agents/skills/no-ai-slop/SKILL.md) — pinned upstream external skill，英文風格編修
-- [`.agents/skills/no-ai-slop-zh-tw/README.md`](.agents/skills/no-ai-slop-zh-tw/README.md) — external skill，繁體中文 AI 腔偵測與編修
-- [`.agents/skills/orchestrator/README.md`](.agents/skills/orchestrator/README.md)
-- [`.agents/skills/pi-agent-maintenance/README.md`](.agents/skills/pi-agent-maintenance/README.md)
-- [`.agents/skills/spec-planning/SKILL.md`](.agents/skills/spec-planning/SKILL.md) — 明確要求寫 spec 時使用固定模板；支援 `/skill:spec-planning`
-- [`.agents/skills/workspace-init/SKILL.md`](.agents/skills/workspace-init/SKILL.md) — agent-assisted 初始化與本機私有 workspace 背景；支援 `/skill:workspace-init`
-- [`.agents/skills/runtime-dependency-diagnostics/README.md`](.agents/skills/runtime-dependency-diagnostics/README.md)
-- [`.agents/skills/service-architecture-mapping/README.md`](.agents/skills/service-architecture-mapping/README.md)
-- [`.agents/skills/shared-helm-chart-maintenance/README.md`](.agents/skills/shared-helm-chart-maintenance/README.md)
-- [`.agents/skills/terraform-repository-maintenance/README.md`](.agents/skills/terraform-repository-maintenance/README.md)
+- [Kubernetes platform guidance](.agents/skills/kubernetes-platform-guidance/README.md) — 資源設定、GitOps／Helm 關聯與唯讀診斷流程
+- [Terraform workflow guidance](.agents/skills/terraform-workflow-guidance/README.md) — 跨 repository 的 plan-first 流程
+- [Helm chart best practices](.agents/skills/helm-chart-best-practices/README.md) — 一般 chart 設計、render 與相容性驗證
+- [LLM wiki](.agents/skills/llm-wiki/README.md)
+- [MR summary](.agents/skills/mr-summary/README.md)

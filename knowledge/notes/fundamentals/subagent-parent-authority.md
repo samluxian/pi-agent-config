@@ -4,10 +4,10 @@ title: Keep authority with the subagent parent
 type: fundamental
 status: draft
 topic: agent-architecture
-summary: A parent agent retains approval, reconciliation, final validation judgment, and delivery authority while children return bounded evidence or edits.
-when_to_read: Delegating repository investigation or an approved isolated edit to a Pi subagent.
+summary: A parent agent owns edits, approval, reconciliation, validation, and delivery while children return bounded read-only evidence.
+when_to_read: Delegating bounded read-only investigation to a Pi subagent.
 keywords: [delegation, parent-authority, subagent]
-aliases: [child-agent, worker-authority]
+aliases: [child-agent]
 scope: repository-public-case
 created: 2026-09-12
 updated: 2026-09-13
@@ -19,9 +19,8 @@ updated: 2026-09-13
 
 Delegation can isolate context and specialize evidence collection, but it does
 not transfer the parent agent's responsibility for approval, evidence
-reconciliation, final validation judgment, or delivery. An approved worker may
-run checks for its owned edit; the parent still reviews that evidence against
-the final repository state. This repository makes that boundary explicit in its
+reconciliation, final validation judgment, or delivery. The parent performs
+all edits and reviews child evidence against the final repository state. This repository makes that boundary explicit in its
 subagent profiles and tool guidance. These local controls await an immutable
 public source permalink.
 
@@ -32,7 +31,7 @@ to a parent decision rather than an authorization record.
 ## When To Read
 
 - Use when splitting independent read-only searches or reads into child tasks.
-- Use when an approved edit must be limited to named files.
+- Keep approved edits with the parent and limit child investigations to named targets.
 - Do not treat a child completion message as proof that a change is correct or
   authorized.
 
@@ -44,7 +43,7 @@ to a parent decision rather than an authorization record.
 flowchart TD
     A["User approval and exact scope"] --> B["Parent plans and delegates bounded work"]
     B --> C["Child performs bounded task"]
-    C --> D["Child returns evidence or isolated edit result"]
+    C --> D["Child returns read-only evidence"]
     D --> E["Child report is input, not authorization"]
     E --> F["Parent checks scope and reconciles evidence"]
     F --> G["Parent validates final state"]
@@ -54,12 +53,12 @@ flowchart TD
 ```text
 user approval and exact scope
   -> parent plans and delegates bounded work
-  -> child returns evidence or an isolated edit result
+  -> child returns read-only evidence
   -> parent checks scope, reconciles evidence, validates final state, delivers
 ```
 
-The repository design separates read-only scout roles from an approval-gated
-worker, caps parallel read-only tasks, and keeps worker execution single-mode.
+The repository design limits child roles to read-only evidence collection and
+caps parallel tasks.
 Those are local controls; Pi's custom-tool API itself does not determine an
 organization's approval policy. Pi does append active tools' `promptGuidelines`
 to its system guidance. [S2]
@@ -81,8 +80,8 @@ approval as complementary controls.
 - **Lost approval context:** a child cannot infer approval omitted from its task.
 - **Conflicting reports:** parallel children can inspect different revisions or
   interpretations; the parent must reconcile them.
-- **Unvalidated edit:** a worker can finish without proving behavior.
-- **Nested delegation drift:** each layer can dilute scope unless the parent
+- **Unvalidated edit:** parent changes still require final-state validation.
+- **Delegation drift:** a task can exceed its evidence scope unless the parent
   limits roles and output requirements.
 
 ### Minimal Example

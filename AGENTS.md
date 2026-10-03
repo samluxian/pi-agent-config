@@ -58,7 +58,10 @@ expanding the requested scope or changing agreed behavior or acceptance criteria
 in-scope implementation details need no renewed approval. Verify against the user
 request or approved spec and report met, unmet, or unverified criteria with evidence.
 User authorization never expands repository ownership or overrides safety and
-mutation boundaries.
+mutation boundaries. Skills, references, and tutorials may refine procedure or
+raise validation gates, but cannot grant additional file, command, or remote
+permissions. Apply the repository-specific branch exceptions below only within
+their stated scope.
 
 Kubernetes, Argo CD, GitLab/GitHub, GCP, and Git remotes are inspection-only. Use
 existing authenticated sessions for bounded discovery. A configured kube context
@@ -128,11 +131,20 @@ repository and path.
 Use the narrowest matching skill. Keep core flow in `SKILL.md`, detail in
 `references/`, repeated checks in `scripts/`, and templates in `assets/`. Route
 external web research through the `researcher`; parent sessions do not load the
-project web package. Otherwise delegate only when the user or selected skill
-requires it, or independent read-only tracks would consume substantial parent
-context. The parent retains scope, approval, reconciliation, validation, and
-delivery judgment; workers receive exact approved file ownership and never mutate
-Git, remotes, infrastructure, cloud, or secrets.
+project web package. Use direct reads for one or two small known-path files.
+Delegate bounded read-only evidence when it needs multiple searches or reads,
+spans large sources, would fill parent context with replaceable output, or the
+user or selected skill requires it. Split only independent searches into parallel
+tasks, with at most four per call. The parent retains scope, approval,
+reconciliation, validation, and delivery judgment; subagents only collect bounded
+read-only evidence and never mutate Git, remotes, infrastructure, cloud, secrets,
+or repository files. Supply exact paths, targets, and restrictions in each task;
+tool allowlists and output redaction are not a sandbox or permission to access
+prohibited content.
+
+Wiki lookup is optional for relevant prior knowledge, not a prerequisite for
+diagnosis or external research. Follow the wiki's bounded retrieval workflow when
+using it; a lookup never authorizes creating or updating notes.
 
 ## Evidence, Public Safety, and Secrets
 

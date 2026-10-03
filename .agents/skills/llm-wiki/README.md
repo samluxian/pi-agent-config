@@ -15,8 +15,9 @@
 /skill:llm-wiki
 ```
 
-一般排錯不必手動載入 skill。Workspace contract 會要求 Agent 在外部研究前先執行 bounded
-lookup；查無適用筆記後才走 domain workflow 或外部研究。
+一般排錯可在相關過往知識有幫助時選用 bounded lookup，不必手動載入 skill。
+Lookup 不是 domain workflow 或外部研究前的必做關卡；查無適用筆記就繼續原流程，
+不掃描全部筆記，也不因查詢而建立或修改筆記。
 
 ## 漸進式檢索
 
@@ -42,7 +43,7 @@ freshness 判斷；aliases、狀態與人工 review 用來補足這些限制。
 
 - [`SKILL.md`](SKILL.md)：Agent retrieval 與維護流程。
 - [`references/note-contract.md`](references/note-contract.md)：metadata、內容與來源規格。
-- [`references/writing-style.md`](references/writing-style.md)：英文與 pinned No AI Slop 寫作規格；編修時載入已安裝的 [`no-ai-slop`](../no-ai-slop/SKILL.md) 與其 `eval.md`。
+- [`references/writing-style.md`](references/writing-style.md)：英文寫作與編修規格。
 - [`references/private-to-synthetic.md`](references/private-to-synthetic.md)：private 經驗的重新建構規則。
 - [`assets/fundamental-note.md`](assets/fundamental-note.md)：基礎知識模板。
 - [`assets/incident-note.md`](assets/incident-note.md)：事故／問題模板。
