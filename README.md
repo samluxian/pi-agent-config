@@ -29,7 +29,7 @@ Git 或 remote 操作。完整 authority boundary 以 [`AGENTS.md`](AGENTS.md) �
 | 路徑 | 責任 |
 | --- | --- |
 | [`AGENTS.md`](AGENTS.md) | 每輪都要遵守的安全、approval、workspace 與 evidence 規則。 |
-| [`.agents/skills/`](.agents/skills/) | Pi 依工作類型載入的專用流程。 |
+| [`.agents/skills/`](.agents/skills/) | Pi 依工作類型載入，或由使用者手動啟用的專用流程。 |
 | [`knowledge/`](knowledge/README.md) | Agent 先查 index、再按需讀取的純 Markdown LLM wiki。 |
 | [`extensions/`](extensions/) | 在 Pi runtime 中註冊事件、指令或工具的程式。 |
 | [`scripts/`](scripts/) | Workspace 初始化與 deterministic checks。 |
@@ -321,3 +321,9 @@ skill-owned deterministic helper 時，優先使用單一 bounded helper，避�
 - [Helm chart best practices](.agents/skills/helm-chart-best-practices/README.md) — 一般 chart 設計、render 與相容性驗證
 - [LLM wiki](.agents/skills/llm-wiki/README.md)
 - [MR summary](.agents/skills/mr-summary/README.md)
+- [Learn from work](.agents/skills/learn-from-work/README.md) — 手動啟用的實作後學習、理解檢查、練習與複習；不改變一般開發流程
+
+想學習 AI 剛完成的工作時，先在新增 Skill 後執行 `/reload`，再使用
+`/skill:learn-from-work`，也可在後面加上想深入的概念或「考我、先不要給答案」。
+此 Skill 使用 `disable-model-invocation: true`，不加入自動選用清單；預設只在聊天中
+教學及產出複習卡，不修改專案、不執行測試，也不自動保存學習紀錄。
