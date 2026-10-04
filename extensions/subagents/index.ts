@@ -140,7 +140,14 @@ const WEB_ACCESS_EXTENSION = path.join(
 	"pi-web-access",
 	"index.ts",
 );
+const CODE_INTELLIGENCE_EXTENSION = path.join(EXT_DIR, "..", "code-intelligence", "index.ts");
 const CUSTOM_TOOL_EXTENSIONS: Record<string, string> = {
+	code_index: CODE_INTELLIGENCE_EXTENSION,
+	code_index_status: CODE_INTELLIGENCE_EXTENSION,
+	code_query: CODE_INTELLIGENCE_EXTENSION,
+	code_context: CODE_INTELLIGENCE_EXTENSION,
+	code_impact: CODE_INTELLIGENCE_EXTENSION,
+	code_validate_change: CODE_INTELLIGENCE_EXTENSION,
 	web_search: WEB_ACCESS_EXTENSION,
 	source_check: WEB_ACCESS_EXTENSION,
 	fetch_content: WEB_ACCESS_EXTENSION,

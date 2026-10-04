@@ -128,9 +128,15 @@ prompt、model、thinking level 與 exact tool allowlist。
 
 | Role | Model | 可用 tools | 工作範圍 |
 | --- | --- | --- | --- |
-| `scout` | `openai-codex/gpt-6-luna` | `read`, `grep`, `find`, `ls` | 讀取 local repository，整理檔案、caller 與結構。 |
+| `scout` | `openai-codex/gpt-6-luna` | `read`, `grep`, `find`, `ls` 與六個 `code_*` intelligence tools | 讀取 local repository，整理檔案、caller 與結構。 |
 | `researcher` | `openai-codex/gpt-6-luna` | `web_search`, `source_check`, `fetch_content`, `get_search_content` | 搜尋外部資料並整理來源。 |
 | `environment-scout` | `openai-codex/gpt-6-luna` | `kubectl_inspect`, `gcloud_inspect` | 對明確指定的 Kubernetes 或 GCP 目標做 structured read-only inspection。 |
+
+Scout 的 `code_*` tools 明確載入 repository-owned
+[code-intelligence extension](../code-intelligence/README.md)。JS／TS／Java 結構主張應引用
+parser-backed evidence；缺少解析能力時回報 unknown，不靠命名猜測。Child 的 index 是
+process-local，不共用 parent snapshot；parent 應提供現有證據或明確允許對指定 repository
+建立全庫 map，不能讓原本 bounded file task 自動擴大成全庫掃描。
 
 `scout` 使用 `thinking: off`，預設快速、定向查找：先讀已確認路徑，未確認時只在指定目錄內搜尋；
 證據足夠就停，僅回傳必要行號、結論與缺口，不預設追完所有依賴或貼長 code snippets。

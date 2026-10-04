@@ -19,7 +19,7 @@ import { Key } from "@earendil-works/pi-tui";
 import { extractTodoItems, markCompletedSteps, type TodoItem } from "./utils.ts";
 
 // Tools
-const PLAN_MODE_TOOLS = ["read", "grep", "find", "ls", "subagent"];
+const PLAN_MODE_TOOLS = ["read", "grep", "find", "ls", "subagent", "code_index", "code_index_status", "code_query", "code_context", "code_impact", "code_validate_change"];
 const READ_ONLY_AGENTS = new Set(["scout", "environment-scout", "researcher"]);
 const NORMAL_MODE_TOOLS = ["read", "bash", "edit", "write"];
 const PLAN_MODE_DISABLED_TOOLS = new Set<string>(["edit", "write", "bash"]);

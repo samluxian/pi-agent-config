@@ -102,7 +102,7 @@ test("loads only three read-only profiles", () => {
   assert.deepEqual([...agents.keys()].sort(), ["environment-scout", "researcher", "scout"]);
   assert.equal(agents.get("scout").model, "openai-codex/gpt-6-luna");
   assert.equal(agents.get("scout").thinking, "off");
-  assert.deepEqual(agents.get("scout").tools, ["read", "grep", "find", "ls"]);
+  assert.deepEqual(agents.get("scout").tools, ["read", "grep", "find", "ls", "code_index", "code_index_status", "code_query", "code_context", "code_impact", "code_validate_change"]);
   assert.equal(agents.get("scout").subagentAgents, undefined);
   assert.match(agents.get("scout").systemPrompt, /Default to quick, targeted lookup/);
   assert.match(agents.get("scout").systemPrompt, /Stop once enough\s+evidence answers the question/);
@@ -222,7 +222,8 @@ async function assertChildArguments() {
       assert.equal(args[args.indexOf("--thinking") + 1], agent.thinking);
 
       if (agent.name === "scout") {
-        assert.equal(args[args.indexOf("--tools") + 1], "read,grep,find,ls");
+        assert.equal(args[args.indexOf("--tools") + 1], "read,grep,find,ls,code_index,code_index_status,code_query,code_context,code_impact,code_validate_change");
+        assert.equal(args.filter((arg) => arg.endsWith("/code-intelligence/index.ts")).length, 1);
         assert.equal(childEnv, undefined);
       } else if (agent.name === "researcher") {
         assert.equal(args[args.indexOf("--tools") + 1], "web_search,source_check,fetch_content,get_search_content");

@@ -2,10 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import planMode from "./index.ts";
 
-function harness() {
+function harness(extraTools = []) {
   const commands = new Map();
   const handlers = new Map();
-  let active = ["read", "edit", "write", "bash", "subagent", "other_tool"];
+  let active = ["read", "edit", "write", "bash", "subagent", "other_tool", ...extraTools];
   const entries = [];
   const pi = {
     registerFlag() {},
@@ -53,6 +53,14 @@ test("plan mode blocks worker in single and parallel requests, including nested 
     assert.equal((await call(name, {}))?.block, true);
   }
   assert.equal(await call("read", {}), undefined);
+});
+
+test("plan mode preserves and permits read-only code intelligence tools", async () => {
+  const tools = ["code_index", "code_index_status", "code_query", "code_context", "code_impact", "code_validate_change"];
+  const h = harness(tools);
+  await h.commands.get("plan")("", h.ctx);
+  assert.deepEqual(h.active, ["read", "subagent", ...tools]);
+  for (const toolName of tools) assert.equal(await h.handlers.get("tool_call")({ toolName, input: {} }), undefined);
 });
 
 test("planning UI cannot trigger execution or restore write tools", async () => {
