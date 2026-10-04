@@ -142,9 +142,9 @@ or repository files. Supply exact paths, targets, and restrictions in each task;
 tool allowlists and output redaction are not a sandbox or permission to access
 prohibited content.
 
-Wiki lookup is optional for relevant prior knowledge, not a prerequisite for
-diagnosis or external research. Follow the wiki's bounded retrieval workflow when
-using it; a lookup never authorizes creating or updating notes.
+Knowledge lookup is optional prior context, not a prerequisite for diagnosis or
+external research. Navigate the OKF bundle through relevant indexes and concepts;
+reading it never authorizes ingestion, enrichment, updates, serving, or publication.
 
 ## Evidence, Public Safety, and Secrets
 

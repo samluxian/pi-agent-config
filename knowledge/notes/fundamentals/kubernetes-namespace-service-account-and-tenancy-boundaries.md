@@ -2,15 +2,24 @@
 id: kubernetes-namespace-service-account-and-tenancy-boundaries
 title: Combine Kubernetes tenancy boundaries instead of trusting namespaces alone
 type: fundamental
-status: verified
+status: stable
 topic: kubernetes-security
-summary: Kubernetes namespaces scope names and policy objects, but workload tenancy also depends on ServiceAccounts, RBAC, network policy, quotas, admission, and node or control-plane isolation.
 when_to_read: Designing namespace isolation, assigning workload ServiceAccounts, reviewing cross-namespace permissions, or deciding whether soft multi-tenancy is sufficient.
-keywords: [kubernetes, multi-tenancy, namespace, rbac, service-account]
-aliases: [namespace-isolation, tenant-boundary, workload-identity]
+aliases:
+- namespace-isolation
+- tenant-boundary
+- workload-identity
 scope: public-source
 created: 2026-09-13
 updated: 2026-09-13
+description: Kubernetes namespaces scope names and policy objects, but workload tenancy also depends on ServiceAccounts, RBAC, network policy, quotas, admission, and node or control-plane isolation.
+tags:
+- kubernetes
+- multi-tenancy
+- namespace
+- rbac
+- service-account
+evidence_status: verified
 ---
 
 # Combine Kubernetes tenancy boundaries instead of trusting namespaces alone

@@ -4,13 +4,19 @@ title: Prompt guidance is not enforcement
 type: fundamental
 status: draft
 topic: agent-architecture
-summary: Prompt guidance can influence an agent but must be paired with deterministic controls for authority and execution boundaries.
 when_to_read: Adding Pi promptGuidelines, tool descriptions, profiles, or policies that must resist ambiguous or hostile task text.
-keywords: [prompt-guidelines, enforcement, trust-boundary]
-aliases: [prompt-policy, tool-allowlist]
+aliases:
+- prompt-policy
+- tool-allowlist
 scope: repository-public-case
 created: 2026-09-12
 updated: 2026-09-13
+description: Prompt guidance can influence an agent but must be paired with deterministic controls for authority and execution boundaries.
+tags:
+- prompt-guidelines
+- enforcement
+- trust-boundary
+evidence_status: draft
 ---
 
 # Prompt guidance is not enforcement

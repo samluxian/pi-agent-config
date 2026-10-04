@@ -2,15 +2,24 @@
 id: helm-crd-first-install-ordering
 title: Install CRDs before their custom resources
 type: fundamental
-status: verified
+status: stable
 topic: helm-contracts
-summary: Helm guarantees first-install CRD ordering for the crds directory, not for CRDs rendered as ordinary templates beside their custom resources.
 when_to_read: A fresh Helm install fails to recognize a custom resource kind, or a chart renders both a CRD and an instance of that kind.
-keywords: [crd, custom-resource, helm, install, templates]
-aliases: [no-matches-for-kind, first-install-crd, crd-ordering]
+aliases:
+- no-matches-for-kind
+- first-install-crd
+- crd-ordering
 scope: public-source
 created: 2026-09-30
 updated: 2026-09-30
+description: Helm guarantees first-install CRD ordering for the crds directory, not for CRDs rendered as ordinary templates beside their custom resources.
+tags:
+- crd
+- custom-resource
+- helm
+- install
+- templates
+evidence_status: verified
 ---
 
 # Install CRDs before their custom resources

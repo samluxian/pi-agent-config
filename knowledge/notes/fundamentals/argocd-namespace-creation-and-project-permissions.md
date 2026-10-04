@@ -2,15 +2,25 @@
 id: argocd-namespace-creation-and-project-permissions
 title: Argo CD namespace creation and project permissions
 type: fundamental
-status: verified
+status: stable
 topic: gitops-delivery
-summary: CreateNamespace requests destination namespace creation but does not replace AppProject resource permissions or Kubernetes RBAC.
 when_to_read: An Application enables CreateNamespace but namespace creation is denied or its project requires a Namespace allowlist.
-keywords: [argocd, namespace, appproject, createnamespace, clusterresourcewhitelist, rbac]
-aliases: [namespace-auto-creation, namespace-whitelist, app-of-apps]
+aliases:
+- namespace-auto-creation
+- namespace-whitelist
+- app-of-apps
 scope: public-source
 created: 2026-10-03
 updated: 2026-10-03
+description: CreateNamespace requests destination namespace creation but does not replace AppProject resource permissions or Kubernetes RBAC.
+tags:
+- argocd
+- namespace
+- appproject
+- createnamespace
+- clusterresourcewhitelist
+- rbac
+evidence_status: verified
 ---
 
 # Argo CD namespace creation and project permissions

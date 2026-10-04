@@ -2,15 +2,24 @@
 id: synthetic-startup-restart-causality
 title: A liveness restart does not establish the startup root cause
 type: incident
-status: open
+status: draft
 topic: runtime-diagnostics
-summary: A liveness restart is an observed failure mechanism, while the startup blocking call remains a separate causal question.
 when_to_read: A container is Running but unready, health probes receive connection refused, and startup logs stop during dependency initialization.
-keywords: [actuator, incident-causality, liveness, mongodb, startup]
-aliases: [connection-refused, restart-loop, slow-startup]
+aliases:
+- connection-refused
+- restart-loop
+- slow-startup
 scope: synthetic-private-case
 created: 2026-09-11
 updated: 2026-09-13
+description: A liveness restart is an observed failure mechanism, while the startup blocking call remains a separate causal question.
+tags:
+- actuator
+- incident-causality
+- liveness
+- mongodb
+- startup
+evidence_status: open
 ---
 
 # A liveness restart does not establish the startup root cause

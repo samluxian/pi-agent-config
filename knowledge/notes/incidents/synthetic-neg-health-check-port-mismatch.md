@@ -2,15 +2,24 @@
 id: synthetic-neg-health-check-port-mismatch
 title: Kubernetes readiness does not prove standalone NEG backend health
 type: incident
-status: verified
+status: stable
 topic: gcp-load-balancing
-summary: A fixed health check port that differed from standalone NEG endpoint ports kept an external Application Load Balancer backend unhealthy while Kubernetes reported ready Pods.
 when_to_read: An external Application Load Balancer returns 503 while GKE Pods, Services, EndpointSlices, and NEG readiness gates appear healthy.
-keywords: [application-load-balancer, backend-service, gke, health-check, neg]
-aliases: [503-no-healthy-backend, kubernetes-ready-load-balancer-unhealthy, wrong-health-check-port]
+aliases:
+- 503-no-healthy-backend
+- kubernetes-ready-load-balancer-unhealthy
+- wrong-health-check-port
 scope: synthetic-private-case
 created: 2026-09-11
 updated: 2026-09-13
+description: A fixed health check port that differed from standalone NEG endpoint ports kept an external Application Load Balancer backend unhealthy while Kubernetes reported ready Pods.
+tags:
+- application-load-balancer
+- backend-service
+- gke
+- health-check
+- neg
+evidence_status: verified
 ---
 
 # Kubernetes readiness does not prove standalone NEG backend health

@@ -2,15 +2,25 @@
 id: kubernetes-to-gcp-load-balancer-request-path
 title: Trace GKE load-balanced requests across control planes
 type: fundamental
-status: verified
+status: stable
 topic: gcp-load-balancing
-summary: A GKE Application Load Balancer request crosses Google Cloud forwarding, routing, backend, health-check, NEG, and Pod layers that must be verified separately.
 when_to_read: Diagnosing a GKE load-balanced request failure, mapping Kubernetes Ingress or Service objects to Google Cloud backends, or explaining why ready Pods can still receive no traffic.
-keywords: [application-load-balancer, backend-service, gke, health-check, ingress, neg]
-aliases: [container-native-load-balancing, gke-request-path, pod-neg]
+aliases:
+- container-native-load-balancing
+- gke-request-path
+- pod-neg
 scope: public-source
 created: 2026-09-13
 updated: 2026-09-13
+description: A GKE Application Load Balancer request crosses Google Cloud forwarding, routing, backend, health-check, NEG, and Pod layers that must be verified separately.
+tags:
+- application-load-balancer
+- backend-service
+- gke
+- health-check
+- ingress
+- neg
+evidence_status: verified
 ---
 
 # Trace GKE load-balanced requests across control planes

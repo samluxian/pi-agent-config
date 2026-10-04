@@ -4,13 +4,19 @@ title: Intent routing and adapter verification
 type: fundamental
 status: draft
 topic: agent-architecture
-summary: Typed intent routing narrows inspection commands, while adapters must validate and preserve the limits of their projections.
 when_to_read: Designing a Pi inspection tool that translates an agent request into bounded commands and summarized evidence.
-keywords: [intent-routing, adapters, validation]
-aliases: [typed-operations, fixed-argv]
+aliases:
+- typed-operations
+- fixed-argv
 scope: repository-public-case
 created: 2026-09-12
 updated: 2026-09-13
+description: Typed intent routing narrows inspection commands, while adapters must validate and preserve the limits of their projections.
+tags:
+- intent-routing
+- adapters
+- validation
+evidence_status: draft
 ---
 
 # Intent routing and adapter verification

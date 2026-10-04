@@ -2,15 +2,24 @@
 id: rootless-buildkit-in-gitlab-ci
 title: Build and push images with rootless BuildKit in GitLab CI
 type: fundamental
-status: verified
+status: stable
 topic: ci-pipelines
-summary: GitLab CI can run daemonless rootless BuildKit and push directly to a registry when runner security policy, credential helpers, and build context are configured explicitly.
 when_to_read: Replacing Docker-in-Docker, configuring a Kubernetes executor image build, or diagnosing rootless BuildKit startup and registry authentication.
-keywords: [buildkit, gitlab-ci, kubernetes-executor, rootless, registry]
-aliases: [buildctl-daemonless, rootless-image-build, no-dind]
+aliases:
+- buildctl-daemonless
+- rootless-image-build
+- no-dind
 scope: public-source
 created: 2026-09-16
 updated: 2026-09-16
+description: GitLab CI can run daemonless rootless BuildKit and push directly to a registry when runner security policy, credential helpers, and build context are configured explicitly.
+tags:
+- buildkit
+- gitlab-ci
+- kubernetes-executor
+- rootless
+- registry
+evidence_status: verified
 ---
 
 # Build and push images with rootless BuildKit in GitLab CI

@@ -2,15 +2,25 @@
 id: terraform-plan-refresh-and-state-reconciliation
 title: Read Terraform plans as reconciliation proposals
 type: fundamental
-status: verified
+status: stable
 topic: terraform-state
-summary: A Terraform plan compares configuration with refreshed prior state and proposes provider-defined actions, so its result is time-bound evidence rather than a permanent prediction.
 when_to_read: Explaining an unexpected Terraform diff, reviewing drift, deciding whether a no-change plan is sufficient, or separating refresh-only state updates from infrastructure changes.
-keywords: [drift, plan, provider, refresh, state, terraform]
-aliases: [execution-plan, refresh-only, terraform-diff]
+aliases:
+- execution-plan
+- refresh-only
+- terraform-diff
 scope: public-source
 created: 2026-09-13
 updated: 2026-09-13
+description: A Terraform plan compares configuration with refreshed prior state and proposes provider-defined actions, so its result is time-bound evidence rather than a permanent prediction.
+tags:
+- drift
+- plan
+- provider
+- refresh
+- state
+- terraform
+evidence_status: verified
 ---
 
 # Read Terraform plans as reconciliation proposals

@@ -2,15 +2,26 @@
 id: rpo-rto-before-datastore-change
 title: Define recovery objectives before changing a datastore
 type: fundamental
-status: verified
+status: stable
 topic: data-reliability
-summary: A datastore change needs explicit recovery point and recovery time objectives, a validated restore or fallback path, and application-level cutover checks before destructive or hard-to-reverse steps.
 when_to_read: Upgrading, replacing, migrating, resizing, or deleting a managed datastore, or reviewing whether backup and rollback claims are sufficient.
-keywords: [backup, cutover, datastore, migration, recovery, rpo, rto]
-aliases: [database-change-safety, fallback-plan, restore-validation]
+aliases:
+- database-change-safety
+- fallback-plan
+- restore-validation
 scope: public-source
 created: 2026-09-13
 updated: 2026-09-13
+description: A datastore change needs explicit recovery point and recovery time objectives, a validated restore or fallback path, and application-level cutover checks before destructive or hard-to-reverse steps.
+tags:
+- backup
+- cutover
+- datastore
+- migration
+- recovery
+- rpo
+- rto
+evidence_status: verified
 ---
 
 # Define recovery objectives before changing a datastore

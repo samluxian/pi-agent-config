@@ -2,15 +2,23 @@
 id: terraform-replacement-ordering-and-lifecycle
 title: Control Terraform replacement ordering explicitly
 type: fundamental
-status: verified
+status: stable
 topic: terraform-state
-summary: Terraform lifecycle rules can alter replacement ordering or reject selected actions, but they cannot remove provider constraints or external name and dependency limits.
 when_to_read: Reviewing a Terraform plan that replaces infrastructure, choosing create-before-destroy, or evaluating prevent_destroy, ignore_changes, and replace_triggered_by.
-keywords: [create-before-destroy, lifecycle, replacement, terraform]
-aliases: [force-new, resource-recreation, terraform-lifecycle]
+aliases:
+- force-new
+- resource-recreation
+- terraform-lifecycle
 scope: public-source
 created: 2026-09-13
 updated: 2026-09-13
+description: Terraform lifecycle rules can alter replacement ordering or reject selected actions, but they cannot remove provider constraints or external name and dependency limits.
+tags:
+- create-before-destroy
+- lifecycle
+- replacement
+- terraform
+evidence_status: verified
 ---
 
 # Control Terraform replacement ordering explicitly

@@ -2,15 +2,25 @@
 id: stateful-volume-safe-rollouts
 title: Select rollout strategy from the workload and volume contract
 type: fundamental
-status: verified
+status: stable
 topic: kubernetes-delivery
-summary: Stateful rollout safety depends on revision overlap, identity, readiness, volume access and attachment semantics, and application-level fencing.
 when_to_read: A Kubernetes rollout uses persistent volumes, cannot tolerate concurrent revisions, reports multi-attach errors, or needs a choice between Deployment and StatefulSet.
-keywords: [deployment, persistentvolume, pvc, readwriteonce, rollout, statefulset]
-aliases: [multi-attach, rwo-rollout, volume-safe-deployment]
+aliases:
+- multi-attach
+- rwo-rollout
+- volume-safe-deployment
 scope: public-source
 created: 2026-09-11
 updated: 2026-09-13
+description: Stateful rollout safety depends on revision overlap, identity, readiness, volume access and attachment semantics, and application-level fencing.
+tags:
+- deployment
+- persistentvolume
+- pvc
+- readwriteonce
+- rollout
+- statefulset
+evidence_status: verified
 ---
 
 # Select rollout strategy from the workload and volume contract

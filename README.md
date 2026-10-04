@@ -89,17 +89,22 @@ kube context 名稱或登入身分可見的 GCP projects（可見不代表擁有
 公開內容不得含私人識別資訊；刪除工作流程專用的檢查工具後，公開安全審查仍須人工執行。
 此要求不會清除既有 Git history。
 
-## LLM Wiki
+## OKF 知識庫
 
-[`knowledge/README.md`](knowledge/README.md) 是純 Markdown 知識庫入口。相關過往知識可能
-有幫助時，Agent 可選用 lookup：先查 compact keyword indexes，只讀取命中的 topic index
-與最多三篇 notes；wiki 不會整批放進 system prompt 或 context。所有 wiki 內容與 note templates 使用英文，寫完後依
-[wiki 寫作規格](.agents/skills/llm-wiki/references/writing-style.md) 做最小幅度風格編修與評估。
-它不是完整的文法檢查器，也不能刪除技術細節、證據等級或不確定性。
+[`knowledge/index.md`](knowledge/index.md) 是 Open Knowledge Format v0.2 知識庫入口；
+[`knowledge/README.md`](knowledge/README.md) 說明格式與維護方式。保留原有 37 篇知識內文、
+引用與證據等級，採用 YAML frontmatter、`description`、`tags` 與小寫 `index.md`。
+舊狀態保存在 `evidence_status`；OKF `status` 表示生命週期，不代表新增驗證。
 
-Lookup 是選用流程，不是一般排錯或外部研究前的必做關卡，也不授權寫入筆記。
-新增或維護筆記時，明確使用 `/skill:llm-wiki`。Wiki 只提供 prior knowledge；目前 artifact、
-configuration、deployment 與 runtime state 仍須用對應 evidence layer 驗證。
+[OKF skill](.agents/skills/okf/README.md) 支援 create、validate、enrich、generate、convert
+與 serve 準備流程，可依任務自動選用或明確指定 skill。讀取知識不授權新增、補強、攝取來源、
+自動更新或發布；不再保留專用 keyword-search CLI。所有知識內容與模板使用英文，依
+[寫作規格](.agents/skills/okf/references/writing-style.md) 做最小幅度編修，保留技術細節與不確定性。
+
+`test:okf` 驗證格式、索引連結與遷移結果，需要 Python 3 與 PyYAML；Python dependency
+宣告在 `.agents/skills/okf/requirements.txt`。本次未安裝或設定 cloud catalog、MCP、server
+或上傳內容；serve 仍受 workspace remote inspection-only 邊界限制。
+知識僅提供 prior context；目前 deployment 與 runtime state 仍須由 owning evidence layer 驗證。
 
 ## Workspace 配置
 
@@ -122,6 +127,42 @@ Agent 產出的規格文件一律預設寫入 `<workspace-root>/docs/`。使用�
 Initializer 不依賴固定的 workspace 名稱或使用者家目錄。Workspace contract 也允許 Agent
 在使用者明確批准後修改指定的 `~/.bashrc`；Agent 必須先檢查檔案、保留無關設定，且不得
 讀取或修改 secrets、credentials 或其他家目錄檔案。
+
+## Ubuntu／WSL Bash 環境保存
+
+[`config/bashrc-cosmetics.sh`](config/bashrc-cosmetics.sh) 保存綠色 user@host、藍色路徑、
+黃色 Git branch、青色 Kubernetes context／namespace，以及 `k`、`kx`、`kn` 別名。
+Git 使用官方 `__git_ps1`，不主動啟用 dirty／untracked 掃描；Kubernetes context
+沿用底線前綴裁切規則，不保存任何私人 context、登入或 credentials。
+
+在 repository 執行 `bash scripts/setup-ubuntu-shell.sh`，只更新 `~/.bashrc` 的 managed
+block；也可用 `--bashrc PATH` 指定目標。首次修改會保存 `.pi-agent-config.bak`，重跑不會
+覆蓋該備份；保留 managed block 外的設定，遇到 symlink 或損壞 markers 則停止。
+設定內嵌於 bashrc，因此套用後不依賴 repository 位置。需要 Python 3。
+
+新 Ubuntu／WSL 電腦可自行執行 `bash scripts/setup-ubuntu-shell.sh --install-tools`：
+
+- APT 安裝 Git 與 Homebrew build prerequisites；Homebrew 安裝 Git、kubectl、kubectx／kubens、
+  kube-ps1、Helm CLI 與 HashiCorp tap 的 Terraform。
+- NVM 使用官方 pinned `v0.40.7` installer，不修改其他 shell profiles；不自動安裝 Node。
+- gcloud 使用 Google 官方 APT repository，新增專用 source／keyring；不執行登入、
+  project 設定、cloud 變更或 Helm release 安裝。
+
+安裝模式需要正常使用者、sudo、網路及受支援 Ubuntu；會下載並執行官方 Homebrew／NVM
+installer，改動本機套件、APT sources 與安裝目錄，請先審閱腳本。已安裝的套件不主動升級，
+不保證所有工具版本可重現；Homebrew 假設標準 Linux prefix `/home/linuxbrew/.linuxbrew`。
+官方來源：[Homebrew](https://docs.brew.sh/Homebrew-on-Linux)、
+[NVM](https://github.com/nvm-sh/nvm/tree/v0.40.7)、
+[Terraform](https://github.com/hashicorp/homebrew-tap)、
+[gcloud](https://docs.cloud.google.com/sdk/docs/install-sdk)。
+
+開新終端生效。NVM 改為首次使用 `nvm`／`node`／`npm`／`npx` 時載入；Bash 啟動不再
+執行 `brew shellenv`，但 kube-ps1 首次本機查詢仍有成本。既有 bashrc 若已包含舊版 NVM、
+Homebrew 或提示符設定，腳本不自動刪除它們；請自行移除重複區段，否則舊啟動成本仍存在。
+缺少 Git／kube-ps1 helper 時只省略對應提示符。
+
+驗證：`npm run test:ubuntu-shell` 使用 temporary fixtures，測試保留設定、備份、重跑、
+managed block 更新、symlink／marker 拒絕與 NVM lazy load；不執行真實安裝。
 
 ## 系統需求
 
@@ -319,7 +360,7 @@ skill-owned deterministic helper 時，優先使用單一 bounded helper，避�
 - [Kubernetes platform guidance](.agents/skills/kubernetes-platform-guidance/README.md) — 資源設定、GitOps／Helm 關聯與唯讀診斷流程
 - [Terraform workflow guidance](.agents/skills/terraform-workflow-guidance/README.md) — 跨 repository 的 plan-first 流程
 - [Helm chart best practices](.agents/skills/helm-chart-best-practices/README.md) — 一般 chart 設計、render 與相容性驗證
-- [LLM wiki](.agents/skills/llm-wiki/README.md)
+- [OKF knowledge](.agents/skills/okf/README.md)
 - [MR summary](.agents/skills/mr-summary/README.md)
 - [Learn from work](.agents/skills/learn-from-work/README.md) — 手動啟用的實作後學習、理解檢查、練習與複習；不改變一般開發流程
 

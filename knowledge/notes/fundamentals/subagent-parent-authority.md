@@ -4,13 +4,18 @@ title: Keep authority with the subagent parent
 type: fundamental
 status: draft
 topic: agent-architecture
-summary: A parent agent owns edits, approval, reconciliation, validation, and delivery while children return bounded read-only evidence.
 when_to_read: Delegating bounded read-only investigation to a Pi subagent.
-keywords: [delegation, parent-authority, subagent]
-aliases: [child-agent]
+aliases:
+- child-agent
 scope: repository-public-case
 created: 2026-09-12
 updated: 2026-09-13
+description: A parent agent owns edits, approval, reconciliation, validation, and delivery while children return bounded read-only evidence.
+tags:
+- delegation
+- parent-authority
+- subagent
+evidence_status: draft
 ---
 
 # Keep authority with the subagent parent

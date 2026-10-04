@@ -2,15 +2,25 @@
 id: single-autoscaler-ownership
 title: Keep one autoscaling control path per scale target
 type: fundamental
-status: verified
+status: stable
 topic: kubernetes-scaling
-summary: Independent replica writers can override each other, while one HPA or one KEDA ScaledObject can combine several scaling signals for a workload.
 when_to_read: Designing, migrating, or debugging HPA and KEDA scaling when a workload replica count changes unexpectedly or more than one scaler targets it.
-keywords: [autoscaling, hpa, keda, replicas, scaledobject, scaletargetref]
-aliases: [autoscaler-conflict, hpa-keda-conflict, multiple-hpas]
+aliases:
+- autoscaler-conflict
+- hpa-keda-conflict
+- multiple-hpas
 scope: public-source
 created: 2026-09-11
 updated: 2026-09-13
+description: Independent replica writers can override each other, while one HPA or one KEDA ScaledObject can combine several scaling signals for a workload.
+tags:
+- autoscaling
+- hpa
+- keda
+- replicas
+- scaledobject
+- scaletargetref
+evidence_status: verified
 ---
 
 # Keep one autoscaling control path per scale target

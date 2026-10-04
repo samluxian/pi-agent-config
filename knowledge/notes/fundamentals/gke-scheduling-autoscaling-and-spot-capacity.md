@@ -2,15 +2,25 @@
 id: gke-scheduling-autoscaling-and-spot-capacity
 title: Connect GKE scheduling constraints to autoscaling capacity
 type: fundamental
-status: verified
+status: stable
 topic: kubernetes-scaling
-summary: Kubernetes schedules Pods from requests and placement constraints, while GKE cluster autoscaling can add only node capacity that satisfies those constraints and Spot capacity can disappear without availability guarantees.
 when_to_read: Diagnosing Pending Pods, scaling a specialized GKE node pool, using Spot VMs, or changing requests, node selectors, affinity, taints, and autoscaling limits.
-keywords: [cluster-autoscaler, gke, requests, scheduling, spot-vm, taints]
-aliases: [pending-pod, scale-from-zero, specialized-node-pool]
+aliases:
+- pending-pod
+- scale-from-zero
+- specialized-node-pool
 scope: public-source
 created: 2026-09-13
 updated: 2026-09-13
+description: Kubernetes schedules Pods from requests and placement constraints, while GKE cluster autoscaling can add only node capacity that satisfies those constraints and Spot capacity can disappear without availability guarantees.
+tags:
+- cluster-autoscaler
+- gke
+- requests
+- scheduling
+- spot-vm
+- taints
+evidence_status: verified
 ---
 
 # Connect GKE scheduling constraints to autoscaling capacity

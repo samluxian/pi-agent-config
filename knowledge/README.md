@@ -1,88 +1,65 @@
-# LLM Wiki
+---
+type: documentation
+title: OKF knowledge bundle
+description: Entry points, maintenance operations, and validation for the repository's OKF v0.2 knowledge bundle.
+tags: [okf, knowledge, markdown]
+---
 
-This Markdown knowledge base serves human readers and coding agents. It records
-technical fundamentals, real failure mechanisms, investigation paths, wrong
-turns, resolutions, validation, and public sources.
+# OKF Knowledge Bundle
 
-All wiki content is written in English and edited under the pinned
-[No AI Slop writing contract](../.agents/skills/llm-wiki/references/writing-style.md).
-The edit must preserve technical detail, evidence grades, and uncertainty.
+This directory is an [Open Knowledge Format](https://okf.md/spec/) v0.2 bundle.
+Start at [index.md](index.md), then follow relevant topic indexes or the
+[concept directory](notes/index.md). Concepts remain ordinary Markdown files;
+no database, dedicated search strategy, or serving platform is required.
 
-## Read The Wiki
+## Layout
 
-Start with [`INDEX.md`](INDEX.md), choose one topic, and open that topic's index.
-Do not load every note.
+- `index.md`: bundle version and topic navigation.
+- `topics/<topic>/index.md`: curated concept links and descriptions.
+- `notes/fundamentals/`: reusable technical concepts.
+- `notes/incidents/`: synthetic educational incident patterns.
+- `notes/.obsidian/`: preserved editor preferences, outside the concept format.
 
-```text
-INDEX.md
-→ one topic index
-→ one to three notes
-→ public sources cited by the selected notes
-```
+Each non-reserved Markdown file has YAML frontmatter with a non-empty `type`.
+`title`, `description`, and `tags` improve readability. Unknown metadata is
+preserved. Existing body citations, IDs, topics, scopes, and dates remain intact.
 
-Available topics:
+## Maintenance
 
-- [`agent-architecture`](topics/agent-architecture/INDEX.md) covers Pi context projection, subagent authority, prompt enforcement boundaries, typed adapters, evidence layers, and coverage-backed refactoring.
-- [`ci-pipelines`](topics/ci-pipelines/INDEX.md) covers runner capacity, critical-section serialization, rootless BuildKit, toolchain regressions, parallel jobs, and retry boundaries.
-- [`cloud-identity`](topics/cloud-identity/INDEX.md) covers GKE workload identity, CI runner registry authorization, IAM authorization, and service account key replacement.
-- [`gitops-delivery`](topics/gitops-delivery/INDEX.md) covers CI handoffs, immutable artifact references, desired-state changes, status RBAC, and GitOps reconciliation ownership.
-- [`helm-contracts`](topics/helm-contracts/INDEX.md) covers shared values, schemas, templates, dependencies, and rendered-resource compatibility.
-- [`kubernetes-delivery`](topics/kubernetes-delivery/INDEX.md) covers migration Job ordering and stateful workload rollout behavior.
-- [`kubernetes-scaling`](topics/kubernetes-scaling/INDEX.md) covers HPA/KEDA ownership, scale targets, multi-signal scaling, and replica-writer conflicts.
-- [`llm-agents`](topics/llm-agents/INDEX.md) covers agent knowledge retrieval,
-  context use, and note design.
-- [`logging-observability`](topics/logging-observability/INDEX.md) covers Cloud Logging routing, exclusions, sampling, and diagnostic evidence.
-- [`runtime-diagnostics`](topics/runtime-diagnostics/INDEX.md) covers runtime
-  evidence, causality, and behavior-level fix validation.
-- [`terraform-state`](topics/terraform-state/INDEX.md) covers resource addresses, imports, state ownership handoffs, and migration validation.
+Use the `okf` skill for create, validate, enrich, generate, convert, and serving
+preparation. It is a local adaptation of the [official skill](https://okf.md/skill/).
+See `.agents/skills/okf/references/format.md` and
+`.agents/skills/okf/references/workflows.md` in the owning repository.
 
-## Agent Lookup
+These operations are available when requested; reading knowledge does not
+trigger ingestion, enrichment, automatic updates, or publication. Enrichment
+must not invent content or verification history. Source metadata is optional.
+Serving requires an explicitly chosen consumer; no cloud adapter, upload, MCP
+integration, or server has been configured by this migration.
 
-Run this from the repository root:
+All prose and human-readable metadata use English. Apply the
+writing contract at `.agents/skills/okf/references/writing-style.md` and manually
+review public safety. Never copy private evidence or credentials into this bundle.
 
-```text
-.agents/skills/llm-wiki/scripts/wiki.py find --query <terms> --limit 5
-```
+## Evidence And Lifecycle
 
-Lookup returns index metadata, never note bodies. When no result applies, continue
-the domain workflow or external research. Do not scan all notes to force a match.
+The original note status is preserved as `evidence_status`. OKF lifecycle status
+is `stable` for previously verified notes, `draft` for draft/open notes, and
+`deprecated` for superseded/archived notes. This mapping is not new verification.
+An open incident still has an unverified cause or fix. No `verified` attestation
+or generation history was invented during conversion.
 
-## Add Or Update A Note
-
-Load the manual skill:
-
-```text
-/skill:llm-wiki
-```
-
-The maintenance flow checks for an existing note, selects the narrowest template,
-and updates one topic index. Public cases cite official sources or immutable public
-repository permalinks. Private experience must be rebuilt as a complete synthetic
-source packet; copied, masked, or lightly edited private artifacts are prohibited.
-
-## Status
-
-| Status | Meaning |
-| --- | --- |
-| `draft` | The structure or source support is incomplete. |
-| `open` | The problem is recorded, but the cause or fix lacks validation. |
-| `verified` | Evidence supports the cause, applied resolution, and behavior-level validation. |
-| `superseded` | A newer note replaces this note and records the relationship. |
-| `archived` | The note no longer applies but retains useful research history. |
-
-A wiki note records prior knowledge. Check the current version, configuration,
-artifact, runtime state, and time window before applying it to a target system.
+Knowledge is prior context, not proof of current configuration, deployments, or
+runtime behavior. Use the owning evidence layer for current-state claims.
 
 ## Validation
 
-Run the deterministic checker:
+The repository's `test:okf` task runs local unit tests and checks the complete
+bundle with `.agents/skills/okf/scripts/okf.py`. It requires Python 3 and PyYAML;
+the dependency is declared in `.agents/skills/okf/requirements.txt`.
 
-```text
-.agents/skills/llm-wiki/scripts/wiki.py check
-```
-
-The checker validates frontmatter, unique IDs, index coverage, links, size limits,
-source permalink shape, English-only wiki prose, a bounded No AI Slop rule set,
-synthetic-case markers, and verified-incident requirements. It cannot validate
-source interpretation, publication authority, natural voice, or semantic
-re-identification risk; those checks still require human review.
+The checker distinguishes format errors from recommendations and inline Markdown
+link warnings; reference-style and HTML links need manual review.
+It does not fetch sources, execute computations, attest technical correctness,
+or replace semantic privacy review. Broken links and missing indexes are not OKF
+format failures, although this repository maintains complete navigation.

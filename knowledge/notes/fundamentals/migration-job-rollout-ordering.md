@@ -2,15 +2,25 @@
 id: migration-job-rollout-ordering
 title: Give migration Jobs one rollout-ordering owner
 type: fundamental
-status: verified
+status: stable
 topic: kubernetes-delivery
-summary: A one-time migration Job needs one lifecycle owner, explicit retry and cleanup behavior, and application-level validation before workload rollout proceeds.
 when_to_read: Running a schema or data migration before a Kubernetes rollout, choosing Argo CD or Helm hook ordering, or debugging a sync blocked by a Job.
-keywords: [argocd, hooks, job, migration, sync-phase, sync-wave]
-aliases: [database-migration-job, presync-job, rollout-ordering]
+aliases:
+- database-migration-job
+- presync-job
+- rollout-ordering
 scope: public-source
 created: 2026-09-11
 updated: 2026-09-30
+description: A one-time migration Job needs one lifecycle owner, explicit retry and cleanup behavior, and application-level validation before workload rollout proceeds.
+tags:
+- argocd
+- hooks
+- job
+- migration
+- sync-phase
+- sync-wave
+evidence_status: verified
 ---
 
 # Give migration Jobs one rollout-ordering owner

@@ -2,15 +2,25 @@
 id: bounded-ci-concurrency-and-retry
 title: Bound CI concurrency without widening retry scope
 type: fundamental
-status: verified
+status: stable
 topic: ci-pipelines
-summary: CI capacity, job acquisition, mutual exclusion, parallel expansion, and retry are separate controls that must be sized and validated independently.
 when_to_read: Diagnosing runner saturation, limiting concurrent GitLab jobs, serializing a deployment, expanding a matrix, or choosing the smallest safe retry unit.
-keywords: [concurrency, gitlab-ci, resource-group, retry, runner, scheduling]
-aliases: [ci-capacity, job-throttling, retry-isolation]
+aliases:
+- ci-capacity
+- job-throttling
+- retry-isolation
 scope: public-source
 created: 2026-09-11
 updated: 2026-09-13
+description: CI capacity, job acquisition, mutual exclusion, parallel expansion, and retry are separate controls that must be sized and validated independently.
+tags:
+- concurrency
+- gitlab-ci
+- resource-group
+- retry
+- runner
+- scheduling
+evidence_status: verified
 ---
 
 # Bound CI concurrency without widening retry scope

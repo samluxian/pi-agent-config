@@ -2,15 +2,24 @@
 id: node-24-15-yarn-pnp-ebadf
 title: Recognize the Node 24.15 and Yarn PnP EBADF regression
 type: fundamental
-status: verified
+status: stable
 topic: ci-pipelines
-summary: Node 24.15.x changed ESM loader filesystem behavior in a way that triggered Yarn PnP EBADF failures; Yarn 4.14.1 worked around it and Node 24.16.0 restored compatibility.
 when_to_read: Seeing EBADF from fstat in a Yarn PnP ESM loader on Node 24.15.x, especially when the same build worked on Node 24.14.x.
-keywords: [ebadf, esm-loader, nodejs, regression, yarn-pnp]
-aliases: [bad-file-descriptor-fstat, node-24-15-pnp, yarn-loader-failure]
+aliases:
+- bad-file-descriptor-fstat
+- node-24-15-pnp
+- yarn-loader-failure
 scope: public-source
 created: 2026-09-16
 updated: 2026-09-16
+description: Node 24.15.x changed ESM loader filesystem behavior in a way that triggered Yarn PnP EBADF failures; Yarn 4.14.1 worked around it and Node 24.16.0 restored compatibility.
+tags:
+- ebadf
+- esm-loader
+- nodejs
+- regression
+- yarn-pnp
+evidence_status: verified
 ---
 
 # Recognize the Node 24.15 and Yarn PnP EBADF regression

@@ -4,13 +4,19 @@ title: Deterministic context projection for tool results
 type: fundamental
 status: draft
 topic: agent-architecture
-summary: A tool-result projection can reduce model context only when its bounded replacement preserves explicit completeness and fails open.
 when_to_read: Designing a Pi extension that summarizes large tool output without replacing evidence with an untraceable model judgment.
-keywords: [context-projection, tool-result, output-budget]
-aliases: [result-summarization, context-pipeline]
+aliases:
+- result-summarization
+- context-pipeline
 scope: repository-public-case
 created: 2026-09-12
 updated: 2026-09-30
+description: A tool-result projection can reduce model context only when its bounded replacement preserves explicit completeness and fails open.
+tags:
+- context-projection
+- tool-result
+- output-budget
+evidence_status: draft
 ---
 
 # Deterministic context projection for tool results

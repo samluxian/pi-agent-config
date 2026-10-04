@@ -2,15 +2,25 @@
 id: least-privilege-gitops-status-access
 title: Grant CI only the GitOps status access it uses
 type: fundamental
-status: verified
+status: stable
 topic: gitops-delivery
-summary: A CI status identity should receive project-qualified application read access while sync, update, delete, logs, defaults, and group grants remain separate decisions.
 when_to_read: Allowing CI to check Argo CD application status, creating an AppProject role token, or reviewing whether a read-only identity can still mutate deployments.
-keywords: [applications-get, argocd, ci, jwt, rbac, status]
-aliases: [argocd-read-only, deployment-status-token, gitops-status-access]
+aliases:
+- argocd-read-only
+- deployment-status-token
+- gitops-status-access
 scope: public-source
 created: 2026-09-11
 updated: 2026-09-13
+description: A CI status identity should receive project-qualified application read access while sync, update, delete, logs, defaults, and group grants remain separate decisions.
+tags:
+- applications-get
+- argocd
+- ci
+- jwt
+- rbac
+- status
+evidence_status: verified
 ---
 
 # Grant CI only the GitOps status access it uses

@@ -2,15 +2,25 @@
 id: gcp-iam-policy-evaluation
 title: Evaluate Google Cloud IAM access by policy layer
 type: fundamental
-status: verified
+status: stable
 topic: cloud-identity
-summary: Google Cloud access depends on principal identity, inherited allow policies, applicable deny policies, principal access boundaries, and service-specific support rather than one role binding alone.
 when_to_read: Explaining an IAM allow or denial, reviewing inherited access, granting service-account impersonation, or separating credential acquisition from resource authorization.
-keywords: [allow-policy, deny-policy, gcp, iam, impersonation, resource-hierarchy]
-aliases: [access-evaluation, iam-inheritance, policy-binding]
+aliases:
+- access-evaluation
+- iam-inheritance
+- policy-binding
 scope: public-source
 created: 2026-09-13
 updated: 2026-09-13
+description: Google Cloud access depends on principal identity, inherited allow policies, applicable deny policies, principal access boundaries, and service-specific support rather than one role binding alone.
+tags:
+- allow-policy
+- deny-policy
+- gcp
+- iam
+- impersonation
+- resource-hierarchy
+evidence_status: verified
 ---
 
 # Evaluate Google Cloud IAM access by policy layer

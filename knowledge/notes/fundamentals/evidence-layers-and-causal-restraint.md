@@ -4,13 +4,19 @@ title: Evidence layers and causal restraint
 type: fundamental
 status: draft
 topic: agent-architecture
-summary: Separate desired state, observed state, and runtime evidence before making a causal claim about agent behavior.
 when_to_read: Explaining an agent or GitOps outcome when source, tool output, deployment state, and runtime observations may disagree.
-keywords: [evidence-layers, causality, gitops]
-aliases: [desired-state, causal-inference]
+aliases:
+- desired-state
+- causal-inference
 scope: repository-public-case
 created: 2026-09-12
 updated: 2026-09-13
+description: Separate desired state, observed state, and runtime evidence before making a causal claim about agent behavior.
+tags:
+- evidence-layers
+- causality
+- gitops
+evidence_status: draft
 ---
 
 # Evidence layers and causal restraint

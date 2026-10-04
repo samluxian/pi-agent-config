@@ -2,15 +2,25 @@
 id: log-exclusions-preserve-diagnostics
 title: Design log exclusions around diagnostic evidence
 type: fundamental
-status: verified
+status: stable
 topic: logging-observability
-summary: Cloud Logging exclusions control routing to each sink destination, so cost filters must preserve failure evidence and validate every storage and query path.
 when_to_read: Reducing Cloud Logging storage, changing sink exclusions, sampling noisy logs, or investigating why expected entries are absent from Logs Explorer.
-keywords: [audit-logs, cloud-logging, exclusions, log-router, sampling, sinks]
-aliases: [log-filtering, logging-cost-control, sink-exclusion]
+aliases:
+- log-filtering
+- logging-cost-control
+- sink-exclusion
 scope: public-source
 created: 2026-09-11
 updated: 2026-09-13
+description: Cloud Logging exclusions control routing to each sink destination, so cost filters must preserve failure evidence and validate every storage and query path.
+tags:
+- audit-logs
+- cloud-logging
+- exclusions
+- log-router
+- sampling
+- sinks
+evidence_status: verified
 ---
 
 # Design log exclusions around diagnostic evidence

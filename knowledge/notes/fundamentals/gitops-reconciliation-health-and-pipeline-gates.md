@@ -2,15 +2,24 @@
 id: gitops-reconciliation-health-and-pipeline-gates
 title: Gate GitOps delivery on explicit reconciliation evidence
 type: fundamental
-status: verified
+status: stable
 topic: gitops-delivery
-summary: Git revision, sync status, resource health, and application behavior are separate evidence layers that a deployment gate must select and time-bound explicitly.
 when_to_read: Designing a CI wait job, interpreting Argo CD Synced or Healthy status, or deciding what a GitOps deployment gate should prove.
-keywords: [argocd, deployment-gate, health, reconciliation, sync]
-aliases: [argocd-wait, gitops-health, sync-gate]
+aliases:
+- argocd-wait
+- gitops-health
+- sync-gate
 scope: public-source
 created: 2026-09-13
 updated: 2026-09-13
+description: Git revision, sync status, resource health, and application behavior are separate evidence layers that a deployment gate must select and time-bound explicitly.
+tags:
+- argocd
+- deployment-gate
+- health
+- reconciliation
+- sync
+evidence_status: verified
 ---
 
 # Gate GitOps delivery on explicit reconciliation evidence

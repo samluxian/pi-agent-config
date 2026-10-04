@@ -2,15 +2,25 @@
 id: shared-helm-chart-contracts
 title: Treat a shared Helm chart as a versioned API
 type: fundamental
-status: verified
+status: stable
 topic: helm-contracts
-summary: A shared Helm chart exposes a values contract and a rendered-resource contract that require schema, compatibility, server, and runtime validation.
 when_to_read: Adding or changing shared chart values, schemas, helpers, dependencies, defaults, resource names, selectors, or rendered Kubernetes behavior.
-keywords: [helm, json-schema, lint, semver, templates, values]
-aliases: [chart-api, shared-chart, values-contract]
+aliases:
+- chart-api
+- shared-chart
+- values-contract
 scope: public-source
 created: 2026-09-11
 updated: 2026-09-13
+description: A shared Helm chart exposes a values contract and a rendered-resource contract that require schema, compatibility, server, and runtime validation.
+tags:
+- helm
+- json-schema
+- lint
+- semver
+- templates
+- values
+evidence_status: verified
 ---
 
 # Treat a shared Helm chart as a versioned API

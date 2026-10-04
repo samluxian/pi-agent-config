@@ -2,15 +2,24 @@
 id: runner-identity-for-artifact-registry
 title: Authorize a Kubernetes CI runner to push to Artifact Registry
 type: fundamental
-status: verified
+status: stable
 topic: cloud-identity
-summary: A Kubernetes CI job can use its service account and Workload Identity Federation to obtain short-lived credentials while repository-level IAM authorizes Artifact Registry pushes.
 when_to_read: Configuring a GitLab Kubernetes runner to push images to Artifact Registry without a service account key, or diagnosing token-versus-IAM failures.
-keywords: [artifact-registry, gitlab-runner, iam, kubernetes-service-account, workload-identity]
-aliases: [runner-adc, registry-writer, keyless-ci-auth]
+aliases:
+- runner-adc
+- registry-writer
+- keyless-ci-auth
 scope: public-source
 created: 2026-09-16
 updated: 2026-09-16
+description: A Kubernetes CI job can use its service account and Workload Identity Federation to obtain short-lived credentials while repository-level IAM authorizes Artifact Registry pushes.
+tags:
+- artifact-registry
+- gitlab-runner
+- iam
+- kubernetes-service-account
+- workload-identity
+evidence_status: verified
 ---
 
 # Authorize a Kubernetes CI runner to push to Artifact Registry

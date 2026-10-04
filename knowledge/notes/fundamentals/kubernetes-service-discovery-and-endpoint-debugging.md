@@ -2,15 +2,24 @@
 id: kubernetes-service-discovery-and-endpoint-debugging
 title: Debug Kubernetes Service discovery from intent to endpoints
 type: fundamental
-status: verified
+status: stable
 topic: kubernetes-networking
-summary: Kubernetes Service diagnosis should trace DNS, Service ports and selectors, EndpointSlices, Pod readiness, and the listening process instead of stopping at one object.
 when_to_read: Diagnosing connection failures by Kubernetes Service name, an empty EndpointSlice, a wrong target port, cross-namespace DNS behavior, or a workload that intentionally has no Service.
-keywords: [dns, endpointslice, kubernetes, service, service-discovery]
-aliases: [cluster-dns, no-endpoints, service-debugging]
+aliases:
+- cluster-dns
+- no-endpoints
+- service-debugging
 scope: public-source
 created: 2026-09-13
 updated: 2026-09-13
+description: Kubernetes Service diagnosis should trace DNS, Service ports and selectors, EndpointSlices, Pod readiness, and the listening process instead of stopping at one object.
+tags:
+- dns
+- endpointslice
+- kubernetes
+- service
+- service-discovery
+evidence_status: verified
 ---
 
 # Debug Kubernetes Service discovery from intent to endpoints

@@ -7,7 +7,8 @@
     "test:extensions:coverage": "c8 --reporter=json --reports-dir=coverage node --import ./extensions/subagents/test-loader.mjs --test extensions/*/test.mjs",
     "test:init-workspace": "bash scripts/test-init-workspace.sh",
     "test:makefile": "bash scripts/test-makefile.sh",
-    "test:wiki": "python3 .agents/skills/llm-wiki/scripts/tests/wiki_test.py && python3 .agents/skills/llm-wiki/scripts/wiki.py check"
+    "test:ubuntu-shell": "bash scripts/test-setup-ubuntu-shell.sh",
+    "test:okf": "PYTHONDONTWRITEBYTECODE=1 python3 .agents/skills/okf/scripts/tests/okf_test.py && PYTHONDONTWRITEBYTECODE=1 python3 .agents/skills/okf/scripts/okf.py check"
   },
   "keywords": [
     "pi-package"

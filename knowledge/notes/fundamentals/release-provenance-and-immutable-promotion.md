@@ -2,15 +2,25 @@
 id: release-provenance-and-immutable-promotion
 title: Promote one immutable artifact with verifiable provenance
 type: fundamental
-status: verified
+status: stable
 topic: software-supply-chain
-summary: An immutable digest identifies exact artifact content, while provenance records how that artifact was produced; promotion should preserve both identities across environments.
 when_to_read: Designing build and promotion pipelines, choosing tags or digests, attaching provenance, or proving which source and build produced a deployed artifact.
-keywords: [artifact, digest, image, provenance, promotion, slsa]
-aliases: [build-once-promote, immutable-release, supply-chain-provenance]
+aliases:
+- build-once-promote
+- immutable-release
+- supply-chain-provenance
 scope: public-source
 created: 2026-09-13
 updated: 2026-09-13
+description: An immutable digest identifies exact artifact content, while provenance records how that artifact was produced; promotion should preserve both identities across environments.
+tags:
+- artifact
+- digest
+- image
+- provenance
+- promotion
+- slsa
+evidence_status: verified
 ---
 
 # Promote one immutable artifact with verifiable provenance

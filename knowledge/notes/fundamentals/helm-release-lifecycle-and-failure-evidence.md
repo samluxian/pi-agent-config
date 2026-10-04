@@ -2,15 +2,27 @@
 id: helm-release-lifecycle-and-failure-evidence
 title: Preserve evidence across the Helm release lifecycle
 type: fundamental
-status: verified
+status: stable
 topic: helm-contracts
-summary: Helm install, upgrade, rollback, and history operate on release revisions, while wait, atomic, cleanup, and history options determine what failure evidence remains.
 when_to_read: Designing Helm deployment flags, investigating a failed install or upgrade, deciding rollback behavior, or separating release history from rendered chart compatibility.
-keywords: [atomic, helm, history, install, release, rollback, upgrade, wait]
-aliases: [failed-release, helm-lifecycle, release-revision]
+aliases:
+- failed-release
+- helm-lifecycle
+- release-revision
 scope: public-source
 created: 2026-09-13
 updated: 2026-09-13
+description: Helm install, upgrade, rollback, and history operate on release revisions, while wait, atomic, cleanup, and history options determine what failure evidence remains.
+tags:
+- atomic
+- helm
+- history
+- install
+- release
+- rollback
+- upgrade
+- wait
+evidence_status: verified
 ---
 
 # Preserve evidence across the Helm release lifecycle

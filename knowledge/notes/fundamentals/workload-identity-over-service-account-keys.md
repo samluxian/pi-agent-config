@@ -2,15 +2,25 @@
 id: workload-identity-over-service-account-keys
 title: Prefer workload identity over service account key files
 type: fundamental
-status: verified
+status: stable
 topic: cloud-identity
-summary: Workload Identity Federation for GKE supplies short-lived workload credentials while IAM policies retain explicit authorization boundaries.
 when_to_read: Giving a GKE workload access to Google Cloud APIs, replacing a mounted service account key, or reviewing Kubernetes-to-IAM identity scope.
-keywords: [gke, iam, kubernetes-service-account, service-account-key, token, workload-identity]
-aliases: [keyless-workload-auth, wif-gke, workload-identity-federation]
+aliases:
+- keyless-workload-auth
+- wif-gke
+- workload-identity-federation
 scope: public-source
 created: 2026-09-11
 updated: 2026-09-13
+description: Workload Identity Federation for GKE supplies short-lived workload credentials while IAM policies retain explicit authorization boundaries.
+tags:
+- gke
+- iam
+- kubernetes-service-account
+- service-account-key
+- token
+- workload-identity
+evidence_status: verified
 ---
 
 # Prefer workload identity over service account key files

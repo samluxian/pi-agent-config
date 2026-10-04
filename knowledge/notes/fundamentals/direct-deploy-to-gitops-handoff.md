@@ -2,15 +2,25 @@
 id: direct-deploy-to-gitops-handoff
 title: Replacing direct deployment with a GitOps handoff
 type: fundamental
-status: verified
+status: stable
 topic: gitops-delivery
-summary: A delivery pipeline can hand off an immutable artifact reference through versioned desired state while a GitOps controller owns cluster reconciliation.
 when_to_read: Migrating a pipeline that runs deployment commands directly into a flow where CI updates desired state and a GitOps controller reconciles it.
-keywords: [argocd, deployment, downstream-pipeline, gitops, image-digest, reconciliation]
-aliases: [direct-deploy, gitops-handoff, helm-to-gitops]
+aliases:
+- direct-deploy
+- gitops-handoff
+- helm-to-gitops
 scope: public-source
 created: 2026-09-11
 updated: 2026-09-13
+description: A delivery pipeline can hand off an immutable artifact reference through versioned desired state while a GitOps controller owns cluster reconciliation.
+tags:
+- argocd
+- deployment
+- downstream-pipeline
+- gitops
+- image-digest
+- reconciliation
+evidence_status: verified
 ---
 
 # Replacing direct deployment with a GitOps handoff

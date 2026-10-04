@@ -2,15 +2,25 @@
 id: terraform-resource-ownership-migration
 title: Preserve resource identity during Terraform ownership migrations
 type: fundamental
-status: verified
+status: stable
 topic: terraform-state
-summary: Terraform migrations must preserve one state binding per remote object and prove the source and destination plans before ownership changes.
 when_to_read: Renaming a Terraform address, moving a resource into a module or separate state, importing existing infrastructure, or reviewing a migration that should not recreate the object.
-keywords: [import, moved-block, removed-block, resource-address, state, terraform]
-aliases: [cross-state-migration, state-refactor, terraform-ownership]
+aliases:
+- cross-state-migration
+- state-refactor
+- terraform-ownership
 scope: public-source
 created: 2026-09-11
 updated: 2026-09-13
+description: Terraform migrations must preserve one state binding per remote object and prove the source and destination plans before ownership changes.
+tags:
+- import
+- moved-block
+- removed-block
+- resource-address
+- state
+- terraform
+evidence_status: verified
 ---
 
 # Preserve resource identity during Terraform ownership migrations

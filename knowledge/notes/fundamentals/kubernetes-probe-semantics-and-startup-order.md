@@ -2,15 +2,24 @@
 id: kubernetes-probe-semantics-and-startup-order
 title: Assign one purpose to each Kubernetes probe
 type: fundamental
-status: verified
+status: stable
 topic: runtime-diagnostics
-summary: Startup probes delay liveness and readiness checks, readiness controls endpoint eligibility, and liveness can restart a container without identifying its underlying failure.
 when_to_read: Designing Kubernetes probes, diagnosing startup restart loops, or deciding whether a slow dependency should affect startup, readiness, or liveness.
-keywords: [kubernetes, liveness, probe, readiness, startup]
-aliases: [health-check, probe-order, restart-loop]
+aliases:
+- health-check
+- probe-order
+- restart-loop
 scope: public-source
 created: 2026-09-13
 updated: 2026-09-13
+description: Startup probes delay liveness and readiness checks, readiness controls endpoint eligibility, and liveness can restart a container without identifying its underlying failure.
+tags:
+- kubernetes
+- liveness
+- probe
+- readiness
+- startup
+evidence_status: verified
 ---
 
 # Assign one purpose to each Kubernetes probe

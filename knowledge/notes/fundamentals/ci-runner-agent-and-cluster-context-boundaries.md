@@ -2,15 +2,24 @@
 id: ci-runner-agent-and-cluster-context-boundaries
 title: Separate CI execution from Kubernetes target selection
 type: fundamental
-status: verified
+status: stable
 topic: ci-pipelines
-summary: A GitLab runner executes a job, while an authorized GitLab Agent connection supplies Kubernetes contexts that select separate cluster identities and targets.
 when_to_read: Diagnosing a CI job that reaches the wrong Kubernetes cluster, lacks a context, uses the wrong runner, or confuses runner placement with cluster authorization.
-keywords: [gitlab-agent, gitlab-ci, kubeconfig, kubernetes, runner]
-aliases: [cluster-context, kas, runner-routing]
+aliases:
+- cluster-context
+- kas
+- runner-routing
 scope: public-source
 created: 2026-09-13
 updated: 2026-09-13
+description: A GitLab runner executes a job, while an authorized GitLab Agent connection supplies Kubernetes contexts that select separate cluster identities and targets.
+tags:
+- gitlab-agent
+- gitlab-ci
+- kubeconfig
+- kubernetes
+- runner
+evidence_status: verified
 ---
 
 # Separate CI execution from Kubernetes target selection

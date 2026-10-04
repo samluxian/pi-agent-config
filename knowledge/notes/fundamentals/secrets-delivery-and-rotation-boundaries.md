@@ -2,15 +2,24 @@
 id: secrets-delivery-and-rotation-boundaries
 title: Separate secret storage, delivery, authorization, and rotation
 type: fundamental
-status: verified
+status: stable
 topic: secrets-management
-summary: A secret system must define where values are stored, who may retrieve them, how workloads receive them, and when applications observe rotated versions.
 when_to_read: Designing Kubernetes secret delivery, integrating an external secret manager, planning rotation, or diagnosing why a workload still uses an old secret version.
-keywords: [csi, kubernetes-secret, rotation, secret-manager, secrets]
-aliases: [external-secrets, secret-delivery, secret-reload]
+aliases:
+- external-secrets
+- secret-delivery
+- secret-reload
 scope: public-source
 created: 2026-09-13
 updated: 2026-09-13
+description: A secret system must define where values are stored, who may retrieve them, how workloads receive them, and when applications observe rotated versions.
+tags:
+- csi
+- kubernetes-secret
+- rotation
+- secret-manager
+- secrets
+evidence_status: verified
 ---
 
 # Separate secret storage, delivery, authorization, and rotation
