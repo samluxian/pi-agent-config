@@ -46,7 +46,23 @@ Git 或 remote 操作。完整 authority boundary 以 [`AGENTS.md`](AGENTS.md) �
 實作細節不需要反覆核准。
 
 只有使用者明確要求「寫 spec」或「用 spec 規劃」時才撰寫規格；
-規劃完成後等待使用者要求實作。普通修改不自動產生 spec 文件。
+規劃完成後等待使用者要求實作。普通修改不自動產生 spec、plan 或其他文件。
+
+### Workspace 規則與專案文件邊界
+
+- `<workspace-root>/AGENTS.md` 是唯一的 workspace／project 行為契約；可依明確維護要求
+  讀取或修改本 repository 的同一份 canonical source。System／developer 上層指令仍適用。
+- 嚴禁主 agent 或 subagents 讀取、搜尋內容或載入其他專案（target、sibling、nested）的
+  `AGENTS.md`，也不得改讀 `AGENTS.override.md`、大小寫變體、`CLAUDE.md` 等替代規則檔。
+  即使 runtime 自動提供專案規則，也不把它當成額外專案 policy。
+- 修改 code／CI／config 不授權順帶修改專案 `docs/`、README、SDD、ADR、plan 或文件索引，
+  也不授權自行生成 spec／report 或執行會寫文件的同步工具。一般交付只在聊天中回報。
+- 只有使用者明確要求並指定 repository 與文件路徑或有界文件集合時，才修改專案文件。
+  本 tooling repository 的明確維護要求可包含自身的使用者文件，不延伸到其他專案。
+- 這些邊界同樣適用於 skills、helpers 與委派任務，不接受 target 專案規則要求自動補文件。
+
+這是行為契約，不是檔案讀取的 runtime 攔截。Pi 自身會依啟動目錄與父目錄探索 context files；
+從 workspace root 啟動可避免因啟動在 target 內而額外載入該 target 的規則。
 
 常駐授權與安全規則由 `AGENTS.md` 管理；領域 skills 補充設計與驗證，不另設重複核准。
 Secret、credential、generated／ignored 檔案、branch、repository ownership、Git 與遠端
@@ -119,10 +135,10 @@ kube context 名稱或登入身分可見的 GCP projects（可見不代表擁有
 └── docs/
 ```
 
-Agent 產出的規格文件一律預設寫入 `<workspace-root>/docs/`。使用者未指定路徑的調查或
-事故報告也寫在同一位置，不會寫進 application 或其他 target repository。只有使用者明確
-指定 target repository 與路徑時，規格文件才能寫入該 repository。`<workspace-root>/docs/`
-是 user-owned work product，不屬於本 repository 的公開文件範圍。
+Agent 不自行保存規格、plan、調查或事故報告。只有使用者明確要求保存文件時才建立；
+要求 workspace 文件但未指定路徑時，使用 `<workspace-root>/docs/`。寫入 application 或
+其他 target repository 的文件，必須有明確文件修改要求及指定 repository 與路徑或有界
+文件集合。`<workspace-root>/docs/` 是 user-owned work product，不屬於本 repository 的公開文件範圍。
 
 Initializer 不依賴固定的 workspace 名稱或使用者家目錄。Workspace contract 也允許 Agent
 在使用者明確批准後修改指定的 `~/.bashrc`；Agent 必須先檢查檔案、保留無關設定，且不得

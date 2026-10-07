@@ -2,7 +2,7 @@
 name: scout
 description: Fast codebase recon — explores files, finds patterns, maps architecture
 tools: read, grep, find, ls, code_index, code_index_status, code_query, code_context, code_impact, code_validate_change
-model: openai-codex/gpt-6-luna
+model: openai/gpt-6-luna
 thinking: off
 ---
 

@@ -128,9 +128,9 @@ prompt、model、thinking level 與 exact tool allowlist。
 
 | Role | Model | 可用 tools | 工作範圍 |
 | --- | --- | --- | --- |
-| `scout` | `openai-codex/gpt-6-luna` | `read`, `grep`, `find`, `ls` 與六個 `code_*` intelligence tools | 讀取 local repository，整理檔案、caller 與結構。 |
-| `researcher` | `openai-codex/gpt-6-luna` | `web_search`, `source_check`, `fetch_content`, `get_search_content` | 搜尋外部資料並整理來源。 |
-| `environment-scout` | `openai-codex/gpt-6-luna` | `kubectl_inspect`, `gcloud_inspect` | 對明確指定的 Kubernetes 或 GCP 目標做 structured read-only inspection。 |
+| `scout` | `openai/gpt-6-luna` | `read`, `grep`, `find`, `ls` 與六個 `code_*` intelligence tools | 讀取 local repository，整理檔案、caller 與結構。 |
+| `researcher` | `openai/gpt-6-luna` | `web_search`, `source_check`, `fetch_content`, `get_search_content` | 搜尋外部資料並整理來源。 |
+| `environment-scout` | `openai/gpt-6-luna` | `kubectl_inspect`, `gcloud_inspect` | 對明確指定的 Kubernetes 或 GCP 目標做 structured read-only inspection。 |
 
 Scout 的 `code_*` tools 明確載入 repository-owned
 [code-intelligence extension](../code-intelligence/README.md)。JS／TS／Java 結構主張應引用

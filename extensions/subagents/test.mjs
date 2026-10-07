@@ -100,17 +100,17 @@ test("applies an explicit nested child allowlist without inheriting it into othe
 test("loads only three read-only profiles", () => {
   const agents = profiles();
   assert.deepEqual([...agents.keys()].sort(), ["environment-scout", "researcher", "scout"]);
-  assert.equal(agents.get("scout").model, "openai-codex/gpt-6-luna");
+  assert.equal(agents.get("scout").model, "openai/gpt-6-luna");
   assert.equal(agents.get("scout").thinking, "off");
   assert.deepEqual(agents.get("scout").tools, ["read", "grep", "find", "ls", "code_index", "code_index_status", "code_query", "code_context", "code_impact", "code_validate_change"]);
   assert.equal(agents.get("scout").subagentAgents, undefined);
   assert.match(agents.get("scout").systemPrompt, /Default to quick, targeted lookup/);
   assert.match(agents.get("scout").systemPrompt, /Stop once enough\s+evidence answers the question/);
   assert.match(agents.get("scout").systemPrompt, /Include code snippets only when needed/);
-  assert.equal(agents.get("researcher").model, "openai-codex/gpt-6-luna");
+  assert.equal(agents.get("researcher").model, "openai/gpt-6-luna");
   assert.equal(agents.get("researcher").thinking, "medium");
   assert.deepEqual(agents.get("researcher").tools, ["web_search", "source_check", "fetch_content", "get_search_content"]);
-  assert.equal(agents.get("environment-scout").model, "openai-codex/gpt-6-luna");
+  assert.equal(agents.get("environment-scout").model, "openai/gpt-6-luna");
   assert.equal(agents.get("environment-scout").thinking, "medium");
   assert.deepEqual(agents.get("environment-scout").tools, ["kubectl_inspect", "gcloud_inspect"]);
   assert.match(agents.get("environment-scout").systemPrompt, /use the existing kube context and authenticated gcloud configuration/);

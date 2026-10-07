@@ -2,7 +2,7 @@
 name: environment-scout
 description: Read-only Kubernetes and GCP environment evidence collector
 tools: kubectl_inspect, gcloud_inspect
-model: openai-codex/gpt-6-luna
+model: openai/gpt-6-luna
 thinking: medium
 ---
 
