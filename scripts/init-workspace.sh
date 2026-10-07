@@ -4,7 +4,7 @@ set -euo pipefail
 
 usage() {
   cat <<'EOF'
-Usage: scripts/init-workspace.sh [--workspace-root <path>] [--no-pi-local] [--install-runtimes] [--check]
+Usage: scripts/init-workspace.sh [--workspace-root <path>] [--no-pi-local] [--check]
 
 Rebuild the managed workspace contract, skills, extensions, and dependencies.
 Unknown extensions are preserved; unmanaged contract paths stop installation.
@@ -17,10 +17,7 @@ The workspace root defaults to the parent directory of the skills repository.
 Options:
   --no-pi-local  Do not install extensions or project-local Pi packages.
   --pi-local     Compatibility alias; Pi-local installation is enabled by default.
-  --install-runtimes  Install a missing/incompatible JDK 17 on Ubuntu using sudo/apt.
-                      Existing JDK 17+ is preserved; requires Pi-local installation.
-  --check        Report workspace, extension and parser-runtime readiness without
-                 changing files, even when --install-runtimes is supplied.
+  --check        Report workspace and extension readiness without changing files.
 EOF
 }
 
@@ -29,7 +26,6 @@ skills_repo="$(dirname -- "$script_dir")"
 workspace_root="$(dirname -- "$skills_repo")"
 pi_local=true
 check_only=false
-install_runtimes=false
 
 while (($# > 0)); do
   case "$1" in
@@ -50,10 +46,6 @@ while (($# > 0)); do
       pi_local=false
       shift
       ;;
-    --install-runtimes)
-      install_runtimes=true
-      shift
-      ;;
     --check)
       check_only=true
       shift
@@ -69,11 +61,6 @@ while (($# > 0)); do
       ;;
   esac
 done
-
-if $install_runtimes && ! $pi_local; then
-  echo "error: --install-runtimes requires Pi-local installation; cannot combine with --no-pi-local" >&2
-  exit 2
-fi
 
 if [[ ! -d "$workspace_root" ]]; then
   echo "error: workspace root is not a directory: $workspace_root" >&2
@@ -129,11 +116,6 @@ try {
   process.exit(1);
 }
 const extensions = packageJson.pi?.extensions;
-if (Array.isArray(extensions) && extensions.includes("./extensions/code-intelligence")
-    && typeof packageJson.dependencies?.typescript !== "string") {
-  console.error(`error: code-intelligence requires a declared TypeScript runtime dependency: ${packagePath}`);
-  process.exit(1);
-}
 if (!Array.isArray(extensions)) {
   console.error(`error: package manifest must declare pi.extensions: ${packagePath}`);
   process.exit(1);
@@ -154,15 +136,6 @@ if [[ "$(printf '%s\n' "${extension_names[@]}")" != "$declared_extensions" ]]; t
   echo "error: extensions directory and package pi.extensions inventory differ: $dependencies_manifest" >&2
   exit 1
 fi
-
-is_desired_extension() {
-  local candidate="$1"
-  local extension_name
-  for extension_name in "${extension_names[@]}"; do
-    [[ "$candidate" == "$extension_name" ]] && return 0
-  done
-  return 1
-}
 
 load_managed_extensions() {
   [[ -f "$managed_manifest" ]] || {
@@ -257,118 +230,6 @@ console.log(childOnly && installed ? "ready" : childOnly || installed ? "drifted
 NODE
 }
 
-typescript_status() {
-  PACKAGE_JSON="$dependencies_manifest" EXTENSION_DIR="$extensions_destination" node <<'NODE'
-const fs = require("node:fs");
-const path = require("node:path");
-const { createRequire } = require("node:module");
-const manifest = JSON.parse(fs.readFileSync(process.env.PACKAGE_JSON, "utf8"));
-try {
-  // Resolve from the deployed extension, never from a global TypeScript install.
-  const localRequire = createRequire(path.join(process.env.EXTENSION_DIR, "code-intelligence", "index.ts"));
-  const resolved = localRequire.resolve("typescript");
-  const dependencyRoot = path.join(process.env.EXTENSION_DIR, "node_modules", "typescript");
-  const rel = path.relative(dependencyRoot, resolved);
-  if (rel.startsWith(`..${path.sep}`) || rel === ".." || path.isAbsolute(rel)) {
-    console.log("missing-local-dependency");
-    process.exit(0);
-  }
-  const ts = localRequire(resolved);
-  if (ts.version !== manifest.dependencies.typescript) {
-    console.log("version-mismatch");
-  } else if (typeof ts.createProgram !== "function" || typeof ts.resolveModuleName !== "function") {
-    console.log("compiler-api-unavailable");
-  } else {
-    const parsed = ts.createSourceFile("runtime-check.ts", "export const ready = true;", ts.ScriptTarget.Latest, true);
-    console.log(parsed.parseDiagnostics?.length === 0 ? "ready" : "parser-unusable");
-  }
-} catch {
-  console.log("missing-or-unusable");
-}
-NODE
-}
-
-jdk_status() {
-  local java_version javac_version java_major=0 javac_major=0 modules line
-  if ! command -v java >/dev/null 2>&1 || ! command -v javac >/dev/null 2>&1; then
-    echo "missing"
-    return
-  fi
-  if ! java_version="$(java -version 2>&1)" || ! javac_version="$(javac -version 2>&1)"; then
-    echo "unusable"
-    return
-  fi
-  # Ignore launcher warnings (for example JAVA_TOOL_OPTIONS) and only parse
-  # actual version lines. Never print captured launcher output.
-  while IFS= read -r line; do
-    if [[ "$line" =~ ^(openjdk|java)[[:space:]]version[[:space:]]\"([0-9]+)(\.([0-9]+))? ]]; then
-      java_major="${BASH_REMATCH[2]}"
-      [[ "$java_major" != 1 ]] || java_major="${BASH_REMATCH[4]:-0}"
-      break
-    fi
-  done <<<"$java_version"
-  while IFS= read -r line; do
-    if [[ "$line" =~ ^javac[[:space:]]([0-9]+)(\.([0-9]+))? ]]; then
-      javac_major="${BASH_REMATCH[1]}"
-      [[ "$javac_major" != 1 ]] || javac_major="${BASH_REMATCH[3]:-0}"
-      break
-    fi
-  done <<<"$javac_version"
-  if ((java_major == 0 || javac_major == 0)); then
-    echo "unusable"
-    return
-  fi
-  if ((java_major < 17 || javac_major < 17)); then
-    echo "unsupported-version"
-    return
-  fi
-  if ! modules="$(java --list-modules 2>/dev/null)"; then
-    echo "compiler-module-missing"
-  elif grep -Eq '^jdk\.compiler(@|$)' <<<"$modules"; then
-    echo "ready"
-  else
-    echo "compiler-module-missing"
-  fi
-}
-
-ensure_jdk_runtime() {
-  local status
-  status="$(jdk_status)"
-  if [[ "$status" == ready ]]; then
-    echo "Code intelligence Java runtime: ready (existing JDK preserved)"
-    return
-  fi
-  # User-operated system setup only. No external repositories, home changes,
-  # forced update-alternatives selection, or automatic privileged retries.
-  if [[ "$(id -u)" == 0 ]]; then
-    echo "error: run runtime installation as a normal user, not root" >&2
-    return 1
-  fi
-  if [[ ! -r /etc/os-release ]]; then
-    echo "error: automatic JDK installation supports Ubuntu only; install a full JDK 17+ manually" >&2
-    return 1
-  fi
-  source /etc/os-release
-  if [[ "${ID:-}" != ubuntu ]]; then
-    echo "error: automatic JDK installation supports Ubuntu only; install a full JDK 17+ manually" >&2
-    return 1
-  fi
-  if ! command -v sudo >/dev/null 2>&1 || ! command -v apt-get >/dev/null 2>&1; then
-    echo "error: sudo and apt-get are required for Ubuntu JDK installation" >&2
-    return 1
-  fi
-  echo "Installing code intelligence JDK: openjdk-17-jdk-headless (Ubuntu system package)"
-  sudo apt-get update || return 1
-  sudo apt-get install -y openjdk-17-jdk-headless || return 1
-  hash -r
-  status="$(jdk_status)"
-  if [[ "$status" != ready ]]; then
-    echo "error: JDK installation finished but selected java/javac are not ready ($status); select a full JDK 17+ in PATH before retrying initialization" >&2
-    return 1
-  fi
-  echo "Code intelligence Java runtime: ready"
-}
-
 if $check_only; then
   echo "workspace root: $workspace_root"
   echo "skills repository: $skills_repo"
@@ -399,10 +260,6 @@ if $check_only; then
     echo "Pi extension manifest: drifted"
   fi
   [[ -d "$extensions_destination/node_modules" ]] && echo "Pi extension dependencies: present" || echo "Pi extension dependencies: missing"
-  if is_desired_extension code-intelligence; then
-    echo "Code intelligence TypeScript runtime: $(typescript_status)"
-    echo "Code intelligence Java runtime: $(jdk_status)"
-  fi
   echo "Pi package (pi-web-access@0.23.0): $(web_access_status)"
   exit 0
 fi
@@ -444,9 +301,7 @@ elif [[ ! -w "$workspace_root" ]]; then
   exit 1
 fi
 
-# Fail prerequisite/opt-in runtime installation checks before touching managed
-# workspace links or extensions. Default initialization remains usable for JS/TS
-# without silently installing a system JDK.
+# Fail prerequisite checks before touching managed workspace links or extensions.
 if $pi_local; then
   if ! command -v npm >/dev/null 2>&1; then
     echo "error: npm is required to install Pi extension dependencies" >&2
@@ -455,17 +310,6 @@ if $pi_local; then
   if ! command -v pi >/dev/null 2>&1; then
     echo "error: pi is required to install project-local packages" >&2
     exit 1
-  fi
-  if is_desired_extension code-intelligence; then
-    if $install_runtimes; then
-      ensure_jdk_runtime
-    else
-      java_status="$(jdk_status)"
-      echo "Code intelligence Java runtime: $java_status"
-      if [[ "$java_status" != ready ]]; then
-        echo "warning: Java analysis is unavailable ($java_status); Ubuntu users may opt into --install-runtimes, otherwise provide a full JDK 17+" >&2
-      fi
-    fi
   fi
 fi
 
@@ -517,14 +361,6 @@ if $pi_local; then
   cp -- "$dependencies_manifest" "$extensions_destination/package.json"
   (cd "$extensions_destination" && npm install --omit=dev --omit=peer)
   echo "Pi extension dependencies installed: $extensions_destination/node_modules"
-  if is_desired_extension code-intelligence; then
-    typescript_runtime_status="$(typescript_status)"
-    echo "Code intelligence TypeScript runtime: $typescript_runtime_status"
-    if [[ "$typescript_runtime_status" != ready ]]; then
-      echo "error: installed TypeScript runtime failed its version/compiler API smoke check" >&2
-      exit 1
-    fi
-  fi
 
   # Migrate workspaces initialized by the former package-registration flow.
   # Preserve all unrelated project settings and fail rather than overwrite invalid JSON.

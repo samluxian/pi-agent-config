@@ -14,6 +14,22 @@ state ownership、provider、CI 與安全的驗證方式，不能直接套用既
    安全取得 backend／provider evidence 時標示缺口，不把 fmt 視為 plan 通過。
 5. 只回報 plan action summary、unexpected drift、關鍵 unknown 與 CI 比對，不輸出 secrets／state。
 
+## 環境配置獨立
+
+每個環境都必須有自己的明確配置，不以 dev（或其他環境）組出 qa／prod。
+
+- 在 `vars.tf` 或 repository 既有 input 配置中，逐環境列出資源集合、名稱、endpoint、
+  規格、health check、timeout 等適用設定；相同值也可以各自寫出。
+- 不使用字串替換、環境前綴改寫、以 dev 為基底的 `merge`、dev fallback，或讓
+  環境設定繼承可變的共用 defaults。會隱藏環境設定的 optional defaults 也應明確展開。
+- Locals 只選取指定環境；缺少環境或必要設定應明確失敗，不退回其他環境。
+  環境專屬資源直接列在該環境配置，不從 dev 集合推導。
+- 共用 module 可以保留，但須接收明確環境 inputs。這項規則不要求拆 repository／root、
+  搬 state 或新增 CI 發布閘門，也不授權擴大本次修改範圍。
+- 配置整理需保留各環境既有效值、resource addresses 與 `for_each` keys；驗證新舊值相等，
+  並測試只修改一個環境時，其他環境配置不變。這些本機檢查不能取代真實 plan，
+  也不能證明 backend／state 或已部署資源隔離。
+
 ## 使用方法與官方建議
 
 - 一般 CLI 與驗證方式見

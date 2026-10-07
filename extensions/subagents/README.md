@@ -71,7 +71,8 @@ pi --mode json --no-session --no-skills --no-extensions ...
 - 必須由 parent 在 `task` 中提供所有必要背景、路徑、限制與輸出格式。
 
 不繼承 parent conversation 不代表沒有其他 context instructions。目前 child 啟動參數
-未使用 `--no-context-files`，Pi 仍會依 context-file discovery 載入 agent directory、
+對 scout 使用 `--no-context-files`，避免自動載入其他專案指示；其他角色
+未使用這個 flag，Pi 仍會依 context-file discovery 載入 agent directory、
 `cwd` 與祖先目錄適用的 `AGENTS.md`／`CLAUDE.md`。`--no-skills` 和
 `--no-extensions` 不會關閉這個機制。Parent 必須提供明確的 task 限制；若發現
 載入規則衝突，先釐清，不把 child 的工作目錄或當地指示當成擴大權限的授權。
@@ -87,6 +88,7 @@ Single mode 一次啟動一個 child：
 {
   "agent": "scout",
   "task": "Read the named files and return bounded findings.",
+  "allowedPaths": ["/workspace/repository/src"],
   "cwd": "/workspace/repository"
 }
 ```
@@ -99,6 +101,7 @@ Parallel mode 一次最多接受四項互相獨立的 read-only tasks：
     {
       "agent": "scout",
       "task": "Inspect local repository wiring.",
+      "allowedPaths": ["/workspace/repository/src"],
       "cwd": "/workspace/repository"
     },
     {
@@ -121,6 +124,28 @@ Extension 最多同時執行四個 read-only children，並按照輸入順序回
 }
 ```
 
+## 工作目錄與探索路徑
+
+未指定 `cwd` 時使用 parent 的工作目錄；指定相對 `cwd` 時，相對於 parent 的工作目錄解析。
+Extension 在啟動前拒絕空白、不存在或非目錄的 `cwd`，並將解析後的絕對路徑同時提供給
+child process 與 system prompt。Parallel mode 先檢查所有工作目錄，再啟動任何 child。
+這是啟動前檢查，不保證目錄在啟動後仍存在，也不是 repository sandbox。
+
+Scout 對未知位置先在已授權目錄內做 `ls`／`find` 或定向 `grep`，不猜慣用目錄或檔名。
+Pi `find` 結果相對於搜尋目錄；讀取前必須以該搜尋目錄組合路徑，不能直接當作相對於
+child `cwd`。工作目錄只提供路徑基準，不授權擴大搜尋範圍。
+缺失路徑最多一次有界探索；EOF offset 錯誤依回傳檔案長度調整讀取，權限錯誤則回報限制。
+Scout tool 呼叫必須指定非空的 `allowedPaths` 目錄清單（相對於 child cwd）；extension
+不從任務文字猜測授權路徑。Parallel mode 也會在啟動前預檢所有 scout 範圍。
+Scout 載入專用 `tool_call` guard，逐次拒絕越界路徑、`..` traversal、同名前綴 sibling
+以及指向範圍外的 symlink；未提供有效 guard 設定時拒絕所有工具呼叫。
+省略搜尋 `path` 仍以 cwd 檢查，因此 cwd 大於允許範圍時會被拒絕。
+`read` 目標不存在時會被 guard 拒絕，要求先做有界探索；不接受 `@`、`~`、file URL
+或 Unicode-space 路徑縮寫，避免 guard 與內建工具的路徑解析不同。
+探索順序、避免重複讀取與錯誤恢復仍是模型指引，不加入自動重試。
+這個 guard 不檢查範圍內內容是否含 secrets，也不是 OS sandbox；parent 必須提供最小範圍，
+並明確排除機密及不允許讀取的內容。
+
 ## 三種角色
 
 Extension 啟動時會讀取 [`agents/`](agents/) 下的 Markdown profiles。Profile 定義 role
@@ -128,15 +153,13 @@ prompt、model、thinking level 與 exact tool allowlist。
 
 | Role | Model | 可用 tools | 工作範圍 |
 | --- | --- | --- | --- |
-| `scout` | `openai/gpt-6-luna` | `read`, `grep`, `find`, `ls` 與六個 `code_*` intelligence tools | 讀取 local repository，整理檔案、caller 與結構。 |
+| `scout` | `openai/gpt-6-luna` | `read`, `grep`, `find`, `ls` | 讀取 local repository，整理檔案、caller 與結構。 |
 | `researcher` | `openai/gpt-6-luna` | `web_search`, `source_check`, `fetch_content`, `get_search_content` | 搜尋外部資料並整理來源。 |
 | `environment-scout` | `openai/gpt-6-luna` | `kubectl_inspect`, `gcloud_inspect` | 對明確指定的 Kubernetes 或 GCP 目標做 structured read-only inspection。 |
 
-Scout 的 `code_*` tools 明確載入 repository-owned
-[code-intelligence extension](../code-intelligence/README.md)。JS／TS／Java 結構主張應引用
-parser-backed evidence；缺少解析能力時回報 unknown，不靠命名猜測。Child 的 index 是
-process-local，不共用 parent snapshot；parent 應提供現有證據或明確允許對指定 repository
-建立全庫 map，不能讓原本 bounded file task 自動擴大成全庫掃描。
+Scout 的結構主張應引用實際 implementation 與 references，不靠檔名猜測；
+區分 facts、inference 與 unknown，缺少證據時回報缺口。不能讓原本 bounded file task
+自動擴大成全庫掃描。
 
 `scout` 使用 `thinking: off`，預設快速、定向查找：先讀已確認路徑，未確認時只在指定目錄內搜尋；
 證據足夠就停，僅回傳必要行號、結論與缺口，不預設追完所有依賴或貼長 code snippets。
@@ -179,8 +202,8 @@ Repository、Git remote、Kubernetes、Argo CD、GCP、secret 與 deployment mut
 parent contract 和 role prompt 約束。Skills、tutorials 與 child 的當地 context instructions
 不能擴大 workspace contract 的權限。
 
-`scout` 的 `read`／`grep` 沒有 repository path sandbox；工具名稱的 allowlist 不會限制
-每次讀取的路徑。Output redaction 也不能保證敏感內容從未被讀取或全部被遮罩。
+`scout` 的 path guard 限制每次工具呼叫的目標目錄，但不是 repository OS sandbox；
+工具名稱的 allowlist 本身也不限制路徑。Output redaction 也不能保證敏感內容從未被讀取或全部被遮罩。
 Parent 必須限定已確認的路徑、目標與非機密欄位，child 必須遵守；不得以這些防護
 代替 secret 禁讀規則或最小查詢範圍。
 

@@ -194,13 +194,6 @@ command -v pi
 建議另外安裝 `make`，使用人類友善的 workspace targets；沒有 `make` 時仍可直接執行
 initializer script。
 
-Code intelligence 的 TypeScript runtime 由 initializer 安裝至 workspace-local extension
-依賴目錄，並檢查固定版本及 Compiler API 的 in-memory parsing smoke test。Java 需完整
-JDK 17+：選定的 `java`／`javac` 必須符合版本門檻，且 `java --list-modules` 包含
-`jdk.compiler`。一般初始化缺少 Java 時會明確警告，仍可使用 JS／TS；不會偷偷安裝
-系統套件。Ubuntu 使用者可明確選擇下方 runtime installation 模式。
-Node／npm／Pi 仍是前置需求，此模式不安裝或切換它們。
-
 如果 Node 由 NVM 管理，請先在目前 shell 選定版本，例如：
 
 ```bash
@@ -253,25 +246,6 @@ Makefile 只把參數交給 initializer，不包含另一份設定同步邏輯�
 ./scripts/init-workspace.sh --workspace-root <workspace-root>
 ```
 
-### 安裝 code-intelligence runtimes（使用者操作）
-
-若 Ubuntu 尚未有完整 JDK 17+，可明確選用：
-
-```bash
-make workspace-init-runtimes WORKSPACE_ROOT=<workspace-root>
-```
-
-對應 initializer 的 `--install-runtimes`。已有相容 JDK 時保留，不執行 apt；否則透過
-`sudo apt-get` 安裝 Ubuntu repository 的 `openjdk-17-jdk-headless`，需要網路及 sudo。
-套件已確認於 Ubuntu 22.04／24.04 LTS 的 amd64 repository 提供；其他 release／
-architecture 的可用性取決於當地 apt repository。非 Ubuntu 請自行提供完整 JDK，再使用一般初始化。
-不要以 root 執行此安裝模式；Agent 不執行系統安裝。
-
-此模式會安裝系統 JDK，也會完成既有 workspace-local 初始化；使用獨立 opt-in target
-避免一般設定同步意外觸發提權或系統變更。不修改 `JAVA_HOME`、shell 設定或強制選取
-`update-alternatives`。若套件安裝後 PATH 仍選到舊 Java，腳本會停止並要求先選定
-相容 JDK；不反覆重試安裝。`--install-runtimes` 不能與 `--no-pi-local` 合用。
-
 Initializer 會建立或協調以下 workspace-local 資源：
 
 ```text
@@ -287,7 +261,7 @@ Initializer 會建立或協調以下 workspace-local 資源：
 完全一致，否則 initializer 會停止。`<workspace-root>/.pi/pi-agent-config-managed.json` 記錄上一版
 安裝的 extension 名稱；initializer 只刪除這份 manifest 與目前 source 列出的 extension，其他
 使用者自建 extension 會保留。若 `AGENTS.md` 或 `.agents/skills` 是一般檔案、目錄，或指向其他
-來源的 symlink，initializer 會在清除前停止。腳本也會重建 extension dependencies，並驗證已部署的 TypeScript runtime，然後安裝
+來源的 symlink，initializer 會在清除前停止。腳本也會重建 extension dependencies，然後安裝
 pinned `npm:pi-web-access@0.23.0` project package。Package registration 會固定使用
 `extensions: []` filter，因此 parent session 不載入web tools；`researcher` child 需要外部搜尋
 時才透過明確path載入package extension。
@@ -334,12 +308,10 @@ make workspace-check WORKSPACE_ROOT=<workspace-root>
 - Pi executable 的位置；
 - 每個受管理 extension 是 `ready`、`missing` 或 `drifted`；未受管理的 extension 顯示為 `unmanaged (preserved)`；
 - extension manifest 與 dependencies 狀態；
-- code-intelligence 的 TypeScript 固定版本／Compiler API parsing smoke check、Java 版本與 compiler module 狀態；
-  readiness 檢查不等於真實專案 graph、typecheck 或 tests 已通過；
 - `pi-web-access@0.23.0` 是否已安裝，且 registration 是否維持 child-only filter。
 
-`--check` 不會安裝任何 runtime，即使同時提供 `--install-runtimes` 也保持唯讀。
-`--no-pi-local` 的一般安裝不安裝或探測 parser runtimes。
+`--check` 保持唯讀，不安裝或修改任何資源。
+`--no-pi-local` 的一般安裝不安裝 extension dependencies 或 project-local packages。
 
 ## 啟動 Pi
 
@@ -398,14 +370,11 @@ skill-owned deterministic helper 時，優先使用單一 bounded helper，避�
 | Extension | 文件 |
 | --- | --- |
 | `subagents` | [`extensions/subagents/README.md`](extensions/subagents/README.md) |
-| `code-intelligence` | [`extensions/code-intelligence/README.md`](extensions/code-intelligence/README.md) — JS／TS Compiler API 與 Java JDK parser-backed map、引用、impact、graph diff；不限制一般編輯工具。 |
-| `plan-mode` | [`extensions/plan-mode/README.md`](extensions/plan-mode/README.md) — `/plan` 限制成唯讀規劃；subagent 只允許 scout、environment-scout、researcher，執行需另行明確授權。 |
 
 ## Skill 入口
 
 每個 skill 的適用範圍、停止條件與流程由該目錄的 `SKILL.md` 管理。保留的 repository-owned skills：
 
-- [Code intelligence](.agents/skills/code-intelligence/SKILL.md) — JS／TS／Java 分析前建立全庫 map，以證據區分 facts、inference、unknown；TypeScript 依賴由 initializer 安裝，Java 另需完整 JDK 17+
 - [Kubernetes platform guidance](.agents/skills/kubernetes-platform-guidance/README.md) — 資源設定、GitOps／Helm 關聯與唯讀診斷流程
 - [Terraform workflow guidance](.agents/skills/terraform-workflow-guidance/README.md) — 跨 repository 的 plan-first 流程
 - [Helm chart best practices](.agents/skills/helm-chart-best-practices/README.md) — 一般 chart 設計、render 與相容性驗證

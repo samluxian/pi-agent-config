@@ -3,22 +3,18 @@
 WORKSPACE_ROOT ?= $(abspath ..)
 INIT_WORKSPACE_SCRIPT := ./scripts/init-workspace.sh
 
-.PHONY: help workspace-init workspace-init-runtimes workspace-check workspace-contract-only
+.PHONY: help workspace-init workspace-check workspace-contract-only
 
 help:
 	@printf '%s\n' \
 		'make workspace-check          Check workspace and Pi-local readiness' \
 		'make workspace-init           Reconcile workspace contracts and Pi-local resources' \
-		'make workspace-init-runtimes  Initialize with opt-in Ubuntu JDK installation (sudo/network)' \
 		'make workspace-contract-only  Install only AGENTS.md and project-scoped skills' \
 		'' \
 		'Override the default workspace root with WORKSPACE_ROOT=/path/to/workspace'
 
 workspace-init:
 	"$(INIT_WORKSPACE_SCRIPT)" --workspace-root "$(WORKSPACE_ROOT)"
-
-workspace-init-runtimes:
-	"$(INIT_WORKSPACE_SCRIPT)" --workspace-root "$(WORKSPACE_ROOT)" --install-runtimes
 
 workspace-check:
 	"$(INIT_WORKSPACE_SCRIPT)" --workspace-root "$(WORKSPACE_ROOT)" --check

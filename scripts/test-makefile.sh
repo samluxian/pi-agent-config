@@ -21,7 +21,6 @@ chmod +x "$fixture_repo/scripts/init-workspace.sh"
 help_output="$(make -s --no-print-directory -C "$fixture_repo" help)"
 grep -Fq 'make workspace-check' <<<"$help_output"
 grep -Fq 'make workspace-init' <<<"$help_output"
-grep -Fq 'make workspace-init-runtimes' <<<"$help_output"
 grep -Fq 'make workspace-contract-only' <<<"$help_output"
 grep -Fq 'WORKSPACE_ROOT=/path/to/workspace' <<<"$help_output"
 [[ ! -e "$call_log" ]]
@@ -43,7 +42,6 @@ run_target() {
 }
 
 run_target workspace-init --workspace-root "$workspace_root"
-run_target workspace-init-runtimes --workspace-root "$workspace_root" --install-runtimes
 run_target workspace-check --workspace-root "$workspace_root" --check
 run_target workspace-contract-only --workspace-root "$workspace_root" --no-pi-local
 

@@ -15,9 +15,7 @@
   ],
   "pi": {
     "extensions": [
-      "./extensions/plan-mode",
-      "./extensions/subagents",
-      "./extensions/code-intelligence"
+      "./extensions/subagents"
     ],
     "skills": [
       "./.agents/skills"
@@ -31,8 +29,5 @@
   },
   "devDependencies": {
     "c8": "^12.0.0"
-  },
-  "dependencies": {
-    "typescript": "5.9.3"
   }
 }

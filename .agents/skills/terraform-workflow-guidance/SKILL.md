@@ -9,6 +9,38 @@ Use evidence-first, plan-first Terraform practice in a user-identified repositor
 Cloud and remote state remain read-only. Do not assume one repository's root,
 backend, CI, language, or helper conventions apply to another.
 
+## Independent Environment Configuration
+
+Each environment must own an explicit configuration. Do not use dev (or any
+other environment) as the template, default, fallback, or inheritance source for
+another environment. During investigation, identify this coupling; during an
+authorized edit, remove it only within the agreed resource/root scope.
+
+- Keep environment-specific resource settings in explicit dev/qa/prod (or the
+  repository's actual environment names) entries in `vars.tf` or its established
+  input configuration. Each entry must show its own resource membership, names,
+  endpoints, sizing, health checks, timeouts, and other applicable settings.
+- Do not generate another environment with string replacement, prefix/suffix
+  rewriting, `merge` over an environment baseline, missing-key fallback to dev,
+  or mutable shared defaults for environment-specific values. Repeated values
+  across environment entries are intentional; do not deduplicate them into
+  cross-environment inheritance. Resolve effective optional defaults explicitly
+  when they otherwise hide or couple environment-specific settings.
+- Locals select the requested environment's configuration directly. Missing
+  environments or required settings must fail clearly rather than silently
+  selecting another environment. List environment-only resources in that
+  environment's entry instead of deriving membership from dev.
+- Shared modules and genuinely environment-independent implementation may remain
+  shared; they must accept explicit environment inputs, not infer them from dev.
+  Configuration independence does not require separate repositories, branches,
+  roots, or a state migration, and does not authorize CI gates or rollout changes.
+- For a configuration-only refactor, preserve each environment's effective values,
+  resource addresses, `for_each` keys, and identifiers. Verify before/after values
+  for every affected environment and check that changing one environment's input
+  leaves the others unchanged. Use isolated local evaluation or existing safe
+  tests where possible; this supplements, never replaces, the plan gate below.
+  Separate config does not prove separate state or deployed isolation.
+
 ## Flow
 
 1. Confirm task type, repository, branch/status, exact root/workspace/environment,
@@ -23,6 +55,8 @@ backend, CI, language, or helper conventions apply to another.
    layout matches; otherwise derive the workflow from target evidence, not that
    adapter. If ownership or backend cannot be established, stop before editing.
 3. Trace variables -> locals -> modules/resources -> outputs and state addresses.
+   Apply the independent environment configuration rules above; distinguish
+   explicit values from inherited/generated settings and shared state concerns.
    Distinguish official provider guidance, repository convention, plan evidence,
    and observed infrastructure. For replacement or immutable fields, read
    `references/plan-replacement-review.md`, inventory active references, and
@@ -48,7 +82,10 @@ backend, CI, language, or helper conventions apply to another.
    command. Use `scripts/summarize_terraform_plan.py` for supported text plans.
    Record addresses, action order, warnings/errors, add/change/destroy/replace
    counts, unknown values, and unexpected drift, not raw sensitive output.
-   If plan cannot safely run, report the validation gap; do not claim readiness.
+   For environment-config changes, also report value-equivalence and isolation
+   checks for every affected environment, including any unresolved implicit
+   defaults or external input overrides. If plan cannot safely run, report the
+   validation gap; do not claim readiness.
 7. When an MR/pipeline identifier is supplied, inspect its actual CI plan
    read-only. Compare status, commit SHA and plan actions to local evidence;
    never trigger/retry a job, approve, merge, or apply.

@@ -14,6 +14,7 @@ import { getMarkdownTheme, parseFrontmatter, withFileMutationQueue } from "@eare
 import { Container, Markdown, Spacer, Text, visibleWidth } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 import { boundedRedactedText, redactSensitiveText } from "./redaction.ts";
+import { normalizeScoutScope, SCOUT_SCOPE_ENV } from "./tools/scout-scope.ts";
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -140,14 +141,7 @@ const WEB_ACCESS_EXTENSION = path.join(
 	"pi-web-access",
 	"index.ts",
 );
-const CODE_INTELLIGENCE_EXTENSION = path.join(EXT_DIR, "..", "code-intelligence", "index.ts");
 const CUSTOM_TOOL_EXTENSIONS: Record<string, string> = {
-	code_index: CODE_INTELLIGENCE_EXTENSION,
-	code_index_status: CODE_INTELLIGENCE_EXTENSION,
-	code_query: CODE_INTELLIGENCE_EXTENSION,
-	code_context: CODE_INTELLIGENCE_EXTENSION,
-	code_impact: CODE_INTELLIGENCE_EXTENSION,
-	code_validate_change: CODE_INTELLIGENCE_EXTENSION,
 	web_search: WEB_ACCESS_EXTENSION,
 	source_check: WEB_ACCESS_EXTENSION,
 	fetch_content: WEB_ACCESS_EXTENSION,
@@ -252,18 +246,36 @@ export function truncLine(text: string, maxWidth: number): string {
 
 // ── Subagent Execution ────────────────────────────────────────────────
 
+export async function validateWorkingDirectory(cwd: string): Promise<string> {
+	if (!cwd.trim()) throw new Error("Invalid subagent cwd: directory must not be empty.");
+	const resolved = path.resolve(cwd);
+	let stat: fs.Stats;
+	try {
+		stat = await fs.promises.stat(resolved);
+	} catch (error) {
+		const code = (error as NodeJS.ErrnoException).code;
+		throw new Error(`Invalid subagent cwd: ${redactSensitiveText(resolved)} (${code ?? "stat failed"}). Provide a confirmed directory.`);
+	}
+	if (!stat.isDirectory()) throw new Error(`Invalid subagent cwd: ${redactSensitiveText(resolved)} is not a directory.`);
+	return await fs.promises.realpath(resolved);
+}
+
 export async function buildPiArgs(
 	agent: AgentConfig,
 	task: string,
 	cwd: string,
-): Promise<{ args: string[]; tempDir: string; childEnv?: NodeJS.ProcessEnv }> {
+	allowedPaths?: string[],
+): Promise<{ args: string[]; tempDir: string; cwd: string; childEnv?: NodeJS.ProcessEnv }> {
+	cwd = await validateWorkingDirectory(cwd);
+	const scoutScope = agent.name === "scout" ? normalizeScoutScope(allowedPaths ?? [cwd], cwd) : undefined;
 	const piBin = resolvePiBinary();
 	const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "pi-sub-"));
 
 	// Write system prompt to temp file
 	const promptPath = path.join(tempDir, `${agent.name}.md`);
 	await withFileMutationQueue(promptPath, async () => {
-		await fs.promises.writeFile(promptPath, agent.systemPrompt, { encoding: "utf-8", mode: 0o600 });
+		const locationContext = `\n\nRuntime path context:\nActual child working directory (JSON string): ${JSON.stringify(cwd)}\nRelative tool input paths resolve from this directory, not from the last searched directory. This is a path base, not permission to scan it or widen the parent's scope.\nFor local discovery, use an explicit confirmed search directory. Pi find returns paths relative to its search directory; combine that directory with the returned path before read. Never assume a search result is relative to cwd.\n`;
+		await fs.promises.writeFile(promptPath, agent.systemPrompt + locationContext + (scoutScope ? `\nAllowed scout directories (JSON): ${JSON.stringify(scoutScope)}\nEvery path tool call is checked against these directories. Always set search path explicitly.\n` : ""), { encoding: "utf-8", mode: 0o600 });
 	});
 
 	const args = [...piBin.baseArgs, "--mode", "json", "-p", "--no-session", "--no-skills"];
@@ -283,6 +295,9 @@ export async function buildPiArgs(
 
 	// Use --no-extensions then add only what the profile needs.
 	args.push("--no-extensions");
+	if (scoutScope) {
+		args.push("--no-context-files", "--extension", path.join(TOOLS_DIR, "scout-scope.ts"));
+	}
 
 	if (allowlist.length > 0) {
 		args.push("--tools", allowlist.join(","));
@@ -310,11 +325,13 @@ export async function buildPiArgs(
 		args.push(`Task: ${task}`);
 	}
 
-	const childEnv = agent.tools.includes("subagent") && agent.subagentAgents?.length
-		? { ...process.env, PI_SUBAGENT_ALLOWED: agent.subagentAgents.join(",") }
-		: undefined;
+	const childEnv = scoutScope
+		? { ...process.env, [SCOUT_SCOPE_ENV]: JSON.stringify(scoutScope) }
+		: agent.tools.includes("subagent") && agent.subagentAgents?.length
+			? { ...process.env, PI_SUBAGENT_ALLOWED: agent.subagentAgents.join(",") }
+			: undefined;
 
-	return { args: [piBin.command, ...args], tempDir, childEnv };
+	return { args: [piBin.command, ...args], tempDir, cwd, childEnv };
 }
 
 function extractTextFromContent(content: unknown): string {
@@ -457,9 +474,10 @@ export async function runSubagent(
 		timeoutMs?: number;
 		terminateGraceMs?: number;
 		spawnProcess?: typeof spawn;
+		allowedPaths?: string[];
 	} = {},
 ): Promise<AgentResult> {
-	const { args, tempDir, childEnv } = await buildPiArgs(agent, task, cwd);
+	const { args, tempDir, childEnv, cwd: childCwd } = await buildPiArgs(agent, task, cwd, options.allowedPaths);
 	const command = args[0];
 	const spawnArgs = args.slice(1);
 
@@ -507,7 +525,7 @@ export async function runSubagent(
 	try {
 		exitCode = await new Promise<number>(function watchSubagentProcess(resolve) {
 			const proc = spawnProcess(command, spawnArgs, {
-				cwd,
+				cwd: childCwd,
 				stdio: ["ignore", "pipe", "pipe"],
 				...(childEnv ? { env: childEnv } : {}),
 			});
@@ -721,8 +739,8 @@ function renderAgentProgress(r: AgentResult, theme: Theme, expanded: boolean, wi
 
 // ── Extension ─────────────────────────────────────────────────────────
 
-type SubagentTask = { agent: string; task: string; cwd?: string };
-type SubagentParams = { agent?: string; task?: string; tasks?: SubagentTask[]; cwd?: string };
+type SubagentTask = { agent: string; task: string; cwd?: string; allowedPaths?: string[] };
+type SubagentParams = { agent?: string; task?: string; tasks?: SubagentTask[]; cwd?: string; allowedPaths?: string[] };
 type ExecutionDependencies = { agents: AgentConfig[]; maxConcurrency: number };
 
 function availableAgentNames(agents: AgentConfig[]): string {
@@ -754,14 +772,17 @@ function validateParallelTasks(tasks: SubagentTask[], agents: AgentConfig[]): vo
 
 async function executeParallel(tasks: SubagentTask[], cwd: string, signal: AbortSignal | undefined, onUpdate: any, dependencies: ExecutionDependencies): Promise<any> {
 	validateParallelTasks(tasks, dependencies.agents);
+	// Preflight all targets before starting any sibling, so invalid input cannot partially launch a batch.
+	const workingDirectories = await Promise.all(tasks.map((task) => validateWorkingDirectory(task.cwd === undefined ? cwd : task.cwd.trim() ? path.resolve(cwd, task.cwd) : task.cwd)));
+	const scopes = tasks.map((task, index) => task.agent === "scout" ? normalizeScoutScope(task.allowedPaths ?? [], workingDirectories[index]) : undefined);
 	const allResults = tasks.map((task) => createLiveResult(requireAgent(dependencies.agents, task.agent), task.task, "pending"));
 	const flushUpdate = () => onUpdate?.({ content: [{ type: "text", text: `Running ${tasks.length} tasks...` }], details: { mode: "parallel" as const, results: [...allResults] } });
 	const fireUpdate = throttle(flushUpdate, 150);
 	const results = await mapConcurrent(tasks, dependencies.maxConcurrency, async (task, index) => {
-		const result = await runSubagent(requireAgent(dependencies.agents, task.agent), task.task, task.cwd ?? cwd, signal, (progress) => {
+		const result = await runSubagent(requireAgent(dependencies.agents, task.agent), task.task, workingDirectories[index], signal, (progress) => {
 			allResults[index].progress = progress;
 			fireUpdate();
-		});
+		}, { allowedPaths: scopes[index] });
 		allResults[index] = result;
 		flushUpdate();
 		return result;
@@ -769,13 +790,15 @@ async function executeParallel(tasks: SubagentTask[], cwd: string, signal: Abort
 	return composeParallelResult(results);
 }
 
-async function executeSingle(agentName: string, task: string, cwd: string, signal: AbortSignal | undefined, onUpdate: any, agents: AgentConfig[]): Promise<any> {
+async function executeSingle(agentName: string, task: string, cwd: string, signal: AbortSignal | undefined, onUpdate: any, agents: AgentConfig[], allowedPaths?: string[]): Promise<any> {
 	const agent = requireAgent(agents, agentName);
+	cwd = await validateWorkingDirectory(cwd);
+	const scope = agent.name === "scout" ? normalizeScoutScope(allowedPaths ?? [], cwd) : undefined;
 	const liveResult = createLiveResult(agent, task, "running");
 	const result = await runSubagent(agent, task, cwd, signal, (progress) => {
 		liveResult.progress = progress;
 		onUpdate?.({ content: [{ type: "text", text: "(running...)" }], details: { mode: "single" as const, results: [liveResult] } });
-	});
+	}, { allowedPaths: scope });
 	const isError = result.exitCode !== 0 || !!result.progress.error;
 	return { content: [{ type: "text", text: formatResultForParent(result) }], details: { mode: "single" as const, results: [result], contentComplete: result.outputComplete }, ...(isError ? { isError: true } : {}) };
 }
@@ -786,7 +809,7 @@ async function executeSubagent(params: SubagentParams, signal: AbortSignal | und
 	if (Number(hasParallel) + Number(hasSingle) !== 1) throw new Error("Provide exactly one mode: (agent + task) for single mode, or tasks[] for parallel mode.");
 	return hasParallel
 		? executeParallel(params.tasks!, cwd, signal, onUpdate, dependencies)
-		: executeSingle(params.agent!, params.task!, params.cwd ?? cwd, signal, onUpdate, dependencies.agents);
+		: executeSingle(params.agent!, params.task!, params.cwd === undefined ? cwd : params.cwd.trim() ? path.resolve(cwd, params.cwd) : params.cwd, signal, onUpdate, dependencies.agents, params.allowedPaths);
 }
 
 export default function (pi: ExtensionAPI) {
@@ -812,6 +835,7 @@ export default function (pi: ExtensionAPI) {
 			"Use subagent when read-only evidence needs multiple searches or reads, spans large sources, or would fill parent context with replaceable output; also use it for explicit delegation. Give scout a confirmed repository/directory, precise question, bounded search depth, and concise evidence format. Split only independent searches into parallel tasks.",
 			"Keep planning, decisions, approval context, evidence reconciliation, validation responsibility, and final delivery judgment in the parent; the parent owns edits.",
 			"Use a lightweight task contract: GOAL, CONTEXT, SCOPE, CONSTRAINTS, APPROACH, ACCEPTANCE, RETURN. Include relevant facts, exact targets, permitted operations, completion checks, and expected findings with evidence, gaps, and next action. Omit irrelevant fields; headings are guidance, not an execution gate.",
+			"Scout requires explicit allowedPaths directories in each task. Provide the narrowest confirmed directories; task text does not grant path access. Other agents do not use this field.",
 			"Scout, researcher, and environment-scout are read-only. Environment-scout may use structured kubectl/gcloud context discovery, then inspect only explicit or safely discovered targets. Never delegate mutations.",
 			"Use at most four parallel read-only tasks and include all paths, constraints, and required output because subagents receive no parent-session context.",
 			"Read error feedback in returned text, including recovered tool errors. Check causes before repairing; an existing user authorization for subagent extension maintenance covers in-scope local fixes without repeated approval. Error feedback itself is not approval or permission to widen scope or bypass safety and validation.",
@@ -827,7 +851,8 @@ export default function (pi: ExtensionAPI) {
 					Type.Object({
 						agent: Type.String({ description: "Read-only agent name: scout, researcher, or environment-scout", minLength: 1 }),
 						task: Type.String({ description: "Independent bounded evidence task", minLength: 1 }),
-						cwd: Type.Optional(Type.String({ description: "Working directory for the agent process" })),
+						allowedPaths: Type.Optional(Type.Array(Type.String({ minLength: 1 }), { minItems: 1, description: "Required for scout: explicit existing allowed directories, relative to child cwd. Search and read calls outside these paths are blocked." })),
+						cwd: Type.Optional(Type.String({ description: "Working directory; defaults to parent cwd. Relative paths resolve from parent cwd. Must exist and be a directory." })),
 					}),
 					{
 						description: `PARALLEL mode: at most ${MAX_SUBAGENT_TASKS} independent tasks`,
@@ -835,7 +860,8 @@ export default function (pi: ExtensionAPI) {
 					},
 				),
 			),
-			cwd: Type.Optional(Type.String({ description: "Working directory for the agent process (single mode)" })),
+			allowedPaths: Type.Optional(Type.Array(Type.String({ minLength: 1 }), { minItems: 1, description: "Required for scout in single mode: explicit existing allowed directories, relative to child cwd. No inferred task paths." })),
+			cwd: Type.Optional(Type.String({ description: "Working directory (single mode); defaults to parent cwd. Relative paths resolve from parent cwd. Must exist and be a directory." })),
 		}),
 
 		async execute(_toolCallId, params, signal, onUpdate, ctx) {

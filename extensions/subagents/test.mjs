@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PassThrough } from "node:stream";
@@ -15,6 +15,7 @@ import subagents, {
   MAX_SUBAGENT_TASKS,
   normalizeConfig,
   runSubagent,
+  validateWorkingDirectory,
   truncLine,
 } from "./index.ts";
 import environmentInspect, {
@@ -23,6 +24,8 @@ import environmentInspect, {
   buildKubectlCommands,
   redactSensitiveText,
 } from "./tools/environment-inspect.ts";
+
+import scoutScope, { checkScoutPath, normalizeScoutScope, SCOUT_SCOPE_ENV } from "./tools/scout-scope.ts";
 
 function profiles() {
   return new Map(loadAgents().map((agent) => [agent.name, agent]));
@@ -102,7 +105,7 @@ test("loads only three read-only profiles", () => {
   assert.deepEqual([...agents.keys()].sort(), ["environment-scout", "researcher", "scout"]);
   assert.equal(agents.get("scout").model, "openai/gpt-6-luna");
   assert.equal(agents.get("scout").thinking, "off");
-  assert.deepEqual(agents.get("scout").tools, ["read", "grep", "find", "ls", "code_index", "code_index_status", "code_query", "code_context", "code_impact", "code_validate_change"]);
+  assert.deepEqual(agents.get("scout").tools, ["read", "grep", "find", "ls"]);
   assert.equal(agents.get("scout").subagentAgents, undefined);
   assert.match(agents.get("scout").systemPrompt, /Default to quick, targeted lookup/);
   assert.match(agents.get("scout").systemPrompt, /Stop once enough\s+evidence answers the question/);
@@ -115,6 +118,132 @@ test("loads only three read-only profiles", () => {
   assert.deepEqual(agents.get("environment-scout").tools, ["kubectl_inspect", "gcloud_inspect"]);
   assert.match(agents.get("environment-scout").systemPrompt, /use the existing kube context and authenticated gcloud configuration/);
   assert.match(agents.get("environment-scout").systemPrompt, /Never retrieve Secret or ConfigMap contents, tokens, credentials/);
+});
+
+test("validates cwd before spawning and rejects invalid parallel targets before launching siblings", async () => {
+  const root = await mkdtemp(join(tmpdir(), "subagent-cwd-"));
+  try {
+    const file = join(root, "file.txt");
+    await writeFile(file, "not a directory");
+    assert.equal(await validateWorkingDirectory(root), root);
+    for (const cwd of ["", "   ", join(root, "missing"), file]) {
+      let spawned = false;
+      await assert.rejects(runSubagent(profiles().get("scout"), "Inspect", cwd, undefined, undefined, {
+        spawnProcess() { spawned = true; throw new Error("must not spawn"); },
+      }), /Invalid subagent cwd/);
+      assert.equal(spawned, false);
+    }
+    await assert.rejects(toolHarness().execute("invalid-batch", { tasks: [
+      { agent: "scout", task: "Must not launch", cwd: root },
+      { agent: "scout", task: "Invalid target", cwd: "missing" },
+    ] }, undefined, undefined, { cwd: root }), /Invalid subagent cwd/);
+    await assert.rejects(toolHarness().execute("relative-single", {
+      agent: "scout", task: "Invalid target", cwd: "missing",
+    }, undefined, undefined, { cwd: root }), (error) => {
+      assert.ok(error.message.includes(join(root, "missing")));
+      return true;
+    });
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("passes the same absolute cwd to spawn and prompt for short and long tasks", async () => {
+  const agent = profiles().get("scout");
+  const relativeCwd = "extensions/subagents/..";
+  const expectedCwd = join(process.cwd(), "extensions");
+  for (const task of ["Inspect named files", "x".repeat(8001)]) {
+    const built = await buildPiArgs(agent, task, relativeCwd);
+    try {
+      assert.equal(built.cwd, expectedCwd);
+      const prompt = await readFile(built.args[built.args.indexOf("--append-system-prompt") + 1], "utf8");
+      assert.ok(prompt.startsWith(agent.systemPrompt));
+      assert.ok(prompt.includes(JSON.stringify(expectedCwd)));
+      assert.match(prompt, /find returns paths relative to its search directory/);
+      assert.match(prompt, /not permission to scan/);
+      if (task.length > 8000) assert.equal(await readFile(built.args.at(-1).slice(1), "utf8"), `Task: ${task}`);
+      else assert.equal(built.args.at(-1), `Task: ${task}`);
+    } finally {
+      await rm(built.tempDir, { recursive: true, force: true });
+    }
+  }
+  const proc = fakeProcess({ successEvent: { type: "message_end", message: { role: "assistant", content: [{ type: "text", text: "Done" }] } } });
+  const result = await runSubagent(agent, "Inspect", relativeCwd, undefined, undefined, {
+    spawnProcess(_command, _args, options) {
+      assert.equal(options.cwd, expectedCwd);
+      proc.start();
+      return proc;
+    },
+  });
+  assert.equal(result.exitCode, 0);
+});
+
+test("scout distinguishes discovery, missing paths, EOF and permission errors", () => {
+  const prompt = profiles().get("scout").systemPrompt;
+  assert.match(prompt, /first use ls\/find/);
+  assert.match(prompt, /Do not invent conventional directories/);
+  assert.match(prompt, /relative to the directory searched/);
+  assert.match(prompt, /read offset beyond EOF/);
+  assert.match(prompt, /permission errors[\s\S]*do not bypass/);
+});
+
+test("scout scope blocks broad search, traversal, prefix siblings and symlink escapes", async () => {
+  const root = await mkdtemp(join(tmpdir(), "scout-scope-"));
+  try {
+    const allowed = join(root, "repo");
+    const outside = join(root, "repo-other");
+    await mkdir(allowed);
+    await mkdir(outside);
+    await writeFile(join(allowed, "known.tf"), "# fixture");
+    await symlink(outside, join(allowed, "escape"));
+    const roots = normalizeScoutScope(["repo"], root);
+    for (const tool of ["read", "grep", "find", "ls"]) {
+      assert.equal(checkScoutPath(tool, { path: allowed }, root, roots), undefined);
+      assert.equal(checkScoutPath(tool, { path: "known.tf" }, allowed, roots), undefined);
+      assert.match(checkScoutPath(tool, { path: root }, root, roots), /outside allowedPaths/);
+      assert.match(checkScoutPath(tool, { path: "../repo-other" }, allowed, roots), /outside allowedPaths/);
+      assert.match(checkScoutPath(tool, { path: outside }, allowed, roots), /outside allowedPaths/);
+      assert.match(checkScoutPath(tool, { path: "escape/missing.tf" }, allowed, roots), /symlink/);
+      assert.match(checkScoutPath(tool, {}, root, roots), /outside allowedPaths/);
+    }
+    assert.match(checkScoutPath("bash", {}, allowed, roots), /allowlist/);
+    assert.match(checkScoutPath("read", { path: "missing.tf" }, allowed, roots), /does not exist/);
+    for (const path of ["@/outside", "~/outside", "file:///outside", "x\u00a0y"]) {
+      assert.match(checkScoutPath("read", { path }, allowed, roots), /expansion/);
+    }
+    assert.throws(() => normalizeScoutScope([], root), /explicit allowedPaths/);
+    await assert.rejects(toolHarness().execute("missing-scope", {
+      agent: "scout", task: "Do not launch",
+    }, undefined, undefined, { cwd: allowed }), /explicit allowedPaths/);
+    await assert.rejects(toolHarness().execute("invalid-parallel-scope", { tasks: [
+      { agent: "scout", task: "Must not launch", allowedPaths: [allowed] },
+      { agent: "scout", task: "No scope" },
+    ] }, undefined, undefined, { cwd: root }), /explicit allowedPaths/);
+    const built = await buildPiArgs(profiles().get("scout"), "Inspect only repo", root, [allowed]);
+    try {
+      assert.deepEqual(JSON.parse(built.childEnv[SCOUT_SCOPE_ENV]), roots);
+      const prompt = await readFile(built.args[built.args.indexOf("--append-system-prompt") + 1], "utf8");
+      assert.ok(prompt.includes(`Allowed scout directories (JSON): ${JSON.stringify(roots)}`));
+    } finally {
+      await rm(built.tempDir, { recursive: true, force: true });
+    }
+    let handler;
+    const previous = process.env[SCOUT_SCOPE_ENV];
+    try {
+      process.env[SCOUT_SCOPE_ENV] = JSON.stringify(roots);
+      scoutScope({ on(name, callback) { assert.equal(name, "tool_call"); handler = callback; } });
+      assert.equal(handler({ toolName: "find", input: { path: root } }, { cwd: allowed }).block, true);
+      assert.equal(handler({ toolName: "read", input: { path: "known.tf" } }, { cwd: allowed }), undefined);
+      process.env[SCOUT_SCOPE_ENV] = "invalid";
+      scoutScope({ on(_name, callback) { handler = callback; } });
+      assert.equal(handler({ toolName: "read", input: { path: "known.tf" } }, { cwd: allowed }).block, true);
+    } finally {
+      if (previous === undefined) delete process.env[SCOUT_SCOPE_ENV];
+      else process.env[SCOUT_SCOPE_ENV] = previous;
+    }
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test("clamps read-only concurrency", () => {
@@ -222,9 +351,11 @@ async function assertChildArguments() {
       assert.equal(args[args.indexOf("--thinking") + 1], agent.thinking);
 
       if (agent.name === "scout") {
-        assert.equal(args[args.indexOf("--tools") + 1], "read,grep,find,ls,code_index,code_index_status,code_query,code_context,code_impact,code_validate_change");
-        assert.equal(args.filter((arg) => arg.endsWith("/code-intelligence/index.ts")).length, 1);
-        assert.equal(childEnv, undefined);
+        assert.equal(args[args.indexOf("--tools") + 1], "read,grep,find,ls");
+        assert.equal(args.includes("-e"), false);
+        assert.deepEqual(JSON.parse(childEnv[SCOUT_SCOPE_ENV]), [process.cwd()]);
+        assert.ok(args.includes("--no-context-files"));
+        assert.ok(args.includes(join(process.cwd(), "extensions/subagents/tools/scout-scope.ts")));
       } else if (agent.name === "researcher") {
         assert.equal(args[args.indexOf("--tools") + 1], "web_search,source_check,fetch_content,get_search_content");
         assert.ok(args.some((arg) => arg.endsWith("/.pi/npm/node_modules/pi-web-access/index.ts") || arg.endsWith("/npm/node_modules/pi-web-access/index.ts")));

@@ -45,16 +45,6 @@ project skills instead of this always-loaded contract.
 - Support material claims with bounded evidence from the owning layer. Report
   uncertainty, skipped checks, missing tools, authentication limits, and failures.
 
-## Code Intelligence
-
-Before analyzing or editing JavaScript, TypeScript, or Java source, establish a
-current parser-backed repository map using the code-intelligence tools and skill.
-Support structural claims with snapshot-bound evidence; distinguish facts,
-inferences, and unknowns. Report unavailable parsers, partial coverage, and stale
-indexes instead of guessing relationships. After edits, compare structural
-changes and run the appropriate permitted static checks/tests. This policy grants
-no additional repository, command, or mutation permissions.
-
 ## Communication
 
 - Lead with the answer, action, or result. Keep identifiers and warnings precise.
