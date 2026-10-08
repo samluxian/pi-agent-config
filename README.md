@@ -375,7 +375,7 @@ skill-owned deterministic helper 時，優先使用單一 bounded helper，避�
 
 每個 skill 的適用範圍、停止條件與流程由該目錄的 `SKILL.md` 管理。保留的 repository-owned skills：
 
-- [Kubernetes platform guidance](.agents/skills/kubernetes-platform-guidance/README.md) — 資源設定、GitOps／Helm 關聯與唯讀診斷流程
+- [Kubernetes platform guidance](.agents/skills/kubernetes-platform-guidance/README.md) — 資源設定、GitOps／Helm 關聯與服務故障統一唯讀流程；從 source 呼叫鏈追到 runtime 身分與依賴拒絕，分開驗證 live 配置、rollout 與實際功能
 - [Terraform workflow guidance](.agents/skills/terraform-workflow-guidance/README.md) — 跨 repository 的 plan-first 流程
 - [Helm chart best practices](.agents/skills/helm-chart-best-practices/README.md) — 一般 chart 設計、render 與相容性驗證
 - [OKF knowledge](.agents/skills/okf/README.md)

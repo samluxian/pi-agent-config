@@ -1,6 +1,6 @@
 ---
 name: kubernetes-platform-guidance
-description: Apply Kubernetes best practices and a fixed evidence-first workflow for resource configuration, workloads, GitOps/Helm integration, platform delivery, or cluster diagnosis. Use for Kubernetes tasks; never mutate live clusters.
+description: Apply Kubernetes best practices and a fixed evidence-first workflow for resource configuration, workloads, GitOps/Helm integration, platform delivery, or service and cluster diagnosis. Use for Kubernetes-backed API failures, permissions, runtime identity, logs, and rollout checks; never mutate live clusters.
 ---
 
 # Kubernetes Platform Guidance
@@ -26,8 +26,13 @@ repository changes. Do not infer deployed state from source or render alone.
    `references/kubernetes-usage-and-validation.md` for safe target discovery,
    field-selected queries, bounded logs, and symptom-to-evidence checks. Inspect
    outputs for sensitivity before retrieval; broad describe/spec dumps are not
-   automatically safe. Identify evidence, hypotheses, gaps, and the smallest next
-   check; do not treat a render as runtime readiness or current metrics as history.
+   automatically safe. For service/API failures, follow
+   `references/service-diagnosis.md`: trace the failing request, inspect the log
+   schema, distinguish configured from actual identity, and verify rollout and
+   exercised behavior separately. Identify evidence, hypotheses, gaps, and the
+   smallest next check; continue safe discriminating checks until a cause is
+   evidenced or a specific access/safety gap remains. Do not treat a render as
+   runtime readiness or current metrics as history.
 4. For requested edits, identify exact owned files, behavior, compatibility and
    rollout impact. Review applicable resource/probe, selector, disruption/storage,
    scaling-owner, security/RBAC and network contracts using the baseline below.
@@ -41,8 +46,10 @@ repository changes. Do not infer deployed state from source or render alone.
    checks and any unverified deployment claims separately.
 
 Use `references/kubernetes-best-practice-baseline.md` for general workload,
-availability, autoscaling, security and network recommendations, and
-`references/kubernetes-usage-and-validation.md` for diagnosis and validation.
+availability, autoscaling, security and network recommendations,
+`references/kubernetes-usage-and-validation.md` for resource diagnosis and
+validation, and `references/service-diagnosis.md` for the unified service-failure
+workflow and tool selection.
 Use `references/gke-platform-guidance.md` only for confirmed GKE-specific
 Autopilot, identity, dataplane or upgrade behavior. Official recommendations are
 a comparison baseline, not permission to change an established platform or
