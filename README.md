@@ -1,360 +1,196 @@
-# DevOps Pi Agent
+# Pi Agent Config
 
-DevOps Pi Agent 是一套放在 Pi Coding Agent workspace 裡的操作規則、skills、extensions
-與驗證工具。它讓 Pi 知道該讀哪些證據、何時只能唯讀、什麼情況要先取得批准，以及修改後
-該怎麼驗證。
+**讓 Pi Coding Agent 成為有一致工作流程、證據標準與安全邊界的 DevOps 工作助手。**
 
-這個 repository 是 workspace tooling，不是產品 monorepo，也不是部署平台。Application、
-GitOps、Helm chart 與 infrastructure repositories 仍保有各自的 Git history、branch、remote
-與權限。
+Pi Agent Config 是面向多 repository workspace 的 Agent 配置產品，將操作規則、領域 skills、
+subagent extension、知識庫與本機工具設定集中維護。透過一次 workspace 初始化，讓不同工作
+環境使用同一套可檢查、可更新的配置，不必為每個專案重複設定。
 
-使用者明確要求維護本 repository 時，可以直接在它的 `main` branch 建立、修改、重新命名
-或刪除 repository-owned source、tests、scripts、extensions、configuration 與 documentation。
-這個例外不延伸到 sibling/target repositories，不涵蓋 secrets、credentials、generated
-artifacts、caches 或 git-ignored temporary files，也不允許 agent commit、push、修改 Git
-或操作 remotes。
+它是 Pi 的配置與工作流程層，不是 application monorepo、部署平台或權限沙箱。
+各工作 repository 仍保有自己的 Git history、branch、remote 與交付流程。
 
-投影片 repository 另有窄範圍例外：使用者明確指定一個 presentation target repository，
-並核准直接修改目前的 `main` 或 `master` branch 後，agent 可以修改 tracked slide source、
-speaker notes、documentation 與 slide assets。工作樹可以保留不相關的既有變更，但核准的
-目標檔案本身必須沒有既有變更，且 agent 不得碰觸其他變更。例外只適用於指定 repository
-和核准範圍，不包含產品、部署、chart、infrastructure 或其他 target repositories，也不包含
-依賴、lockfiles、build/runtime configuration、generated/git-ignored files、secrets、credentials、
-Git 或 remote 操作。完整 authority boundary 以 [`AGENTS.md`](AGENTS.md) 為準。
+## 適合哪些工作
 
-## Repository 定位
+- **DevOps 與平台維運**：以唯讀證據診斷 Kubernetes、Argo CD 與 GCP 問題，分清 source、
+  desired state、render、live resources 與 runtime，避免把設定檔當成部署成功的證明。
+- **Infrastructure 與交付變更**：使用 Terraform plan-first、Helm render 與相容性流程，
+  依影響範圍選擇驗證，而不是每次執行整套無關檢查。
+- **跨 repository 開發**：在共同 workspace 中工作，但保持各 repository 的 ownership、
+  branch 與既有變更邊界。
+- **團隊與個人工作環境維護**：集中更新 Agent 規則、專用 skills、kubectl alias 與 Bash 設定。
 
-這個 repository 管理四類內容：
+## 核心能力
 
-| 路徑 | 責任 |
-| --- | --- |
-| [`AGENTS.md`](AGENTS.md) | 每輪都要遵守的安全、approval、workspace 與 evidence 規則。 |
-| [`.agents/skills/`](.agents/skills/) | Pi 依工作類型載入，或由使用者手動啟用的專用流程。 |
-| [`knowledge/`](knowledge/README.md) | Agent 先查 index、再按需讀取的純 Markdown LLM wiki。 |
-| [`extensions/`](extensions/) | 在 Pi runtime 中註冊事件、指令或工具的程式。 |
-| [`scripts/`](scripts/) | Workspace 初始化與 deterministic checks。 |
+| 能力 | 提供的價值 | 入口 |
+| --- | --- | --- |
+| Workspace 行為契約 | 統一授權、證據、秘密保護與交付規則 | [`AGENTS.md`](AGENTS.md) |
+| 領域 skills | 按任務載入操作流程與驗證要求 | [`.agents/skills/`](.agents/skills/) |
+| 唯讀 subagents | 委派有界調查，主 Agent 保留決策、修改與驗收責任 | [`extensions/subagents/README.md`](extensions/subagents/README.md) |
+| OKF 知識庫 | 以索引與概念導航取得技術背景 | [`knowledge/index.md`](knowledge/index.md) |
+| Workspace 初始化 | 安裝受管理配置，保留未知 extensions，回報 drift | [`scripts/init-workspace.sh`](scripts/init-workspace.sh) |
+| kubectl 偏好設定 | 集中維護 `kuberc` alias，連結到目前使用者環境 | [`config/kuberc`](config/kuberc) |
+| Ubuntu／WSL Shell 設定 | 保存提示符、常用別名與 lazy-load 設定 | [`config/bashrc-cosmetics.sh`](config/bashrc-cosmetics.sh) |
 
-預設直接依使用者的修改要求實作，不強制先寫 spec 或再確認一次：
+## 快速開始
 
-```text
-調查 → 重新檢查 target repo branch/status → 範圍內修改 → 驗證
-```
+### 1. 準備環境
 
-直接要求修改即授權該 repository 與範圍內的本機檔案變更，也可以建立實作所需的新檔，
-不必先由使用者建立或追蹤。查詢、診斷、review 或規劃本身不授權實作。目標或安全條件
-不明時仍須先釐清；若要擴大範圍或改變約定行為、驗收條件，才停止並詢問。範圍內的
-實作細節不需要反覆核准。
+完整初始化需要 shell 能找到 `bash`、`node`、`npm` 與 `pi`，以及腳本使用的 GNU 工具
+（例如 `realpath` 與 `find`）。建議安裝 `make`；沒有 `make` 也能直接呼叫 initializer。
+如果 Node 由 NVM 管理，先在目前 shell 選定版本。
 
-只有使用者明確要求「寫 spec」或「用 spec 規劃」時才撰寫規格；
-規劃完成後等待使用者要求實作。普通修改不自動產生 spec、plan 或其他文件。
-
-### Workspace 規則與專案文件邊界
-
-- `<workspace-root>/AGENTS.md` 是唯一的 workspace／project 行為契約；可依明確維護要求
-  讀取或修改本 repository 的同一份 canonical source。System／developer 上層指令仍適用。
-- 嚴禁主 agent 或 subagents 讀取、搜尋內容或載入其他專案（target、sibling、nested）的
-  `AGENTS.md`，也不得改讀 `AGENTS.override.md`、大小寫變體、`CLAUDE.md` 等替代規則檔。
-  即使 runtime 自動提供專案規則，也不把它當成額外專案 policy。
-- 修改 code／CI／config 不授權順帶修改專案 `docs/`、README、SDD、ADR、plan 或文件索引，
-  也不授權自行生成 spec／report 或執行會寫文件的同步工具。一般交付只在聊天中回報。
-- 只有使用者明確要求並指定 repository 與文件路徑或有界文件集合時，才修改專案文件。
-  本 tooling repository 的明確維護要求可包含自身的使用者文件，不延伸到其他專案。
-- 這些邊界同樣適用於 skills、helpers 與委派任務，不接受 target 專案規則要求自動補文件。
-
-這是行為契約，不是檔案讀取的 runtime 攔截。Pi 自身會依啟動目錄與父目錄探索 context files；
-從 workspace root 啟動可避免因啟動在 target 內而額外載入該 target 的規則。
-
-常駐授權與安全規則由 `AGENTS.md` 管理；領域 skills 補充設計與驗證，不另設重複核准。
-Secret、credential、generated／ignored 檔案、branch、repository ownership、Git 與遠端
-mutation 的限制不變。這是文字行為契約，不是 runtime 強制攔截機制。
-完成後依使用者要求或已核准 spec 回報驗收結果與證據缺口。
-
-Kubernetes、Argo CD、GitLab/GitHub、GCP 與 Git remotes 對 agent 維持唯讀。交付變更寫入
-repository 的 desired state，再走原有 MR、CI 與 GitOps 流程。Agent 只在明確需求、既有 contract
-或已證實的重複案例支持下新增複雜度；前兩個相似案例維持局部處理，第三個真實案例才考慮抽出共用
-contract。需求或 integration 尚未確定時，優先採用可逆且隔離的做法。Agent 回報基礎設施時間時，會標示來源時區，
-並在已知使用者時區時先換算再比較或估計；未知時則明確保留UTC並詢問。變更完成後，回覆固定
-保留 Summary；尚有工作才提供 Next step。驗證結果、缺口與具體風險只在適用時寫進 Summary。完整
-修改 repository 檔案後，回報會附上僅含英文小寫的建議 commit message；不會代為 commit。
-完整規則以 [`AGENTS.md`](AGENTS.md) 為準。
-
-Agent 會直接執行工具可存取且規則允許的唯讀檢查，整理證據並給出結論，不把診斷工作
-交回使用者。它可以先從既有 kube context 或 authenticated gcloud configuration 取得非敏感
-context、account 與 project identifiers；若目前設定無法唯一定位，可列出最多 100 個
-kube context 名稱或登入身分可見的 GCP projects（可見不代表擁有），再執行具名、欄位化
-且有輸出上限的資源查詢。多個合理目標或證據衝突時才詢問使用者；不會
-讀取 raw kubeconfig、token 或 credential。Terraform MR 或 pipeline identifier 已知時，Agent
-也會讀取實際 pipeline 與 plan job，分開回報 CI plan 和 local plan。無法存取目標環境時會
-明確說明限制。排查時若仍有可執行、能區分可能原因的安全唯讀檢查，Agent 會繼續查，
-不把症狀或第一個 probe 當成結論。一般只有使用者明確要求才提供操作命令；例外是下一個
-關鍵檢查因存取或權限邊界只能由使用者執行，且目標已知、指令安全唯讀時，Agent 會主動
-給一條有範圍的指令、預期訊號與需回傳的非機密結果。目標不明或無安全指令時，只描述
-缺少的資訊或檢查方式。使用者明確要求 GCP／IAM 變更或 Helm 安裝指令，且目標已知、
-範圍明確時，Agent 可提供供使用者自行執行的指令與風險說明，但不會代為執行；IAM 仍須
-符合最小權限。提供 Helm 安裝指令前，須確認 Workload Identity 綁定及 Secret Manager
-最小讀取權限；無法確認時須標明尚未證實就緒，render 通過不代表兩項前提已成立。
-其他禁止的變更或機密存取指令仍不提供；機密禁讀、修改核准及遠端唯讀限制不變。
-
-## 公開內容安全
-
-本 repository 的 `AGENTS.md`、skills、extensions、scripts、fixtures、configuration 與文件
-都視為公開內容，不應保存公司、客戶或私人系統的具體名稱與 identifiers。範例使用
-`<organization>`、`<service>` 與 `example.test` 等 placeholders；私人 target-repository 證據
-只留在當次調查，不複製回本 repository。
-
-公開內容不得含私人識別資訊；刪除工作流程專用的檢查工具後，公開安全審查仍須人工執行。
-此要求不會清除既有 Git history。
-
-## OKF 知識庫
-
-[`knowledge/index.md`](knowledge/index.md) 是 Open Knowledge Format v0.2 知識庫入口；
-[`knowledge/README.md`](knowledge/README.md) 說明格式與維護方式。保留原有 37 篇知識內文、
-引用與證據等級，採用 YAML frontmatter、`description`、`tags` 與小寫 `index.md`。
-舊狀態保存在 `evidence_status`；OKF `status` 表示生命週期，不代表新增驗證。
-
-[OKF skill](.agents/skills/okf/README.md) 支援 create、validate、enrich、generate、convert
-與 serve 準備流程，可依任務自動選用或明確指定 skill。讀取知識不授權新增、補強、攝取來源、
-自動更新或發布；不再保留專用 keyword-search CLI。所有知識內容與模板使用英文，依
-[寫作規格](.agents/skills/okf/references/writing-style.md) 做最小幅度編修，保留技術細節與不確定性。
-
-`test:okf` 驗證格式、索引連結與遷移結果，需要 Python 3 與 PyYAML；Python dependency
-宣告在 `.agents/skills/okf/requirements.txt`。本次未安裝或設定 cloud catalog、MCP、server
-或上傳內容；serve 仍受 workspace remote inspection-only 邊界限制。
-知識僅提供 prior context；目前 deployment 與 runtime state 仍須由 owning evidence layer 驗證。
-
-## Workspace 配置
-
-建議把本 repository 與工作 repositories 放在同一層，但不要合併 Git history：
+將本 repository 與工作專案放在同一層：
 
 ```text
 <workspace-root>/
-├── devops-pi-agent/
+├── pi-agent-config/
 ├── gitops-repository/
 ├── chart-repository/
 ├── application-repository/
 └── docs/
 ```
 
-Agent 不自行保存規格、plan、調查或事故報告。只有使用者明確要求保存文件時才建立；
-要求 workspace 文件但未指定路徑時，使用 `<workspace-root>/docs/`。寫入 application 或
-其他 target repository 的文件，必須有明確文件修改要求及指定 repository 與路徑或有界
-文件集合。`<workspace-root>/docs/` 是 user-owned work product，不屬於本 repository 的公開文件範圍。
+目錄名稱可自行選擇；initializer 預設使用本 repository 的上一層作為 workspace root。
+這個佈局不會合併任何 Git history。
 
-Initializer 不依賴固定的 workspace 名稱或使用者家目錄。Workspace contract 也允許 Agent
-在使用者明確批准後修改指定的 `~/.bashrc`；Agent 必須先檢查檔案、保留無關設定，且不得
-讀取或修改 secrets、credentials 或其他家目錄檔案。
+### 2. 初始化 workspace
 
-## Ubuntu／WSL Bash 環境保存
-
-[`config/bashrc-cosmetics.sh`](config/bashrc-cosmetics.sh) 保存綠色 user@host、藍色路徑、
-黃色 Git branch、青色 Kubernetes context／namespace，以及 `k`、`kx`、`kn` 別名。
-Git 使用官方 `__git_ps1`，不主動啟用 dirty／untracked 掃描；Kubernetes context
-沿用底線前綴裁切規則，不保存任何私人 context、登入或 credentials。
-
-在 repository 執行 `bash scripts/setup-ubuntu-shell.sh`，只更新 `~/.bashrc` 的 managed
-block；也可用 `--bashrc PATH` 指定目標。首次修改會保存 `.pi-agent-config.bak`，重跑不會
-覆蓋該備份；保留 managed block 外的設定，遇到 symlink 或損壞 markers 則停止。
-設定內嵌於 bashrc，因此套用後不依賴 repository 位置。需要 Python 3。
-
-新 Ubuntu／WSL 電腦可自行執行 `bash scripts/setup-ubuntu-shell.sh --install-tools`：
-
-- APT 安裝 Git 與 Homebrew build prerequisites；Homebrew 安裝 Git、kubectl、kubectx／kubens、
-  kube-ps1、Helm CLI 與 HashiCorp tap 的 Terraform。
-- NVM 使用官方 pinned `v0.40.7` installer，不修改其他 shell profiles；不自動安裝 Node。
-- gcloud 使用 Google 官方 APT repository，新增專用 source／keyring；不執行登入、
-  project 設定、cloud 變更或 Helm release 安裝。
-
-安裝模式需要正常使用者、sudo、網路及受支援 Ubuntu；會下載並執行官方 Homebrew／NVM
-installer，改動本機套件、APT sources 與安裝目錄，請先審閱腳本。已安裝的套件不主動升級，
-不保證所有工具版本可重現；Homebrew 假設標準 Linux prefix `/home/linuxbrew/.linuxbrew`。
-官方來源：[Homebrew](https://docs.brew.sh/Homebrew-on-Linux)、
-[NVM](https://github.com/nvm-sh/nvm/tree/v0.40.7)、
-[Terraform](https://github.com/hashicorp/homebrew-tap)、
-[gcloud](https://docs.cloud.google.com/sdk/docs/install-sdk)。
-
-開新終端生效。NVM 改為首次使用 `nvm`／`node`／`npm`／`npx` 時載入；Bash 啟動不再
-執行 `brew shellenv`，但 kube-ps1 首次本機查詢仍有成本。既有 bashrc 若已包含舊版 NVM、
-Homebrew 或提示符設定，腳本不自動刪除它們；請自行移除重複區段，否則舊啟動成本仍存在。
-缺少 Git／kube-ps1 helper 時只省略對應提示符。
-
-驗證：`npm run test:ubuntu-shell` 使用 temporary fixtures，測試保留設定、備份、重跑、
-managed block 更新、symlink／marker 拒絕與 NVM lazy load；不執行真實安裝。
-
-## 系統需求
-
-初始化 Pi-local 功能前，shell 必須能直接找到以下指令：
+在本 repository 執行：
 
 ```bash
-command -v bash
-command -v node
-command -v npm
-command -v pi
-```
-
-建議另外安裝 `make`，使用人類友善的 workspace targets；沒有 `make` 時仍可直接執行
-initializer script。
-
-如果 Node 由 NVM 管理，請先在目前 shell 選定版本，例如：
-
-```bash
-nvm use default
-```
-
-## 初始化
-
-### 由 Agent 啟動
-
-明確要求「初始化 workspace」時，可使用下方 initializer，
-再由目前的 agent 盤點 workspace 直接子專案，建立本機 `.pi/APPEND_SYSTEM.md`。
-不額外啟動付費 LLM session；只要求建立背景時，不執行套件安裝。
-
-背景只記錄有證據的 project path、責任、工具與使用者別名，不記錄 secrets、state、
-部署狀態或任務 spec。內容上限為 80 行／6 KiB；普通初始化保留既有背景，只有明確要求
-更新時才調整。私有內容不得複製到本公開 repository。
-
-寫入前由唯讀 helper 檢查 Git 與 symlink 邊界：destination 必須在本公開 repository 外；
-如果位於 Git repository，必須事先 ignored 且 untracked，否則停止，不代改 ignore 規則
-或 Git。Workspace 不在 Git 內只能證明目前沒有 Git owner，不能保證未來不被加入 Git。
-Workspace 定義與 initializer 一致：明確指定的目錄，或本 repository 的上一層；
-不取 Git root，也不要求 workspace 或子專案被 Git 追蹤。不檢查父層 `.git` 目錄；
-Git 明確回報不是 repository 時即可接受，其他 Git 錯誤仍停止。
-Destination 的 Git privacy 檢查獨立保留，不用來決定 workspace 路徑。
-
-Pi 在 project trust 後載入此檔；project `APPEND_SYSTEM.md` 會取代同名 global 檔案，
-不是合併。建立後需 reload 並以新 context 驗證背景確實生效。Shell initializer 本身
-不產生背景，也不會自行叫用 agent；下方 CLI 路徑保留原行為。
-
-### 直接使用 CLI
-
-在這個 repository 執行：
-
-```bash
-cd <workspace-root>/devops-pi-agent
 make workspace-init
 ```
 
-Makefile 預設把本 repository 的上一層當成 workspace root。需要指定其他位置時：
+指定其他 workspace：
 
 ```bash
 make workspace-init WORKSPACE_ROOT=<workspace-root>
 ```
 
-Makefile 只把參數交給 initializer，不包含另一份設定同步邏輯。沒有 `make` 或需要直接呼叫
-底層 CLI 時，原本方式仍可使用：
+沒有 `make` 時：
 
 ```bash
 ./scripts/init-workspace.sh --workspace-root <workspace-root>
 ```
 
-Initializer 會建立或協調以下 workspace-local 資源：
+完整初始化會修改 workspace 配置、安裝 extension dependencies 與 project-local Pi package，
+並建立 `$HOME/.kube/kuberc` 連結；套件安裝需要網路。它不登入雲端、不讀取 kubeconfig，
+也不執行任何 cluster 操作。初始化不是交易式操作：後段套件安裝失敗時，前段已完成的
+配置可能仍保留；排除錯誤後可重新初始化，再檢查狀態。
 
-```text
-<workspace-root>/AGENTS.md
-<workspace-root>/.agents/skills
-<workspace-root>/.pi/extensions
-<workspace-root>/.pi/settings.json
-<workspace-root>/.pi/npm/node_modules/pi-web-access
+### 3. 檢查與啟動
+
+```bash
+make workspace-check
+cd <workspace-root>
+pi
 ```
 
-每次執行 initializer 都會重建 `AGENTS.md` 與 `.agents/skills` 相對 symlink，並重新安裝
-本 repository 管理的 extensions。`package.json` 的 `pi.extensions` 必須與 `extensions/` 目錄名稱
-完全一致，否則 initializer 會停止。`<workspace-root>/.pi/pi-agent-config-managed.json` 記錄上一版
-安裝的 extension 名稱；initializer 只刪除這份 manifest 與目前 source 列出的 extension，其他
-使用者自建 extension 會保留。若 `AGENTS.md` 或 `.agents/skills` 是一般檔案、目錄，或指向其他
-來源的 symlink，initializer 會在清除前停止。腳本也會重建 extension dependencies，然後安裝
-pinned `npm:pi-web-access@0.23.0` project package。Package registration 會固定使用
-`extensions: []` filter，因此 parent session 不載入web tools；`researcher` child 需要外部搜尋
-時才透過明確path載入package extension。
+Pi 在信任 project 後才載入 project-local settings、extensions 與相關資源。
+請從 workspace root 啟動，避免因啟動在 target repository 內而額外載入該專案的 context files。
+更新 extensions 或 skills 後，已開啟的 Pi session 可使用 `/reload`。
 
-完整 `workspace-init` 也會將 repository 維護的 `config/kuberc` 以相對 symlink
-套用到目前使用者的 `$HOME/.kube/kuberc`。內容提供 `kubectl argocd` alias，對應
-`port-forward svc/argocd-server 8080:80`，namespace 預設為 `argocd`。
-需使用支援 `kuberc` v1beta1 的 kubectl（v1.34 起為 Beta），且未停用 kuberc。
-若環境以 `KUBERC` 指向其他檔案，本 initializer 不會改寫該環境變數。
+`workspace-check` 是唯讀配置檢查，不代表 cluster、runtime 或所有工具相容性已驗證。
 
-重複初始化接受已指向 canonical source 的 symlink；現有一般檔案、其他 symlink，
-或 symlink 形式的 `.kube` 目錄會在安裝前停止並保留，不自動覆寫或合併。
-後續維護 `config/kuberc` 即可更新已連結的環境，因此 repository 必須保留在原路徑。
-Initializer 不讀取 kubeconfig、不啟動 port-forward，也不執行任何 cluster 操作。
+## 安裝與更新模型
 
-Initializer 不管理 global Pi extensions 或 `~/.pi/agent/extensions`。
+### 哪些資源由產品管理
 
-### 只安裝 contract 與 skills
+| 目的地 | 行為 |
+| --- | --- |
+| `<workspace-root>/AGENTS.md` | 重建指向本 repository canonical contract 的相對 symlink |
+| `<workspace-root>/.agents/skills` | 重建指向本 repository skills 的相對 symlink |
+| `<workspace-root>/.pi/extensions` | 重新複製受管理 extensions，重新安裝 dependencies |
+| `<workspace-root>/.pi/settings.json` | 協調受管理 package registration，保留其他 settings |
+| `<workspace-root>/.pi/npm/node_modules/pi-web-access` | 安裝 pinned `npm:pi-web-access@0.23.0` |
+| `<workspace-root>/.pi/pi-agent-config-managed.json` | 記錄受管理 extension 名稱 |
+| `$HOME/.kube/kuberc` | 建立指向本 repository `config/kuberc` 的相對 symlink |
 
-如果目前不需要 extensions 或 project-local package：
+`package.json` 的 `pi.extensions` 必須與 `extensions/` 目錄 inventory 一致，否則初始化停止。
+Initializer 只清除 manifest 與目前 source 所列的受管理 extensions，未知 extensions 保留。
+`pi-web-access` registration 使用 `extensions: []`，避免 parent session 自動載入 web tools；
+外部搜尋由 `researcher` child 透過明確路徑載入。
+
+現有 contract 路徑或 kuberc 若不是預期的受管理 symlink，initializer 會保留並停止，
+不自動覆寫或合併。Symlink 形式的 `.kube` 目錄也會被拒絕。
+它不管理 global Pi extensions 或 `~/.pi/agent/extensions`。
+
+更新本 repository 的內容後，重新執行 `workspace-init` 和 `workspace-check`。
+Contract、skills 與 kuberc 採 symlink，因此 source 變更會直接反映在已連結環境；
+extensions 則需重新初始化才能更新 workspace copy。請保留 repository 的原路徑。
+
+### 最小安裝
+
+只需要 contract 與 skills、不需要 extensions 或套件安裝時：
 
 ```bash
 make workspace-contract-only WORKSPACE_ROOT=<workspace-root>
 ```
 
-對應的底層指令是：
+等同於 initializer 的 `--no-pi-local`，只建立 contract 與 skills links，不套用 kuberc。
 
-```bash
-./scripts/init-workspace.sh \
-  --workspace-root <workspace-root> \
-  --no-pi-local
-```
+### 狀態檢查
 
-這個模式只建立 `AGENTS.md` 與 `.agents/skills` symlinks，不套用 kuberc。
+`make workspace-check`（或 initializer 的 `--check`）會回報：
 
-## 檢查安裝狀態
+- Contract 與 skills symlink 是否存在。
+- kuberc 為 `ready`、`missing` 或 `unmanaged (preserved)`。
+- Pi executable 的位置。
+- 受管理 extensions 為 `ready`、`missing` 或 `drifted`；未知 extensions 標示保留。
+- Extension manifest、dependencies 與 child-only web-access package 狀態。
 
-執行唯讀檢查：
+Contract／skills 的檢查只回報 symlink 是否存在；kuberc 檢查連結 ownership。
+這些訊號不等同完整內容、kubectl 相容性、runtime 功能或部署就緒驗證。
 
-```bash
-make workspace-check WORKSPACE_ROOT=<workspace-root>
-```
+## 日常使用
 
-對應的底層指令是：
+### 指派工作
 
-```bash
-./scripts/init-workspace.sh \
-  --workspace-root <workspace-root> \
-  --check
-```
-
-輸出會顯示：
-
-- `AGENTS.md` 與 skills symlink 是否存在；
-- kuberc 是 `ready`、`missing` 或 `unmanaged (preserved)`（只檢查連結 ownership，不驗證 kubectl 相容性）；
-- Pi executable 的位置；
-- 每個受管理 extension 是 `ready`、`missing` 或 `drifted`；未受管理的 extension 顯示為 `unmanaged (preserved)`；
-- extension manifest 與 dependencies 狀態；
-- `pi-web-access@0.23.0` 是否已安裝，且 registration 是否維持 child-only filter。
-
-`--check` 保持唯讀，不安裝或修改任何資源。
-`--no-pi-local` 的一般安裝不安裝 extension dependencies 或 project-local packages。
-
-## 啟動 Pi
-
-從 workspace root 啟動 Pi：
-
-```bash
-cd <workspace-root>
-pi
-```
-
-Pi 必須信任 project，才會載入 `.pi/extensions`。Initializer 更新 extension 後，已開啟的
-session 要執行：
+直接要求修改就授權具名 repository 與範圍內的本機實作，預設流程是：
 
 ```text
-/reload
+調查 → 重新檢查 target branch/status → 範圍內修改 → 驗證 → 回報
 ```
 
-## Token 與驗證成本
+不強制先寫 spec，也不重複確認已授權的實作細節。診斷、review 或規劃本身不授權修改；
+目標、安全條件不明，或需要擴大範圍時，Agent 才停止詢問。
+只有明確要求 spec 才使用 spec workflow，規劃完成後仍需另行授權實作。
 
-[`config/pi-settings-baseline.json`](config/pi-settings-baseline.json) 把 routine work 的
-thinking 預設設為 `low`，並顯示明顯的 prompt-cache miss；不再覆寫 `thinkingBudgets`。
-這會沿用 Pi/provider 的預設預算，不代表無限 token。Baseline 是 opt-in，既有 workspace
-若曾採用自訂預算，需自行移除已合併的覆寫；本次不修改本機 settings。
-Subagent final text 與 parallel aggregate 不再由 extension 截斷；較長回報會增加 context 成本。
-Parent 以輕量任務契約交代目標、範圍、
-完成條件與回報，不增加格式 blocker。Tool／provider／process／timeout／abort 錯誤會
-主動回填給 parent；已授權的 subagent extension local 修正不重複詢問，但需先查證原因
-並驗證修正，不啟動無限自動修復。逾時、併發、安全權限與底層工具限制仍保留。
-Pi 的 project settings 會覆蓋
-全域設定；要在既有 workspace 採用最小設定，可把以下 keys 合併進
-`<workspace-root>/.pi/settings.json`，不要覆蓋原有 packages 或個人選項：
+### 初始化本機 workspace 背景
+
+明確要求 Agent「初始化 workspace」時，Agent 可在 initializer 之外盤點直接子專案，
+建立本機 `.pi/APPEND_SYSTEM.md`，不額外啟動付費 LLM session。Shell initializer 本身
+不建立背景，也不自行呼叫 Agent；只要求建立背景不會觸發套件安裝。
+
+背景只記錄有證據的專案責任、工具與使用者別名，不保存 secrets、部署狀態或任務 spec。
+上限為 80 行／6 KiB；普通初始化保留既有背景，只有明確要求更新才調整。
+目的地必須位於本公開 repository 外；若有 Git owner，必須事先 ignored 且 untracked，
+並通過 Git 與 symlink 邊界檢查，不代改 ignore 規則。
+
+Pi 在 project trust 後載入 project `APPEND_SYSTEM.md`；它取代同名 global 檔案，不合併。
+建立後應在新 context 中確認背景確實生效。
+
+### kubectl alias
+
+完整初始化後，支援 `kuberc` v1beta1 的 kubectl 可使用：
+
+```bash
+kubectl argocd
+```
+
+對應 `port-forward svc/argocd-server 8080:80`，namespace 預設為 `argocd`，可用 `-n` 覆寫。
+使用目前的 kube context，不固定叢集；請自行確認目標後再執行。
+產品只安裝設定，Agent 不會代為啟動 port-forward。
+
+kuberc 自 Kubernetes v1.34 起為 Beta。若 `KUBERC` 指向其他檔案或功能已停用，
+此設定可能不生效；initializer 不改寫相關環境變數。
+參考：[kuberc 官方文件](https://kubernetes.io/docs/reference/kubectl/kuberc/)。
+
+### 可選 Pi 設定
+
+[`config/pi-settings-baseline.json`](config/pi-settings-baseline.json) 是 opt-in baseline，
+不會由 initializer 自動套用。要採用最低限度設定，可將以下 keys 合併到
+`<workspace-root>/.pi/settings.json`，保留既有 packages 與個人選項：
 
 ```json
 {
@@ -363,38 +199,97 @@ Pi 的 project settings 會覆蓋
 }
 ```
 
-Initializer 不會自動覆蓋既有 project settings。當工作出現跨 repository 衝突、不熟悉的
-API 行為或無法界定的 blast radius 時，再用 `Shift+Tab` 把目前 session 提升到 `medium`；
-`high` 留給 `medium` 仍無法收斂的高風險設計判斷。
+Thinking 使用 Pi/provider 的預設預算，不代表無限 token。遇到跨 repository 衝突、不熟悉的
+API 或無法界定的 blast radius，再以 `Shift+Tab` 提升 thinking level。
+較長的 subagent 回報也會增加 context 成本。
 
-Post-edit validation 依行為和風險分成 V0–V3。純文件只跑文件檢查；結構化設定跑 parser、
-schema 與 changed-file checks；部署、CI、Helm values 或 application config 跑 affected
-behavior/render；Terraform、IAM、network、shared chart API、resource ownership 與 security
-保留完整 affected-root gate。Domain skill 可以提高等級，不能降低其 mandatory checks。
-Agent 只在檔案變更後、final edit 完成時執行一次最小充分的 release-level validation；如果
-repository 與相關 external state 沒變，不重跑相同的成功檢查。已有 repository 或
-skill-owned deterministic helper 時，優先使用單一 bounded helper，避免拆成多輪 tool calls。
+## 領域 skills 與知識庫
 
-## Extension 文件
-
-根目錄 README 只列入口；extension 的目的、運作流程與限制放在自己的目錄。
-
-| Extension | 文件 |
+| Skill | 適用情境 |
 | --- | --- |
-| `subagents` | [`extensions/subagents/README.md`](extensions/subagents/README.md) |
+| [Kubernetes platform guidance](.agents/skills/kubernetes-platform-guidance/README.md) | 資源設定、GitOps 關聯、服務故障與 runtime 身分的唯讀診斷 |
+| [Terraform workflow guidance](.agents/skills/terraform-workflow-guidance/README.md) | 跨 repository 的 plan-first infrastructure 工作 |
+| [Helm chart best practices](.agents/skills/helm-chart-best-practices/README.md) | Chart 設計、values/schema、render 與相容性驗證 |
+| [MR summary](.agents/skills/mr-summary/README.md) | 根據 repository evidence 撰寫繁體中文 MR 文案 |
+| [OKF knowledge](.agents/skills/okf/README.md) | 知識庫建立、驗證、格式轉換與維護 |
+| [Learn from work](.agents/skills/learn-from-work/README.md) | 手動啟用的實作後教學、練習與理解檢查 |
 
-## Skill 入口
+各 skill 的適用範圍與流程以自己的 `SKILL.md` 為準。Learn from work 使用
+`disable-model-invocation: true`，不自動選用；可用 `/skill:learn-from-work` 手動啟用，
+預設只在聊天中教學，不修改專案、不執行測試，也不保存學習紀錄。
 
-每個 skill 的適用範圍、停止條件與流程由該目錄的 `SKILL.md` 管理。保留的 repository-owned skills：
+知識庫採 Open Knowledge Format v0.2，從 [`knowledge/index.md`](knowledge/index.md)
+導航，格式與維護方式見 [`knowledge/README.md`](knowledge/README.md)。
+知識只提供 prior context，不證明目前部署或 runtime state；讀取知識不授權 enrichment、
+自動更新、ingestion、serving 或發布。知識與模板使用英文；引用與不確定性需保留。
 
-- [Kubernetes platform guidance](.agents/skills/kubernetes-platform-guidance/README.md) — 資源設定、GitOps／Helm 關聯與服務故障統一唯讀流程；從 source 呼叫鏈追到 runtime 身分與依賴拒絕，分開驗證 live 配置、rollout 與實際功能
-- [Terraform workflow guidance](.agents/skills/terraform-workflow-guidance/README.md) — 跨 repository 的 plan-first 流程
-- [Helm chart best practices](.agents/skills/helm-chart-best-practices/README.md) — 一般 chart 設計、render 與相容性驗證
-- [OKF knowledge](.agents/skills/okf/README.md)
-- [MR summary](.agents/skills/mr-summary/README.md)
-- [Learn from work](.agents/skills/learn-from-work/README.md) — 手動啟用的實作後學習、理解檢查、練習與複習；不改變一般開發流程
+## 可選 Ubuntu／WSL 環境設定
 
-想學習 AI 剛完成的工作時，先在新增 Skill 後執行 `/reload`，再使用
-`/skill:learn-from-work`，也可在後面加上想深入的概念或「考我、先不要給答案」。
-此 Skill 使用 `disable-model-invocation: true`，不加入自動選用清單；預設只在聊天中
-教學及產出複習卡，不修改專案、不執行測試，也不自動保存學習紀錄。
+```bash
+bash scripts/setup-ubuntu-shell.sh
+```
+
+預設只更新 `~/.bashrc` 的 managed block，保留其他內容；首次修改保存
+`.pi-agent-config.bak`，重跑不覆蓋備份。支援 `--bashrc PATH`；遇到 symlink 或損壞 markers
+則停止。需要 Python 3，開新終端後生效。
+
+配置包含彩色 user/path/Git branch/Kubernetes context 提示符，以及 `k`、`kx`、`kn` aliases。
+Git 不主動掃描 dirty/untracked；缺少 helper 時省略相關提示符。NVM 在首次使用
+`nvm`／`node`／`npm`／`npx` 時載入，不在每次 Bash 啟動執行 `brew shellenv`。
+設定內嵌於 bashrc，不依賴 repository 位置；舊版重複設定不會自動刪除。
+
+`--install-tools` 是另外的使用者操作模式，會安裝 Git、Homebrew、kubectl、kubectx/kubens、
+kube-ps1、Helm、Terraform、NVM 與 gcloud CLI；不安裝 Node、不登入或設定 cloud project。
+需要正常使用者、受支援 Ubuntu、sudo 與網路，會修改 APT sources 與安裝目錄，並下載執行
+官方 Homebrew／NVM installer。請先審閱腳本；它不是版本完全可重現的套件管理器，
+已安裝套件不主動升級。Homebrew 假設標準 Linux prefix `/home/linuxbrew/.linuxbrew`。
+
+來源：[Homebrew](https://docs.brew.sh/Homebrew-on-Linux)、
+[NVM](https://github.com/nvm-sh/nvm/tree/v0.40.7)、
+[Terraform](https://github.com/hashicorp/homebrew-tap)、
+[gcloud](https://docs.cloud.google.com/sdk/docs/install-sdk)。
+
+## 安全與產品邊界
+
+完整規則以 [`AGENTS.md`](AGENTS.md) 為準；README 是產品操作入口，不建立另一套授權契約。
+
+- **唯一 workspace contract**：不讀取或採用其他 target、sibling、nested 專案的
+  `AGENTS.md` 或替代規則檔。Pi 自身的 context discovery 與 project trust 是不同機制。
+- **本機實作、遠端唯讀**：Kubernetes、Argo CD、GitLab/GitHub、GCP 與 Git remotes
+  對 Agent 維持 inspection-only；不 commit、push、merge 或操作部署。變更走既有 MR、CI、GitOps。
+- **不自動改文件**：修改程式或配置不授權補 README、spec、ADR 或報告。只有明確指定
+  repository 與文件範圍才寫入；一般結果在聊天回報。未指定路徑的 workspace 文件使用 `docs/`。
+- **保留使用者狀態**：修改前檢查目標 branch、staged/unstaged changes；不丟棄既有變更。
+  本產品明確維護可在 `main` 進行；其他 repository 的 branch 與文件例外以 contract 為準。
+- **秘密禁讀**：不讀取 credentials、raw kubeconfig、token、private keys 或 `.env`。
+  家目錄例外只限明確授權的 `~/.bashrc` 與非秘密 `~/.kube/kuberc`。
+- **行為規則不是沙箱**：本產品不提供 OS 隔離、強制檔案攔截或 infrastructure 權限控制；
+  使用者仍須管理執行環境、project trust 與最小權限。
+
+本 repository 視為公開產品內容。不要寫入公司、客戶、私人系統名稱、credentials 或私有
+調查證據；範例使用 placeholders 與 reserved domains。內容審查不會清除既有 Git history。
+
+## 維護與驗證
+
+根目錄 README 維護產品入口與操作流程；extension、skill 與知識庫的細節留在各自文件。
+不要在此複製完整領域規則或保存某次調查的私人結果。
+
+可在本 repository 執行對應的 deterministic checks：
+
+```bash
+npm run test:init-workspace
+npm run test:makefile
+npm run test:ubuntu-shell
+npm run test:okf
+```
+
+初始化與 Shell 測試使用 temporary fixtures，不執行真實環境安裝。
+OKF 檢查需要 Python 3 與 PyYAML，dependency 宣告在
+[`.agents/skills/okf/requirements.txt`](.agents/skills/okf/requirements.txt)。
+
+Agent 驗證依變更分為 V0–V3：文件檢查、結構化配置、部署/render 行為，以及
+Terraform/IAM/network/shared API/security gate。領域 skill 可提高但不降低驗證要求。
+每次選擇能覆蓋改動的最小檢查，不以無關測試通過宣稱就緒。
+
+交付回報包含變更摘要、驗證結果與缺口；仍有工作時提供下一步。
+Repository 檔案變更後附建議 commit message，但不代為建立 commit。
