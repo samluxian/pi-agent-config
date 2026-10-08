@@ -39,4 +39,4 @@ credential、private key、`.env` 值或其他敏感資料。
 ## 固定輸出順序
 
 1. `text` block：MR 標題
-2. `markdown` block：關聯項目、背景與目的、變更內容、Review 重點
+2. `markdown` block：關聯項目、背景與目的、變更內容

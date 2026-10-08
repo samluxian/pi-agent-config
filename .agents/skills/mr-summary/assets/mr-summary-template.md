@@ -15,8 +15,6 @@
 - <說明實際修改的行為、設定或檔案>
 - <將相關變更分組，避免逐行重述 diff>
 
-## Review 重點
-- <Reviewer 需要特別確認的行為、設定或風險>
 ```
 
 沒有 ticket evidence 時，在 title block 省略 `[TICKET]`；repository 已有標題慣例時優先沿用。
