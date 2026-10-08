@@ -7,7 +7,9 @@ usage() {
 Usage: scripts/init-workspace.sh [--workspace-root <path>] [--no-pi-local] [--check]
 
 Rebuild the managed workspace contract, skills, extensions, and dependencies.
-Unknown extensions are preserved; unmanaged contract paths stop installation.
+Unknown extensions are preserved; unmanaged contract or kuberc paths stop installation.
+Full initialization also links config/kuberc to $HOME/.kube/kuberc.
+Contract-only mode does not apply kuberc; --check reports its state read-only.
 
   <workspace-root>/AGENTS.md       -> <skills-repo>/AGENTS.md
   <workspace-root>/.agents/skills -> <skills-repo>/.agents/skills
@@ -73,6 +75,14 @@ skills_source="$skills_repo/.agents/skills"
 agents_destination="$workspace_root/AGENTS.md"
 agents_dir="$workspace_root/.agents"
 skills_destination="$agents_dir/skills"
+kuberc_source="$skills_repo/config/kuberc"
+kuberc_dir="${HOME:?HOME must be set}/.kube"
+kuberc_destination="$kuberc_dir/kuberc"
+
+if [[ ! -f "$kuberc_source" ]]; then
+  echo "error: canonical kuberc not found: $kuberc_source" >&2
+  exit 1
+fi
 
 if [[ ! -f "$agents_source" ]]; then
   echo "error: canonical AGENTS.md not found: $agents_source" >&2
@@ -233,6 +243,15 @@ NODE
 if $check_only; then
   echo "workspace root: $workspace_root"
   echo "skills repository: $skills_repo"
+  if [[ -L "$kuberc_dir" ]]; then
+    echo "kuberc: unmanaged (preserved)"
+  elif [[ -L "$kuberc_destination" && "$(readlink -f -- "$kuberc_destination")" == "$kuberc_source" ]]; then
+    echo "kuberc: ready"
+  elif [[ -e "$kuberc_destination" || -L "$kuberc_destination" ]]; then
+    echo "kuberc: unmanaged (preserved)"
+  else
+    echo "kuberc: missing"
+  fi
   [[ -L "$agents_destination" ]] && echo "AGENTS link: ready" || echo "AGENTS link: missing"
   [[ -L "$skills_destination" ]] && echo "skills link: ready" || echo "skills link: missing"
   if command -v pi >/dev/null 2>&1; then
@@ -303,6 +322,11 @@ fi
 
 # Fail prerequisite checks before touching managed workspace links or extensions.
 if $pi_local; then
+  if [[ -L "$kuberc_dir" || ( -e "$kuberc_dir" && ! -d "$kuberc_dir" ) ]]; then
+    echo "error: .kube must be a non-symlink directory: $kuberc_dir" >&2
+    exit 1
+  fi
+  check_destination "$kuberc_destination" "$kuberc_source"
   if ! command -v npm >/dev/null 2>&1; then
     echo "error: npm is required to install Pi extension dependencies" >&2
     exit 1
@@ -335,6 +359,10 @@ create_link "$agents_destination" "$agents_source"
 create_link "$skills_destination" "$skills_source"
 
 if $pi_local; then
+  mkdir -p -- "$kuberc_dir"
+  if [[ ! -L "$kuberc_destination" ]]; then
+    create_link "$kuberc_destination" "$kuberc_source"
+  fi
   mkdir -p -- "$extensions_destination"
 
   # Remove only paths recorded as managed, plus current source names for the

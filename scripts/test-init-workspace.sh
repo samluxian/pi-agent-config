@@ -12,6 +12,9 @@ fake_bin="$tmp_dir/bin"
 mkdir -p "$fixture_repo/scripts" "$fixture_repo/.agents/skills" \
   "$fixture_repo/extensions/alpha" "$workspace_root" "$fake_bin"
 cp -- "$repo_root/scripts/init-workspace.sh" "$fixture_repo/scripts/init-workspace.sh"
+mkdir -p "$fixture_repo/config" "$tmp_dir/home"
+cp -- "$repo_root/config/kuberc" "$fixture_repo/config/kuberc"
+export HOME="$tmp_dir/home"
 export TEST_MUTATION_LOG="$tmp_dir/mutations.log"
 export TEST_UNEXPECTED_LOG="$tmp_dir/unexpected.log"
 : > "$TEST_MUTATION_LOG"
@@ -73,6 +76,9 @@ run_init() {
 }
 
 run_init >/dev/null
+[[ -L "$HOME/.kube/kuberc" ]]
+[[ "$(readlink -f "$HOME/.kube/kuberc")" == "$fixture_repo/config/kuberc" ]]
+cmp -s "$HOME/.kube/kuberc" "$repo_root/config/kuberc"
 extensions_destination="$workspace_root/.pi/extensions"
 cmp -s -- "$fixture_repo/extensions/alpha/index.ts" \
   "$extensions_destination/alpha/index.ts"
@@ -95,6 +101,7 @@ printf '%s\n' 'unwanted' > "$extensions_destination/unwanted/index.ts"
 printf '%s\n' 'standalone' > "$extensions_destination/standalone.ts"
 : > "$TEST_MUTATION_LOG"
 check_output="$(run_init --check)"
+grep -Fq 'kuberc: ready' <<<"$check_output"
 grep -Fq 'Pi extension (alpha): drifted' <<<"$check_output"
 grep -Fq 'Pi extension (standalone.ts): unmanaged (preserved)' <<<"$check_output"
 grep -Fq 'Pi extension (unwanted): unmanaged (preserved)' <<<"$check_output"
@@ -164,6 +171,35 @@ grep -Fq 'user contract' "$unmanaged_workspace/AGENTS.md"
 : > "$TEST_MUTATION_LOG"
 run_init --no-pi-local >/dev/null
 [[ ! -s "$TEST_MUTATION_LOG" ]]
+
+# Existing local preferences must block full init before any installer runs.
+rm -- "$HOME/.kube/kuberc"
+printf '%s\n' 'user preferences' > "$HOME/.kube/kuberc"
+: > "$TEST_MUTATION_LOG"
+if run_init >/dev/null 2>&1; then
+  echo 'FAIL: unmanaged kuberc should block initialization' >&2
+  exit 1
+fi
+[[ ! -s "$TEST_MUTATION_LOG" ]]
+grep -Fxq 'user preferences' "$HOME/.kube/kuberc"
+check_output="$(run_init --check)"
+grep -Fq 'kuberc: unmanaged (preserved)' <<<"$check_output"
+run_init --no-pi-local >/dev/null
+grep -Fxq 'user preferences' "$HOME/.kube/kuberc"
+rm -- "$HOME/.kube/kuberc"
+ln -s "$fixture_repo/package.json" "$HOME/.kube/kuberc"
+if run_init >/dev/null 2>&1; then
+  echo 'FAIL: unmanaged kuberc symlink should block initialization' >&2
+  exit 1
+fi
+[[ "$(readlink "$HOME/.kube/kuberc")" == "$fixture_repo/package.json" ]]
+rm -- "$HOME/.kube/kuberc"
+run_init --no-pi-local >/dev/null
+[[ ! -e "$HOME/.kube/kuberc" ]]
+check_output="$(run_init --check)"
+grep -Fq 'kuberc: missing' <<<"$check_output"
+run_init >/dev/null
+[[ -L "$HOME/.kube/kuberc" ]]
 
 [[ ! -s "$TEST_UNEXPECTED_LOG" ]]
 printf '%s\n' 'init-workspace ownership fixtures: ok'

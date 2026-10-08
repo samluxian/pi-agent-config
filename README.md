@@ -266,6 +266,17 @@ pinned `npm:pi-web-access@0.23.0` project package。Package registration 會固�
 `extensions: []` filter，因此 parent session 不載入web tools；`researcher` child 需要外部搜尋
 時才透過明確path載入package extension。
 
+完整 `workspace-init` 也會將 repository 維護的 `config/kuberc` 以相對 symlink
+套用到目前使用者的 `$HOME/.kube/kuberc`。內容提供 `kubectl argocd` alias，對應
+`port-forward svc/argocd-server 8080:80`，namespace 預設為 `argocd`。
+需使用支援 `kuberc` v1beta1 的 kubectl（v1.34 起為 Beta），且未停用 kuberc。
+若環境以 `KUBERC` 指向其他檔案，本 initializer 不會改寫該環境變數。
+
+重複初始化接受已指向 canonical source 的 symlink；現有一般檔案、其他 symlink，
+或 symlink 形式的 `.kube` 目錄會在安裝前停止並保留，不自動覆寫或合併。
+後續維護 `config/kuberc` 即可更新已連結的環境，因此 repository 必須保留在原路徑。
+Initializer 不讀取 kubeconfig、不啟動 port-forward，也不執行任何 cluster 操作。
+
 Initializer 不管理 global Pi extensions 或 `~/.pi/agent/extensions`。
 
 ### 只安裝 contract 與 skills
@@ -284,7 +295,7 @@ make workspace-contract-only WORKSPACE_ROOT=<workspace-root>
   --no-pi-local
 ```
 
-這個模式只建立 `AGENTS.md` 與 `.agents/skills` symlinks。
+這個模式只建立 `AGENTS.md` 與 `.agents/skills` symlinks，不套用 kuberc。
 
 ## 檢查安裝狀態
 
@@ -305,6 +316,7 @@ make workspace-check WORKSPACE_ROOT=<workspace-root>
 輸出會顯示：
 
 - `AGENTS.md` 與 skills symlink 是否存在；
+- kuberc 是 `ready`、`missing` 或 `unmanaged (preserved)`（只檢查連結 ownership，不驗證 kubectl 相容性）；
 - Pi executable 的位置；
 - 每個受管理 extension 是 `ready`、`missing` 或 `drifted`；未受管理的 extension 顯示為 `unmanaged (preserved)`；
 - extension manifest 與 dependencies 狀態；

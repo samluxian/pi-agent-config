@@ -107,8 +107,13 @@ Never add secrets, credentials, generated or ignored repository files. Explicit
 workspace setup or context refresh may manage local `.pi/APPEND_SYSTEM.md` outside
 the public skills repo only if untracked and already ignored by any owning Git repository;
 preserve existing content and keep private facts local. All other limits apply.
-`~/.bashrc` is the sole home-file exception: inspect first, preserve unrelated
-settings, and never access secrets or other home files.
+Home-file exceptions are limited to `~/.bashrc` and the non-secret
+`~/.kube/kuberc`: inspect only the authorized file, preserve unrelated settings,
+and never access kubeconfig, secrets, credentials, or other home files.
+On explicit workspace initialization, apply the repository-owned `config/kuberc`
+to `~/.kube/kuberc` as a managed symlink. Preserve and stop on existing unmanaged
+files or links; never merge or overwrite them automatically. This exception does
+not authorize running aliases, port-forward, or any cluster operation.
 
 Repository-specific exceptions:
 
